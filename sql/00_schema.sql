@@ -163,6 +163,7 @@ CREATE TABLE IF NOT EXISTS report_audit (
     risk_score       INTEGER,
     risk_tier        VARCHAR(20),
     flags_json       JSONB,
+    report_json      JSONB,
     generated_at     TIMESTAMPTZ DEFAULT NOW(),
     pdf_path         TEXT
 );

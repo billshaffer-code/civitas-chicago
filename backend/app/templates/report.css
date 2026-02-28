@@ -1,0 +1,123 @@
+/* CIVITAS – PDF Report Stylesheet */
+
+@page {
+    size: letter;
+    margin: 0.75in;
+    @bottom-center {
+        content: "CIVITAS Municipal Risk Report  |  Page " counter(page) " of " counter(pages);
+        font-size: 9pt;
+        color: #666;
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 10pt;
+    color: #1a1a1a;
+    line-height: 1.5;
+}
+
+h1 { font-size: 18pt; margin: 0 0 4pt; }
+h2 { font-size: 13pt; margin: 16pt 0 6pt; border-bottom: 1px solid #ddd; padding-bottom: 3pt; }
+h3 { font-size: 11pt; margin: 12pt 0 4pt; }
+
+/* ── Header bar ─────────────────────────────────────── */
+.report-header {
+    background: #1e3a5f;
+    color: white;
+    padding: 14pt 18pt;
+    margin-bottom: 16pt;
+}
+.report-header .title { font-size: 22pt; font-weight: 700; letter-spacing: 2pt; }
+.report-header .subtitle { font-size: 10pt; opacity: 0.75; }
+
+/* ── Risk badge ─────────────────────────────────────── */
+.risk-badge {
+    display: inline-block;
+    padding: 4pt 14pt;
+    border-radius: 4pt;
+    font-size: 14pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1pt;
+    margin-bottom: 8pt;
+}
+.risk-HIGH     { background: #b91c1c; color: white; }
+.risk-ELEVATED { background: #d97706; color: white; }
+.risk-MODERATE { background: #ca8a04; color: white; }
+.risk-LOW      { background: #15803d; color: white; }
+
+/* ── Score display ───────────────────────────────────── */
+.score-block {
+    font-size: 36pt;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4pt;
+}
+
+/* ── Flag cards ─────────────────────────────────────── */
+.flag-card {
+    border-left: 4pt solid #ccc;
+    padding: 6pt 10pt;
+    margin-bottom: 6pt;
+    background: #f9f9f9;
+}
+.flag-cat-A { border-color: #b91c1c; }
+.flag-cat-B { border-color: #d97706; }
+.flag-cat-C { border-color: #ca8a04; }
+.flag-cat-D { border-color: #1d4ed8; }
+.flag-code { font-weight: 700; font-size: 10pt; }
+.flag-score { float: right; font-size: 9pt; color: #555; }
+
+/* ── Narrative ───────────────────────────────────────── */
+.ai-narrative {
+    background: #f4f7fb;
+    border: 1pt solid #c7d7ec;
+    border-radius: 3pt;
+    padding: 10pt 12pt;
+    font-size: 10pt;
+    line-height: 1.6;
+    margin: 10pt 0;
+    white-space: pre-wrap;
+}
+
+/* ── Tables ─────────────────────────────────────────── */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    margin-bottom: 10pt;
+}
+th {
+    background: #1e3a5f;
+    color: white;
+    padding: 5pt 7pt;
+    text-align: left;
+    font-weight: 600;
+}
+td {
+    padding: 4pt 7pt;
+    border-bottom: 0.5pt solid #e5e5e5;
+    vertical-align: top;
+}
+tr:nth-child(even) td { background: #f7f7f7; }
+.empty-row td { color: #888; font-style: italic; }
+
+/* ── Disclaimer ─────────────────────────────────────── */
+.disclaimer {
+    font-size: 8pt;
+    color: #666;
+    border-top: 1pt solid #ccc;
+    margin-top: 12pt;
+    padding-top: 6pt;
+}
+
+/* ── Page breaks ─────────────────────────────────────── */
+.page-break { page-break-after: always; }
+
+/* ── Methodology ─────────────────────────────────────── */
+.method-section { margin-bottom: 14pt; }
+.tier-table td:first-child { font-weight: 700; }

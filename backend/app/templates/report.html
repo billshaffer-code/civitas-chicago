@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CIVITAS Property Risk Report</title>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     PAGE 1 – Executive Summary
+═══════════════════════════════════════════════════════ -->
+
+<div class="report-header">
+  <div class="title">CIVITAS</div>
+  <div class="subtitle">Municipal &amp; Tax Risk Intelligence · Chicago v1</div>
+</div>
+
+<h1>Property Risk Report</h1>
+<p><strong>Address:</strong> {{ report.property.address }}</p>
+<p><strong>Report ID:</strong> {{ report.report_id }}&nbsp;&nbsp;
+   <strong>Generated:</strong> {{ report.generated_at }}</p>
+<p><strong>Address Match:</strong> {{ report.match_confidence }}</p>
+
+<hr>
+
+<div>
+  <div class="risk-badge risk-{{ report.risk_tier }}">{{ report.risk_tier }}</div>
+  <div class="score-block">{{ report.risk_score }}</div>
+  <div style="color:#555; font-size:9pt;">Risk Score (max varies by flags triggered)</div>
+</div>
+
+{% if report.triggered_flags %}
+<h2>Triggered Risk Flags</h2>
+{% for f in report.triggered_flags %}
+<div class="flag-card flag-cat-{{ f.category }}">
+  <span class="flag-code">{{ f.flag_code }}</span>
+  <span class="flag-score">Category {{ f.category }} · +{{ f.severity_score }} pts</span>
+  <div style="clear:both"></div>
+  <div style="font-size:9pt; color:#444; margin-top:2pt;">{{ f.description }} (count: {{ f.supporting_count }})</div>
+</div>
+{% endfor %}
+{% else %}
+<h2>Risk Flags</h2>
+<p style="color:#15803d;"><strong>No risk flags triggered.</strong> No actionable municipal or tax risk findings were identified for this address.</p>
+{% endif %}
+
+<h2>Summary Narrative</h2>
+<div class="ai-narrative">{{ report.ai_summary }}</div>
+
+<div class="disclaimer">{{ report.disclaimer }}</div>
+
+<div class="page-break"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     PAGE 2 – Detailed Findings
+═══════════════════════════════════════════════════════ -->
+
+<div class="report-header">
+  <div class="title">CIVITAS</div>
+  <div class="subtitle">Detailed Findings · {{ report.property.address }}</div>
+</div>
+
+<h2>Building Violations</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Date</th><th>Code</th><th>Status</th>
+      <th>Description</th><th>Inspection Status</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% if report.supporting_records.violations %}
+    {% for v in report.supporting_records.violations %}
+    <tr>
+      <td>{{ v.violation_date or '—' }}</td>
+      <td>{{ v.violation_code or '—' }}</td>
+      <td>{{ v.violation_status or '—' }}</td>
+      <td>{{ (v.violation_description or '—')[:120] }}</td>
+      <td>{{ v.inspection_status or '—' }}</td>
+    </tr>
+    {% endfor %}
+  {% else %}
+    <tr class="empty-row"><td colspan="5">No violation records found.</td></tr>
+  {% endif %}
+  </tbody>
+</table>
+
+<h2>Food Inspections</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Date</th><th>DBA Name</th><th>Facility</th>
+      <th>Risk</th><th>Type</th><th>Result</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% if report.supporting_records.inspections %}
+    {% for i in report.supporting_records.inspections %}
+    <tr>
+      <td>{{ i.inspection_date or '—' }}</td>
+      <td>{{ (i.dba_name or '—')[:40] }}</td>
+      <td>{{ i.facility_type or '—' }}</td>
+      <td>{{ i.risk_level or '—' }}</td>
+      <td>{{ i.inspection_type or '—' }}</td>
+      <td>{{ i.results or '—' }}</td>
+    </tr>
+    {% endfor %}
+  {% else %}
+    <tr class="empty-row"><td colspan="6">No inspection records found.</td></tr>
+  {% endif %}
+  </tbody>
+</table>
+
+<h2>Building Permits</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Permit #</th><th>Type</th><th>Status</th>
+      <th>Applied</th><th>Issued</th><th>Days</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% if report.supporting_records.permits %}
+    {% for p in report.supporting_records.permits %}
+    <tr>
+      <td>{{ p.permit_number or '—' }}</td>
+      <td>{{ (p.permit_type or '—')[:40] }}</td>
+      <td>{{ p.permit_status or '—' }}</td>
+      <td>{{ p.application_start_date or '—' }}</td>
+      <td>{{ p.issue_date or '—' }}</td>
+      <td>{{ p.processing_time or '—' }}</td>
+    </tr>
+    {% endfor %}
+  {% else %}
+    <tr class="empty-row"><td colspan="6">No permit records found.</td></tr>
+  {% endif %}
+  </tbody>
+</table>
+
+<h2>Tax Lien Events</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Sale Year</th><th>Type</th><th>Sold</th>
+      <th>Total Amount</th><th>Buyer</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% if report.supporting_records.tax_liens %}
+    {% for t in report.supporting_records.tax_liens %}
+    <tr>
+      <td>{{ t.tax_sale_year or '—' }}</td>
+      <td>{{ t.lien_type or '—' }}</td>
+      <td>{{ 'Yes' if t.sold_at_sale else 'No' }}</td>
+      <td>{% if t.total_amount_offered %}${{ "%.2f"|format(t.total_amount_offered) }}{% else %}—{% endif %}</td>
+      <td>{{ (t.buyer_name or '—')[:40] }}</td>
+    </tr>
+    {% endfor %}
+  {% else %}
+    <tr class="empty-row"><td colspan="5">No tax lien records found.</td></tr>
+  {% endif %}
+  </tbody>
+</table>
+
+<div class="disclaimer">{{ report.disclaimer }}</div>
+
+<div class="page-break"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     PAGE 3 – Methodology Appendix
+═══════════════════════════════════════════════════════ -->
+
+<div class="report-header">
+  <div class="title">CIVITAS</div>
+  <div class="subtitle">Methodology Appendix</div>
+</div>
+
+<div class="method-section">
+<h2>Risk Scoring Model</h2>
+<p>Risk scores are computed by a deterministic, weighted additive rule engine
+implemented entirely in SQL. Claude AI generates only the narrative text;
+it does not compute scores or trigger flags.</p>
+
+<h3>Risk Tiers</h3>
+<table class="tier-table" style="width:50%">
+  <thead><tr><th>Tier</th><th>Score Range</th></tr></thead>
+  <tbody>
+    <tr><td class="risk-badge risk-LOW">LOW</td><td>0–24</td></tr>
+    <tr><td class="risk-badge risk-MODERATE">MODERATE</td><td>25–49</td></tr>
+    <tr><td class="risk-badge risk-ELEVATED">ELEVATED</td><td>50–74</td></tr>
+    <tr><td class="risk-badge risk-HIGH">HIGH</td><td>75+</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="method-section">
+<h2>Rule Definitions</h2>
+<table>
+  <thead>
+    <tr><th>Code</th><th>Cat</th><th>Description</th><th>Score</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>ACTIVE_MUNICIPAL_VIOLATION</td><td>A</td><td>One or more open building violations</td><td>25</td></tr>
+    <tr><td>AGED_ENFORCEMENT_RISK</td><td>A</td><td>Open violation older than 180 days</td><td>30</td></tr>
+    <tr><td>SEVERE_ENFORCEMENT_ACTION</td><td>A</td><td>Inspection FAILED with critical violation category</td><td>35</td></tr>
+    <tr><td>REPEAT_COMPLIANCE_ISSUE</td><td>B</td><td>3 or more violations at this address</td><td>20</td></tr>
+    <tr><td>ABOVE_NORMAL_INSPECTION_FAIL</td><td>B</td><td>2+ failed food inspections in past 24 months</td><td>15</td></tr>
+    <tr><td>PERMIT_PROCESSING_DELAY</td><td>C</td><td>Permit processing time exceeded 90 days</td><td>10</td></tr>
+    <tr><td>ELEVATED_DISTRESS_SIGNALS</td><td>C</td><td>5+ 311 service requests in past 12 months</td><td>10</td></tr>
+    <tr><td>ENFORCEMENT_INTENSITY_INCREASE</td><td>C</td><td>Violation count increased year-over-year</td><td>15</td></tr>
+    <tr><td>ACTIVE_TAX_LIEN</td><td>D</td><td>Property offered at tax sale in current or prior year</td><td>40</td></tr>
+    <tr><td>AGED_TAX_LIEN</td><td>D</td><td>Tax lien event older than 3 years with no resolution</td><td>30</td></tr>
+    <tr><td>MULTIPLE_LIEN_EVENTS</td><td>D</td><td>Property appeared at tax sale 2 or more times</td><td>35</td></tr>
+    <tr><td>HIGH_VALUE_LIEN</td><td>D</td><td>Total tax amount offered exceeds $10,000</td><td>25</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="method-section">
+<h2>Data Sources</h2>
+<table>
+  <thead><tr><th>Dataset</th><th>Source</th><th>Freshness</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Building Violations</td>
+      <td>Chicago Data Portal – Building Violations</td>
+      <td>{{ report.data_freshness.violations_as_of or 'Unknown' }}</td>
+    </tr>
+    <tr>
+      <td>Food Inspections</td>
+      <td>Chicago Data Portal – Food Inspections</td>
+      <td>{{ report.data_freshness.inspections_as_of or 'Unknown' }}</td>
+    </tr>
+    <tr>
+      <td>Building Permits</td>
+      <td>Chicago Data Portal – Building Permits</td>
+      <td>{{ report.data_freshness.permits_as_of or 'Unknown' }}</td>
+    </tr>
+    <tr>
+      <td>Tax Lien Events</td>
+      <td>Cook County Open Data – Annual &amp; Scavenger Tax Sales</td>
+      <td>{{ report.data_freshness.tax_liens_as_of or 'Unknown' }}</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="method-section">
+<h2>Address Resolution</h2>
+<p>Addresses are resolved through a four-tier hierarchy:
+(1) Exact Cook County PIN match,
+(2) Exact standardized address match,
+(3) House number + street name + ZIP match,
+(4) Geospatial proximity fallback (≤ 50 m).
+If no tier produces a match, the report is not generated and a manual verification
+warning is returned.</p>
+</div>
+
+<div class="disclaimer">{{ report.disclaimer }}</div>
+
+</body>
+</html>

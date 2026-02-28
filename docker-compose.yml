@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: civitas_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: civitas
+      POSTGRES_PASSWORD: civitas
+      POSTGRES_DB: civitas
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d   # auto-runs on first start:
+                                             # 00_schema.sql → 01_indexes.sql → 02_seed_rules.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U civitas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: civitas_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://civitas:civitas@postgres:5432/civitas
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./chicago_datasets:/app/chicago_datasets:ro
+      - ./sql:/app/sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:

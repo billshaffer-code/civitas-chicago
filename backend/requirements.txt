@@ -1,0 +1,29 @@
+# CIVITAS Backend Dependencies
+
+# Web framework
+fastapi==0.111.1
+uvicorn[standard]==0.30.1
+
+# Database – async (API) + sync (ETL)
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+
+# Configuration
+pydantic==2.7.4
+pydantic-settings==2.3.4
+
+# Address parsing
+usaddress==0.5.10
+
+# HTTP (tax lien Socrata download)
+requests==2.32.3
+
+# AI narrative
+anthropic==0.30.0
+
+# PDF generation
+weasyprint==62.3
+jinja2==3.1.4
+
+# Utilities
+python-multipart==0.0.9

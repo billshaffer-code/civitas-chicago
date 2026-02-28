@@ -1,10 +1,10 @@
 type Tier = 'LOW' | 'MODERATE' | 'ELEVATED' | 'HIGH'
 
-const tierConfig: Record<Tier, { color: string; bg: string; label: string }> = {
-  LOW:      { color: '#15803d', bg: '#dcfce7', label: 'LOW RISK' },
-  MODERATE: { color: '#ca8a04', bg: '#fef9c3', label: 'MODERATE RISK' },
-  ELEVATED: { color: '#d97706', bg: '#fef3c7', label: 'ELEVATED RISK' },
-  HIGH:     { color: '#b91c1c', bg: '#fee2e2', label: 'HIGH RISK' },
+const tierConfig: Record<Tier, { text: string; bar: string; pillBg: string; pillText: string; label: string }> = {
+  LOW:      { text: 'text-emerald-400', bar: 'bg-emerald-500', pillBg: 'bg-emerald-500/15', pillText: 'text-emerald-400', label: 'LOW RISK' },
+  MODERATE: { text: 'text-yellow-400',  bar: 'bg-yellow-500',  pillBg: 'bg-yellow-500/15',  pillText: 'text-yellow-400',  label: 'MODERATE RISK' },
+  ELEVATED: { text: 'text-orange-400',  bar: 'bg-orange-500',  pillBg: 'bg-orange-500/15',  pillText: 'text-orange-400',  label: 'ELEVATED RISK' },
+  HIGH:     { text: 'text-red-400',     bar: 'bg-red-500',     pillBg: 'bg-red-500/15',     pillText: 'text-red-400',     label: 'HIGH RISK' },
 }
 
 interface Props {
@@ -14,16 +14,22 @@ interface Props {
 
 export default function ScoreGauge({ score, tier }: Props) {
   const cfg = tierConfig[tier] ?? tierConfig.LOW
+  const pct = Math.min(score, 100)
 
   return (
-    <div
-      className="inline-flex flex-col items-center justify-center rounded-full w-40 h-40 border-4 shadow-md"
-      style={{ borderColor: cfg.color, backgroundColor: cfg.bg }}
-    >
-      <span className="text-5xl font-black" style={{ color: cfg.color }}>
+    <div className="flex flex-col items-center gap-3">
+      <span className={`text-7xl font-black leading-none ${cfg.text}`}>
         {score}
       </span>
-      <span className="text-xs font-bold mt-1 tracking-wide" style={{ color: cfg.color }}>
+
+      <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ${cfg.bar}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold tracking-wider ${cfg.pillBg} ${cfg.pillText}`}>
         {cfg.label}
       </span>
     </div>

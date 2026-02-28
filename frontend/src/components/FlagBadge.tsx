@@ -1,37 +1,28 @@
 import type { FlagResult } from '../api/civitas'
 
-const catColors: Record<string, string> = {
-  A: 'border-red-600 bg-red-50',
-  B: 'border-orange-500 bg-orange-50',
-  C: 'border-yellow-600 bg-yellow-50',
-  D: 'border-blue-700 bg-blue-50',
+const catColors: Record<string, { border: string; bg: string; code: string }> = {
+  A: { border: 'border-red-500',    bg: 'bg-red-500/10',    code: 'text-red-400' },
+  B: { border: 'border-orange-500', bg: 'bg-orange-500/10', code: 'text-orange-400' },
+  C: { border: 'border-yellow-500', bg: 'bg-yellow-500/10', code: 'text-yellow-400' },
+  D: { border: 'border-blue-500',   bg: 'bg-blue-500/10',   code: 'text-blue-400' },
 }
 
-const catLabel: Record<string, string> = {
-  A: 'text-red-700',
-  B: 'text-orange-700',
-  C: 'text-yellow-700',
-  D: 'text-blue-700',
-}
+const fallback = { border: 'border-slate-500', bg: 'bg-slate-500/10', code: 'text-slate-400' }
 
 export default function FlagBadge({ flag }: { flag: FlagResult }) {
-  const color = catColors[flag.category] ?? 'border-gray-400 bg-gray-50'
-  const label = catLabel[flag.category] ?? 'text-gray-700'
+  const c = catColors[flag.category] ?? fallback
 
   return (
-    <div className={`border-l-4 p-3 mb-2 rounded-r ${color}`}>
-      <div className="flex justify-between items-start">
-        <span className={`font-mono font-bold text-sm ${label}`}>
+    <div className={`border-l-2 ${c.border} ${c.bg} rounded-r-lg px-3 py-2 mb-2`}>
+      <div className="flex justify-between items-center">
+        <span className={`font-mono font-bold text-xs ${c.code}`}>
           {flag.flag_code}
         </span>
-        <span className="text-xs text-gray-500 ml-2 whitespace-nowrap">
-          Cat {flag.category} · +{flag.severity_score} pts
+        <span className="text-[11px] text-slate-500 ml-2 whitespace-nowrap font-mono">
+          +{flag.severity_score} pts
         </span>
       </div>
-      <p className="text-xs text-gray-600 mt-0.5">{flag.description}</p>
-      <p className="text-xs text-gray-500 mt-0.5">
-        Supporting count: <strong>{flag.supporting_count}</strong>
-      </p>
+      <p className="text-xs text-slate-400 mt-0.5 leading-snug">{flag.description}</p>
     </div>
   )
 }

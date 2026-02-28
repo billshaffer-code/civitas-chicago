@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime, timezone
+from typing import List
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
@@ -141,7 +142,7 @@ async def generate_report(
     return report
 
 
-@router.get("/history", response_model=list[ReportHistoryItem])
+@router.get("/history", response_model=List[ReportHistoryItem])
 async def report_history(location_sk: int = Query(...)):
     """Return previous reports for a given location."""
     async with get_conn() as conn:

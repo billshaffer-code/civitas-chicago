@@ -39,3 +39,8 @@ CREATE INDEX IF NOT EXISTS idx_fact_tax_lien_parcel
 
 CREATE INDEX IF NOT EXISTS idx_fact_tax_lien_loc
     ON fact_tax_lien(location_sk);
+
+-- Trigram index for address autocomplete
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS idx_dim_location_address_trgm
+    ON dim_location USING GIN (full_address_standardized gin_trgm_ops);

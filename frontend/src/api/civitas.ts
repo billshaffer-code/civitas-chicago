@@ -56,6 +56,19 @@ export interface ReportResponse {
   disclaimer: string
 }
 
+export interface AutocompleteItem {
+  location_sk: number
+  full_address: string
+}
+
+export interface ReportHistoryItem {
+  report_id: string
+  query_address: string
+  risk_score: number
+  risk_tier: string
+  generated_at: string
+}
+
 // ── API calls ─────────────────────────────────────────────────────────────────
 
 export async function lookupProperty(req: LookupRequest): Promise<LookupResponse> {
@@ -68,6 +81,21 @@ export async function generateReport(location_sk: number, address: string): Prom
     location_sk,
     address,
   })
+  return data
+}
+
+export async function autocompleteAddress(q: string): Promise<AutocompleteItem[]> {
+  const { data } = await api.get<AutocompleteItem[]>('/api/v1/property/autocomplete', { params: { q } })
+  return data
+}
+
+export async function getReportHistory(location_sk: number): Promise<ReportHistoryItem[]> {
+  const { data } = await api.get<ReportHistoryItem[]>('/api/v1/report/history', { params: { location_sk } })
+  return data
+}
+
+export async function getReport(report_id: string): Promise<ReportResponse> {
+  const { data } = await api.get<ReportResponse>(`/api/v1/report/${report_id}`)
   return data
 }
 

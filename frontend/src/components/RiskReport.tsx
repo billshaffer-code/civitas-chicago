@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ReportResponse, FlagResult } from '../api/civitas'
 import ScoreGauge from './ScoreGauge'
 import FlagBadge from './FlagBadge'
+import PropertyMap from './PropertyMap'
 import { downloadPdf } from '../api/civitas'
 import Markdown from 'react-markdown'
 
@@ -9,6 +10,8 @@ interface Props {
   report: ReportResponse
   locationSk: number
   address: string
+  lat?: number
+  lon?: number
   onNewSearch: () => void
 }
 
@@ -48,7 +51,7 @@ const categoryLabels: Record<string, string> = {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function RiskReport({ report, locationSk, address, onNewSearch }: Props) {
+export default function RiskReport({ report, locationSk, address, lat, lon, onNewSearch }: Props) {
   async function handlePdf() {
     const blob = await downloadPdf(locationSk, address)
     const url  = URL.createObjectURL(blob)
@@ -97,6 +100,11 @@ export default function RiskReport({ report, locationSk, address, onNewSearch }:
           <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-6">
             <ScoreGauge score={report.risk_score} tier={report.risk_tier} />
           </div>
+
+          {/* Map */}
+          {lat != null && lon != null && (
+            <PropertyMap lat={lat} lon={lon} address={report.property.address} />
+          )}
 
           {/* Flags grouped by category */}
           <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-6">

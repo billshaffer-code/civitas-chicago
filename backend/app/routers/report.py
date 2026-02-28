@@ -23,7 +23,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
 from backend.app.database import get_conn
-from backend.app.schemas.report import ReportRequest, ReportResponse
+from backend.app.schemas.report import ReportHistoryItem, ReportRequest, ReportResponse
 from backend.app.services import rule_engine
 from backend.app.services.claude_ai import build_claude_payload, generate_narrative
 from backend.app.services.pdf import generate_pdf
@@ -139,6 +139,32 @@ async def generate_report(
         )
 
     return report
+
+
+@router.get("/history", response_model=list[ReportHistoryItem])
+async def report_history(location_sk: int = Query(...)):
+    """Return previous reports for a given location."""
+    async with get_conn() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT report_id, query_address, risk_score, risk_tier, created_at
+            FROM report_audit
+            WHERE location_sk = $1
+            ORDER BY created_at DESC
+            LIMIT 20
+            """,
+            location_sk,
+        )
+    return [
+        ReportHistoryItem(
+            report_id=r["report_id"],
+            query_address=r["query_address"],
+            risk_score=r["risk_score"],
+            risk_tier=r["risk_tier"],
+            generated_at=r["created_at"].isoformat() if hasattr(r["created_at"], "isoformat") else str(r["created_at"]),
+        )
+        for r in rows
+    ]
 
 
 @router.get("/{report_id}")

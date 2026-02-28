@@ -12,6 +12,11 @@ class PropertyLookupRequest(BaseModel):
     pin: Optional[str] = Field(None, description="14-digit Cook County PIN (optional)")
 
 
+class AutocompleteItem(BaseModel):
+    location_sk: int
+    full_address: str
+
+
 class PropertyLookupResponse(BaseModel):
     resolved: bool
     location_sk: Optional[int] = None

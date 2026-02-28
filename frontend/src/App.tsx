@@ -1,10 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PropertySearch from './components/PropertySearch'
 import RiskReport from './components/RiskReport'
-import { lookupProperty, generateReport } from './api/civitas'
-import type { LookupRequest, LookupResponse, ReportResponse } from './api/civitas'
+import { lookupProperty, generateReport, getReportHistory, getReport } from './api/civitas'
+import type { LookupRequest, LookupResponse, ReportResponse, ReportHistoryItem } from './api/civitas'
 
 type Phase = 'search' | 'lookup-loading' | 'lookup-done' | 'report-loading' | 'report-done'
+
+const tierColors: Record<string, string> = {
+  LOW: 'bg-emerald-500/15 text-emerald-400',
+  MODERATE: 'bg-yellow-500/15 text-yellow-400',
+  ELEVATED: 'bg-orange-500/15 text-orange-400',
+  HIGH: 'bg-red-500/15 text-red-400',
+}
 
 export default function App() {
   const [phase, setPhase]       = useState<Phase>('search')
@@ -12,6 +19,18 @@ export default function App() {
   const [report, setReport]     = useState<ReportResponse | null>(null)
   const [lastReq, setLastReq]   = useState<LookupRequest>({ address: '' })
   const [error, setError]       = useState<string | null>(null)
+  const [history, setHistory]   = useState<ReportHistoryItem[]>([])
+
+  // Fetch report history when lookup resolves
+  useEffect(() => {
+    if (lookup?.resolved && lookup.location_sk) {
+      getReportHistory(lookup.location_sk)
+        .then(setHistory)
+        .catch(() => setHistory([]))
+    } else {
+      setHistory([])
+    }
+  }, [lookup])
 
   function handleNewSearch() {
     setPhase('search')
@@ -19,6 +38,7 @@ export default function App() {
     setReport(null)
     setError(null)
     setLastReq({ address: '' })
+    setHistory([])
   }
 
   async function handleLookup(req: LookupRequest) {
@@ -49,6 +69,20 @@ export default function App() {
       setPhase('report-done')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Report generation failed')
+      setPhase('lookup-done')
+    }
+  }
+
+  async function handleLoadHistorical(reportId: string) {
+    setError(null)
+    setPhase('report-loading')
+
+    try {
+      const r = await getReport(reportId)
+      setReport(r)
+      setPhase('report-done')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load report')
       setPhase('lookup-done')
     }
   }
@@ -133,6 +167,42 @@ export default function App() {
                     >
                       {phase === 'report-loading' ? 'Generating report...' : 'Generate Risk Report'}
                     </button>
+
+                    {/* Report History */}
+                    {history.length > 0 && (
+                      <div className="mt-5 border-t border-slate-700/50 pt-4">
+                        <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                          Previous Reports
+                          <span className="ml-2 text-[10px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded-full font-mono">
+                            {history.length}
+                          </span>
+                        </h4>
+                        <div className="space-y-2">
+                          {history.map(h => (
+                            <button
+                              key={h.report_id}
+                              onClick={() => handleLoadHistorical(h.report_id)}
+                              disabled={phase === 'report-loading'}
+                              className="w-full flex items-center justify-between bg-slate-800/50 hover:bg-slate-800
+                                         border border-slate-700/30 rounded-lg px-4 py-2.5 text-left transition-colors
+                                         disabled:opacity-50"
+                            >
+                              <span className="text-xs text-slate-400">
+                                {new Date(h.generated_at).toLocaleString()}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-slate-300">
+                                  Score: {h.risk_score}
+                                </span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tierColors[h.risk_tier] ?? 'bg-slate-700 text-slate-400'}`}>
+                                  {h.risk_tier}
+                                </span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="text-red-400 font-medium">
@@ -162,6 +232,8 @@ export default function App() {
             report={report}
             locationSk={lookup.location_sk!}
             address={lastReq.address}
+            lat={lookup.lat}
+            lon={lookup.lon}
             onNewSearch={handleNewSearch}
           />
         )}

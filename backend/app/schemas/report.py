@@ -63,6 +63,14 @@ class DataFreshness(BaseModel):
     report_generated_at: str
 
 
+class ReportHistoryItem(BaseModel):
+    report_id: str
+    query_address: str
+    risk_score: int
+    risk_tier: str
+    generated_at: str
+
+
 class ReportResponse(BaseModel):
     report_id: str
     generated_at: str

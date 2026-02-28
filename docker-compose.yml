@@ -13,8 +13,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d   # auto-runs on first start:
-                                             # 00_schema.sql → 01_indexes.sql → 02_seed_rules.sql
+      - ./sql:/docker-entrypoint-initdb.d   # runs 00_schema → 01_indexes → 02_seed_rules → 03_views.sh
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U civitas"]
       interval: 10s
@@ -30,16 +29,27 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql://civitas:civitas@postgres:5432/civitas
+      REPORTS_DIR: reports
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
-      - ./chicago_datasets:/app/chicago_datasets:ro
-      - ./sql:/app/sql:ro
+      - reports:/app/reports
     depends_on:
       postgres:
         condition: service_healthy
-    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: civitas_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
+  reports:

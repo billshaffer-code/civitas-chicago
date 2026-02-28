@@ -1,12 +1,16 @@
 """
-CIVITAS – Report generation router.
+CIVITAS – Report generation and retrieval router.
 
 POST /api/v1/report/generate
   Body:     { "location_sk": int, "address": str }
+  Query:    ?format=json|pdf
   Response: ReportResponse (JSON) or PDF bytes
 
 GET /api/v1/report/{report_id}
-  (Served from stored reports_dir; not yet implemented – reports are returned inline.)
+  Response: full ReportResponse JSON from report_audit
+
+GET /api/v1/report/{report_id}/pdf
+  Response: application/pdf generated from stored report JSON
 """
 
 from __future__ import annotations
@@ -98,7 +102,7 @@ async def generate_report(
             **freshness,
             "report_generated_at": now_iso,
         },
-        "pdf_url": None,
+        "pdf_url": f"/api/v1/report/{report_id}/pdf",
         "disclaimer": (
             "This report does not constitute legal advice or a title examination. "
             "It is based solely on structured municipal data as of the dates noted "
@@ -106,20 +110,21 @@ async def generate_report(
         ),
     }
 
-    # ── 7. Audit log ────────────────────────────────────────────────────────
+    # ── 7. Audit log (store full report JSON) ───────────────────────────────
     async with get_conn() as conn:
         await conn.execute(
             """
             INSERT INTO report_audit
                 (report_id, query_address, location_sk,
-                 match_confidence, risk_score, risk_tier, flags_json)
-            VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)
+                 match_confidence, risk_score, risk_tier, flags_json, report_json)
+            VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb)
             """,
             report_id, body.address, body.location_sk,
             "EXACT_ADDRESS",
             score.get("raw_score", 0),
             score.get("risk_tier", "LOW"),
             json.dumps(flags),
+            json.dumps(report),
         )
 
     # ── 8. Return ────────────────────────────────────────────────────────────
@@ -134,3 +139,41 @@ async def generate_report(
         )
 
     return report
+
+
+@router.get("/{report_id}")
+async def get_report(report_id: str):
+    """Retrieve a previously generated report by ID."""
+    async with get_conn() as conn:
+        row = await conn.fetchrow(
+            "SELECT report_json FROM report_audit WHERE report_id = $1",
+            report_id,
+        )
+    if not row or not row["report_json"]:
+        raise HTTPException(status_code=404, detail="Report not found")
+    # asyncpg returns JSONB as a str — parse it before FastAPI re-serializes
+    raw = row["report_json"]
+    return json.loads(raw) if isinstance(raw, str) else raw
+
+
+@router.get("/{report_id}/pdf")
+async def get_report_pdf(report_id: str):
+    """Generate a PDF from a previously stored report."""
+    async with get_conn() as conn:
+        row = await conn.fetchrow(
+            "SELECT report_json FROM report_audit WHERE report_id = $1",
+            report_id,
+        )
+    if not row or not row["report_json"]:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    raw = row["report_json"]
+    report = json.loads(raw) if isinstance(raw, str) else dict(raw)
+    pdf_bytes = generate_pdf(report)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="civitas_{report_id}.pdf"'
+        },
+    )

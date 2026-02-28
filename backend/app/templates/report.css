@@ -1,4 +1,4 @@
-/* CIVITAS – PDF Report Stylesheet */
+/* CIVITAS – PDF Report Stylesheet (Dark Theme) */
 
 @page {
     size: letter;
@@ -6,30 +6,36 @@
     @bottom-center {
         content: "CIVITAS Municipal Risk Report  |  Page " counter(page) " of " counter(pages);
         font-size: 9pt;
-        color: #666;
+        color: #64748b;
         font-family: 'Helvetica Neue', Arial, sans-serif;
     }
 }
 
-* { box-sizing: border-box; }
+* {
+    box-sizing: border-box;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
 
 body {
     font-family: 'Helvetica Neue', Arial, sans-serif;
     font-size: 10pt;
-    color: #1a1a1a;
+    color: #f1f5f9;
+    background: #020617;
     line-height: 1.5;
 }
 
-h1 { font-size: 18pt; margin: 0 0 4pt; }
-h2 { font-size: 13pt; margin: 16pt 0 6pt; border-bottom: 1px solid #ddd; padding-bottom: 3pt; }
-h3 { font-size: 11pt; margin: 12pt 0 4pt; }
+h1 { font-size: 18pt; margin: 0 0 4pt; color: #f1f5f9; }
+h2 { font-size: 13pt; margin: 16pt 0 6pt; border-bottom: 1px solid #334155; padding-bottom: 3pt; color: #e2e8f0; }
+h3 { font-size: 11pt; margin: 12pt 0 4pt; color: #e2e8f0; }
 
 /* ── Header bar ─────────────────────────────────────── */
 .report-header {
-    background: #1e3a5f;
+    background: #0f172a;
     color: white;
     padding: 14pt 18pt;
     margin-bottom: 16pt;
+    border-bottom: 3pt solid #0891b2;
 }
 .report-header .title { font-size: 22pt; font-weight: 700; letter-spacing: 2pt; }
 .report-header .subtitle { font-size: 10pt; opacity: 0.75; }
@@ -38,17 +44,17 @@ h3 { font-size: 11pt; margin: 12pt 0 4pt; }
 .risk-badge {
     display: inline-block;
     padding: 4pt 14pt;
-    border-radius: 4pt;
+    border-radius: 20pt;
     font-size: 14pt;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1pt;
     margin-bottom: 8pt;
 }
-.risk-HIGH     { background: #b91c1c; color: white; }
-.risk-ELEVATED { background: #d97706; color: white; }
-.risk-MODERATE { background: #ca8a04; color: white; }
-.risk-LOW      { background: #15803d; color: white; }
+.risk-HIGH     { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1pt solid #f87171; }
+.risk-ELEVATED { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1pt solid #fb923c; }
+.risk-MODERATE { background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1pt solid #facc15; }
+.risk-LOW      { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1pt solid #34d399; }
 
 /* ── Score display ───────────────────────────────────── */
 .score-block {
@@ -57,31 +63,36 @@ h3 { font-size: 11pt; margin: 12pt 0 4pt; }
     line-height: 1;
     margin-bottom: 4pt;
 }
+.score-HIGH     { color: #f87171; }
+.score-ELEVATED { color: #fb923c; }
+.score-MODERATE { color: #facc15; }
+.score-LOW      { color: #34d399; }
 
 /* ── Flag cards ─────────────────────────────────────── */
 .flag-card {
-    border-left: 4pt solid #ccc;
+    border-left: 4pt solid #475569;
     padding: 6pt 10pt;
     margin-bottom: 6pt;
-    background: #f9f9f9;
+    border-radius: 2pt;
 }
-.flag-cat-A { border-color: #b91c1c; }
-.flag-cat-B { border-color: #d97706; }
-.flag-cat-C { border-color: #ca8a04; }
-.flag-cat-D { border-color: #1d4ed8; }
-.flag-code { font-weight: 700; font-size: 10pt; }
-.flag-score { float: right; font-size: 9pt; color: #555; }
+.flag-cat-A { border-color: #f87171; background: rgba(239, 68, 68, 0.10); }
+.flag-cat-B { border-color: #fb923c; background: rgba(249, 115, 22, 0.10); }
+.flag-cat-C { border-color: #facc15; background: rgba(234, 179, 8, 0.10); }
+.flag-cat-D { border-color: #60a5fa; background: rgba(96, 165, 250, 0.10); }
+.flag-code { font-weight: 700; font-size: 10pt; color: #f1f5f9; }
+.flag-score { float: right; font-size: 9pt; color: #94a3b8; }
 
 /* ── Narrative ───────────────────────────────────────── */
 .ai-narrative {
-    background: #f4f7fb;
-    border: 1pt solid #c7d7ec;
+    background: #0f172a;
+    border: 1pt solid #334155;
     border-radius: 3pt;
     padding: 10pt 12pt;
     font-size: 10pt;
     line-height: 1.6;
     margin: 10pt 0;
     white-space: pre-wrap;
+    color: #cbd5e1;
 }
 
 /* ── Tables ─────────────────────────────────────────── */
@@ -92,25 +103,30 @@ table {
     margin-bottom: 10pt;
 }
 th {
-    background: #1e3a5f;
-    color: white;
+    background: #0f172a;
+    color: #94a3b8;
     padding: 5pt 7pt;
     text-align: left;
     font-weight: 600;
+    text-transform: uppercase;
+    font-size: 8pt;
+    letter-spacing: 0.5pt;
 }
 td {
     padding: 4pt 7pt;
-    border-bottom: 0.5pt solid #e5e5e5;
+    border-bottom: 0.5pt solid #1e293b;
     vertical-align: top;
+    color: #e2e8f0;
 }
-tr:nth-child(even) td { background: #f7f7f7; }
-.empty-row td { color: #888; font-style: italic; }
+tr:nth-child(odd) td { background: #0f172a; }
+tr:nth-child(even) td { background: #1e293b; }
+.empty-row td { color: #64748b; font-style: italic; }
 
 /* ── Disclaimer ─────────────────────────────────────── */
 .disclaimer {
     font-size: 8pt;
-    color: #666;
-    border-top: 1pt solid #ccc;
+    color: #475569;
+    border-top: 1pt solid #334155;
     margin-top: 12pt;
     padding-top: 6pt;
 }
@@ -120,4 +136,5 @@ tr:nth-child(even) td { background: #f7f7f7; }
 
 /* ── Methodology ─────────────────────────────────────── */
 .method-section { margin-bottom: 14pt; }
+.method-section p { color: #cbd5e1; }
 .tier-table td:first-child { font-weight: 700; }

@@ -21,12 +21,12 @@
    <strong>Generated:</strong> {{ report.generated_at }}</p>
 <p><strong>Address Match:</strong> {{ report.match_confidence }}</p>
 
-<hr>
+<hr style="border:none; border-top:1px solid #334155; margin:10pt 0;">
 
 <div>
   <div class="risk-badge risk-{{ report.risk_tier }}">{{ report.risk_tier }}</div>
-  <div class="score-block">{{ report.risk_score }}</div>
-  <div style="color:#555; font-size:9pt;">Risk Score (max varies by flags triggered)</div>
+  <div class="score-block score-{{ report.risk_tier }}">{{ report.risk_score }}</div>
+  <div style="color:#94a3b8; font-size:9pt;">Risk Score (max varies by flags triggered)</div>
 </div>
 
 {% if report.triggered_flags %}
@@ -36,12 +36,12 @@
   <span class="flag-code">{{ f.flag_code }}</span>
   <span class="flag-score">Category {{ f.category }} · +{{ f.severity_score }} pts</span>
   <div style="clear:both"></div>
-  <div style="font-size:9pt; color:#444; margin-top:2pt;">{{ f.description }} (count: {{ f.supporting_count }})</div>
+  <div style="font-size:9pt; color:#94a3b8; margin-top:2pt;">{{ f.description }} (count: {{ f.supporting_count }})</div>
 </div>
 {% endfor %}
 {% else %}
 <h2>Risk Flags</h2>
-<p style="color:#15803d;"><strong>No risk flags triggered.</strong> No actionable municipal or tax risk findings were identified for this address.</p>
+<p style="color:#34d399;"><strong>No risk flags triggered.</strong> No actionable municipal or tax risk findings were identified for this address.</p>
 {% endif %}
 
 <h2>Summary Narrative</h2>

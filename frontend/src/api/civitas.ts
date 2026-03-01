@@ -49,6 +49,8 @@ export interface ReportResponse {
     inspections: Record<string, unknown>[]
     permits: Record<string, unknown>[]
     tax_liens: Record<string, unknown>[]
+    service_311: Record<string, unknown>[]
+    vacant_buildings: Record<string, unknown>[]
   }
   ai_summary: string
   data_freshness: Record<string, string | null>

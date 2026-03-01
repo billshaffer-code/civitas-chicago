@@ -17,5 +17,10 @@ INSERT INTO rule_config (rule_code, category, description, severity_score, is_ac
 ('ACTIVE_TAX_LIEN',                'D', 'Property offered at tax sale in current or prior year',                  40, true, 1, NOW()),
 ('AGED_TAX_LIEN',                  'D', 'Tax lien event older than 3 years with no resolution',                   30, true, 1, NOW()),
 ('MULTIPLE_LIEN_EVENTS',           'D', 'Property appeared at tax sale 2 or more times',                          35, true, 1, NOW()),
-('HIGH_VALUE_LIEN',                'D', 'Total tax amount offered exceeds $10,000',                                25, true, 1, NOW())
+('HIGH_VALUE_LIEN',                'D', 'Total tax amount offered exceeds $10,000',                                25, true, 1, NOW()),
+-- Category A: Demolition + Vacant Building
+('DEMOLITION_PERMIT_ISSUED',      'A', 'Wrecking/demolition permit issued for this property',                    20, true, 1, NOW()),
+('VACANT_BUILDING_VIOLATION',     'A', 'Active vacant building violation recorded',                              25, true, 1, NOW()),
+-- Category D: Vacant Building Fines
+('HIGH_VACANT_BUILDING_FINES',    'D', 'Outstanding vacant building fines exceed $5,000',                        30, true, 1, NOW())
 ON CONFLICT (rule_code) DO NOTHING;

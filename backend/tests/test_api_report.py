@@ -41,12 +41,14 @@ async def test_generate_report_json(client, sample_report):
         mock_engine.get_permits = AsyncMock(return_value=[])
         mock_engine.get_tax_liens = AsyncMock(return_value=[])
         mock_engine.get_311_requests = AsyncMock(return_value=[])
+        mock_engine.get_vacant_buildings = AsyncMock(return_value=[])
         mock_engine.get_data_freshness = AsyncMock(return_value={
             "violations_as_of": "2025-01-10",
             "inspections_as_of": "2025-01-10",
             "permits_as_of": "2025-01-10",
             "tax_liens_as_of": "2025-01-10",
             "service_311_as_of": "2025-01-10",
+            "vacant_buildings_as_of": "2025-01-10",
         })
 
         resp = await client.post(

@@ -194,14 +194,15 @@ function FlagList({ flags }: { flags: FlagResult[] }) {
 
 // ── DataTabs ─────────────────────────────────────────────────────────────────
 
-type TabKey = 'violations' | 'inspections' | 'permits' | 'service_311' | 'tax_liens'
+type TabKey = 'violations' | 'inspections' | 'permits' | 'service_311' | 'tax_liens' | 'vacant_buildings'
 
 const tabMeta: { key: TabKey; label: string; columns: string[] }[] = [
-  { key: 'violations',  label: 'Violations',   columns: ['violation_date', 'violation_code', 'violation_status', 'violation_description', 'inspection_status'] },
-  { key: 'inspections', label: 'Inspections',  columns: ['inspection_date', 'dba_name', 'facility_type', 'risk_level', 'results'] },
-  { key: 'permits',     label: 'Permits',      columns: ['permit_number', 'permit_type', 'permit_status', 'application_start_date', 'issue_date', 'processing_time'] },
-  { key: 'service_311', label: '311 Requests', columns: ['source_id', 'sr_type', 'sr_short_code', 'status', 'created_date', 'closed_date'] },
-  { key: 'tax_liens',   label: 'Tax Liens',    columns: ['tax_sale_year', 'lien_type', 'sold_at_sale', 'total_amount_offered', 'buyer_name'] },
+  { key: 'violations',       label: 'Violations',       columns: ['violation_date', 'violation_code', 'violation_status', 'violation_description', 'inspection_status'] },
+  { key: 'inspections',      label: 'Inspections',      columns: ['inspection_date', 'dba_name', 'facility_type', 'risk_level', 'results'] },
+  { key: 'permits',          label: 'Permits',          columns: ['permit_number', 'permit_type', 'permit_status', 'application_start_date', 'issue_date', 'processing_time'] },
+  { key: 'service_311',      label: '311 Requests',     columns: ['source_id', 'sr_type', 'sr_short_code', 'status', 'created_date', 'closed_date'] },
+  { key: 'tax_liens',        label: 'Tax Liens',        columns: ['tax_sale_year', 'lien_type', 'sold_at_sale', 'total_amount_offered', 'buyer_name'] },
+  { key: 'vacant_buildings', label: 'Vacant Buildings', columns: ['docket_number', 'issued_date', 'violation_type', 'disposition_description', 'current_amount_due', 'total_paid'] },
 ]
 
 function DataTabs({ records }: { records: Record<string, Record<string, unknown>[]> }) {

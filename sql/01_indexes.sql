@@ -40,6 +40,12 @@ CREATE INDEX IF NOT EXISTS idx_fact_tax_lien_parcel
 CREATE INDEX IF NOT EXISTS idx_fact_tax_lien_loc
     ON fact_tax_lien(location_sk);
 
+CREATE INDEX IF NOT EXISTS idx_fact_vacant_building_loc
+    ON fact_vacant_building(location_sk);
+
+CREATE INDEX IF NOT EXISTS idx_fact_vacant_building_src
+    ON fact_vacant_building(source_id);
+
 -- Trigram index for address autocomplete
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE INDEX IF NOT EXISTS idx_dim_location_address_trgm

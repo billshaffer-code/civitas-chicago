@@ -188,6 +188,32 @@
   </tbody>
 </table>
 
+<h2>Vacant Building Violations</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Docket #</th><th>Issued</th><th>Type</th>
+      <th>Disposition</th><th>Fines Due</th><th>Total Paid</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% if report.supporting_records.vacant_buildings %}
+    {% for vb in report.supporting_records.vacant_buildings %}
+    <tr>
+      <td>{{ vb.docket_number or '—' }}</td>
+      <td>{{ vb.issued_date or '—' }}</td>
+      <td>{{ (vb.violation_type or '—')[:40] }}</td>
+      <td>{{ (vb.disposition_description or '—')[:60] }}</td>
+      <td>{% if vb.current_amount_due %}${{ "%.2f"|format(vb.current_amount_due) }}{% else %}—{% endif %}</td>
+      <td>{% if vb.total_paid %}${{ "%.2f"|format(vb.total_paid) }}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  {% else %}
+    <tr class="empty-row"><td colspan="6">No vacant building violation records found.</td></tr>
+  {% endif %}
+  </tbody>
+</table>
+
 <div class="disclaimer">{{ report.disclaimer }}</div>
 
 <div class="page-break"></div>
@@ -229,6 +255,8 @@ it does not compute scores or trigger flags.</p>
     <tr><td>ACTIVE_MUNICIPAL_VIOLATION</td><td>A</td><td>One or more open building violations</td><td>25</td></tr>
     <tr><td>AGED_ENFORCEMENT_RISK</td><td>A</td><td>Open violation older than 180 days</td><td>30</td></tr>
     <tr><td>SEVERE_ENFORCEMENT_ACTION</td><td>A</td><td>Inspection FAILED with critical violation category</td><td>35</td></tr>
+    <tr><td>DEMOLITION_PERMIT_ISSUED</td><td>A</td><td>Wrecking/demolition permit issued for this property</td><td>20</td></tr>
+    <tr><td>VACANT_BUILDING_VIOLATION</td><td>A</td><td>Active vacant building violation recorded</td><td>25</td></tr>
     <tr><td>REPEAT_COMPLIANCE_ISSUE</td><td>B</td><td>3 or more violations at this address</td><td>20</td></tr>
     <tr><td>ABOVE_NORMAL_INSPECTION_FAIL</td><td>B</td><td>2+ failed food inspections in past 24 months</td><td>15</td></tr>
     <tr><td>PERMIT_PROCESSING_DELAY</td><td>C</td><td>Permit processing time exceeded 90 days</td><td>10</td></tr>
@@ -238,6 +266,7 @@ it does not compute scores or trigger flags.</p>
     <tr><td>AGED_TAX_LIEN</td><td>D</td><td>Tax lien event older than 3 years with no resolution</td><td>30</td></tr>
     <tr><td>MULTIPLE_LIEN_EVENTS</td><td>D</td><td>Property appeared at tax sale 2 or more times</td><td>35</td></tr>
     <tr><td>HIGH_VALUE_LIEN</td><td>D</td><td>Total tax amount offered exceeds $10,000</td><td>25</td></tr>
+    <tr><td>HIGH_VACANT_BUILDING_FINES</td><td>D</td><td>Outstanding vacant building fines exceed $5,000</td><td>30</td></tr>
   </tbody>
 </table>
 </div>
@@ -271,6 +300,11 @@ it does not compute scores or trigger flags.</p>
       <td>Tax Lien Events</td>
       <td>Cook County Open Data – Annual &amp; Scavenger Tax Sales</td>
       <td>{{ report.data_freshness.tax_liens_as_of or 'Unknown' }}</td>
+    </tr>
+    <tr>
+      <td>Vacant Building Violations</td>
+      <td>Chicago Data Portal – Vacant Building Violations</td>
+      <td>{{ report.data_freshness.vacant_buildings_as_of or 'Unknown' }}</td>
     </tr>
   </tbody>
 </table>

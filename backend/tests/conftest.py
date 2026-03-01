@@ -140,6 +140,8 @@ def sample_report():
             "inspections": [],
             "permits": [],
             "tax_liens": [],
+            "service_311": [],
+            "vacant_buildings": [],
         },
         "ai_summary": "The property at 123 N MAIN ST has an ELEVATED risk profile.",
         "data_freshness": {
@@ -147,6 +149,8 @@ def sample_report():
             "inspections_as_of": "2025-01-10T00:00:00",
             "permits_as_of": "2025-01-10T00:00:00",
             "tax_liens_as_of": "2025-01-10T00:00:00",
+            "service_311_as_of": "2025-01-10T00:00:00",
+            "vacant_buildings_as_of": "2025-01-10T00:00:00",
             "report_generated_at": "2025-01-15T12:00:00Z",
         },
         "pdf_url": "/api/v1/report/test-report-001/pdf",

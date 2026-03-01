@@ -61,6 +61,36 @@ WHERE s.failed_violation_count > 0
 
 UNION ALL
 
+-- A4: DEMOLITION_PERMIT_ISSUED – wrecking/demolition permit at this address
+SELECT
+    s.location_sk,
+    'DEMOLITION_PERMIT_ISSUED',
+    rc.category,
+    rc.description,
+    rc.severity_score,
+    s.demolition_permit_count                     AS supporting_count
+FROM view_property_summary s
+JOIN rule_config rc
+    ON rc.rule_code = 'DEMOLITION_PERMIT_ISSUED' AND rc.is_active = TRUE
+WHERE s.demolition_permit_count > 0
+
+UNION ALL
+
+-- A5: VACANT_BUILDING_VIOLATION – vacant building violation recorded
+SELECT
+    s.location_sk,
+    'VACANT_BUILDING_VIOLATION',
+    rc.category,
+    rc.description,
+    rc.severity_score,
+    s.vacant_violation_count                      AS supporting_count
+FROM view_property_summary s
+JOIN rule_config rc
+    ON rc.rule_code = 'VACANT_BUILDING_VIOLATION' AND rc.is_active = TRUE
+WHERE s.vacant_violation_count > 0
+
+UNION ALL
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Category B: Recurring Compliance Risk
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -206,4 +236,19 @@ SELECT
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'HIGH_VALUE_LIEN' AND rc.is_active = TRUE
-WHERE s.total_lien_amount > 10000;
+WHERE s.total_lien_amount > 10000
+
+UNION ALL
+
+-- D5: HIGH_VACANT_BUILDING_FINES – outstanding vacant building fines > $5,000
+SELECT
+    s.location_sk,
+    'HIGH_VACANT_BUILDING_FINES',
+    rc.category,
+    rc.description,
+    rc.severity_score,
+    s.vacant_violation_count                      AS supporting_count
+FROM view_property_summary s
+JOIN rule_config rc
+    ON rc.rule_code = 'HIGH_VACANT_BUILDING_FINES' AND rc.is_active = TRUE
+WHERE s.total_vacant_fines_due > 5000;

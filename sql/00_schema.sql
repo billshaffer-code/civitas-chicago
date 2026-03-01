@@ -153,6 +153,26 @@ CREATE TABLE IF NOT EXISTS fact_tax_lien (
     updated_at               TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS fact_vacant_building (
+    vacant_building_sk      SERIAL PRIMARY KEY,
+    location_sk             INTEGER REFERENCES dim_location(location_sk),
+    source_id               VARCHAR(50),
+    docket_number           VARCHAR(50),
+    violation_number        VARCHAR(50),
+    issued_date             DATE,
+    last_hearing_date       DATE,
+    violation_type          VARCHAR(200),
+    entity_or_person        VARCHAR(300),
+    disposition_description TEXT,
+    total_fines             NUMERIC(14, 2),
+    current_amount_due      NUMERIC(14, 2),
+    total_paid              NUMERIC(14, 2),
+    source_dataset          VARCHAR(100) DEFAULT 'vacant_building_violations',
+    ingestion_batch_id      INTEGER REFERENCES ingestion_batch(ingestion_batch_id),
+    created_at              TIMESTAMPTZ DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ─── Report Audit ─────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS report_audit (

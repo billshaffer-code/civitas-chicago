@@ -58,6 +58,7 @@ async def generate_report(
     permits     = await rule_engine.get_permits(body.location_sk)
     tax_liens   = await rule_engine.get_tax_liens(body.location_sk)
     service_311 = await rule_engine.get_311_requests(body.location_sk)
+    vacant_buildings = await rule_engine.get_vacant_buildings(body.location_sk)
 
     # ── 4. Data freshness ───────────────────────────────────────────────────
     freshness = await rule_engine.get_data_freshness()
@@ -99,6 +100,7 @@ async def generate_report(
             "permits": permits,
             "tax_liens": tax_liens,
             "service_311": service_311,
+            "vacant_buildings": vacant_buildings,
         },
         "ai_summary": narrative,
         "data_freshness": {

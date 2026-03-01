@@ -126,6 +126,24 @@ async def get_311_requests(location_sk: int, limit: int = 50) -> list[dict]:
     return [_date_dict(r) for r in rows]
 
 
+async def get_vacant_buildings(location_sk: int, limit: int = 50) -> list[dict]:
+    async with get_conn() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT docket_number, violation_number, issued_date,
+                   last_hearing_date, violation_type, entity_or_person,
+                   disposition_description, total_fines,
+                   current_amount_due, total_paid
+            FROM fact_vacant_building
+            WHERE location_sk = $1
+            ORDER BY issued_date DESC NULLS LAST
+            LIMIT $2
+            """,
+            location_sk, limit,
+        )
+    return [_date_dict(r) for r in rows]
+
+
 async def get_tax_liens(location_sk: int) -> list[dict]:
     async with get_conn() as conn:
         rows = await conn.fetch(
@@ -163,6 +181,7 @@ async def get_data_freshness() -> dict[str, str | None]:
         "permits_as_of": _fmt(mapping.get("building_permits")),
         "tax_liens_as_of": _fmt(mapping.get("cook_county_tax_liens")),
         "service_311_as_of": _fmt(mapping.get("311_service_requests")),
+        "vacant_buildings_as_of": _fmt(mapping.get("vacant_building_violations")),
     }
 
 

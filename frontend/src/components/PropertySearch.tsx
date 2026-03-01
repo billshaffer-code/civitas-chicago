@@ -82,11 +82,11 @@ export default function PropertySearch({ onSubmit, loading }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="animate-fade-in bg-slate-900 border border-slate-700/50 rounded-xl p-6 space-y-4"
+      className="animate-fade-in bg-white shadow-sm border border-gray-200 rounded-xl p-6 space-y-4"
     >
       <div className="relative">
-        <label className="block text-sm font-semibold text-slate-300 mb-1">
-          Property Address <span className="text-red-400">*</span>
+        <label className="block text-sm font-semibold text-gray-700 mb-1">
+          Property Address <span className="text-red-500">*</span>
         </label>
         <input
           ref={inputRef}
@@ -96,9 +96,9 @@ export default function PropertySearch({ onSubmit, loading }: Props) {
           onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
           onKeyDown={handleKeyDown}
           placeholder="e.g. 123 N MAIN ST, CHICAGO IL 60601"
-          className="w-full bg-slate-800 border border-slate-600 text-slate-100 rounded-lg px-4 py-2.5 text-sm
-                     placeholder:text-slate-500
-                     focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500
+          className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 text-sm
+                     placeholder:text-gray-400
+                     focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
                      transition-shadow"
           required
           autoComplete="off"
@@ -108,8 +108,8 @@ export default function PropertySearch({ onSubmit, loading }: Props) {
         {showDropdown && suggestions.length > 0 && (
           <div
             ref={dropdownRef}
-            className="absolute z-50 left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg
-                       shadow-lg shadow-black/30 max-h-60 overflow-y-auto"
+            className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg
+                       shadow-lg max-h-60 overflow-y-auto"
           >
             {suggestions.map((item, i) => (
               <button
@@ -118,10 +118,10 @@ export default function PropertySearch({ onSubmit, loading }: Props) {
                 onClick={() => selectSuggestion(item)}
                 className={`w-full text-left px-4 py-2.5 text-sm transition-colors
                   ${i === activeIndex
-                    ? 'bg-cyan-600/20 text-cyan-300'
-                    : 'text-slate-300 hover:bg-slate-700/60'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-50'
                   }
-                  ${i < suggestions.length - 1 ? 'border-b border-slate-700/50' : ''}`}
+                  ${i < suggestions.length - 1 ? 'border-b border-gray-100' : ''}`}
               >
                 {item.full_address}
               </button>
@@ -131,18 +131,18 @@ export default function PropertySearch({ onSubmit, loading }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-slate-300 mb-1">
+        <label className="block text-sm font-semibold text-gray-700 mb-1">
           Cook County PIN{' '}
-          <span className="text-slate-500 font-normal">(optional, 14 digits)</span>
+          <span className="text-gray-400 font-normal">(optional, 14 digits)</span>
         </label>
         <input
           type="text"
           value={pin}
           onChange={e => setPin(e.target.value)}
           placeholder="e.g. 17141040280000"
-          className="w-full bg-slate-800 border border-slate-600 text-slate-100 rounded-lg px-4 py-2.5 text-sm
-                     placeholder:text-slate-500
-                     focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500
+          className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 text-sm
+                     placeholder:text-gray-400
+                     focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
                      transition-shadow"
           maxLength={17}
         />
@@ -151,7 +151,7 @@ export default function PropertySearch({ onSubmit, loading }: Props) {
       <button
         type="submit"
         disabled={loading || !address.trim()}
-        className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:text-slate-500
+        className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-200 disabled:text-gray-400
                    text-white font-semibold py-2.5 rounded-lg transition-colors"
       >
         {loading ? 'Searching...' : 'Look Up Property'}

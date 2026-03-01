@@ -22,22 +22,22 @@ export default function PropertyMap({ lat, lon, address }: Props) {
       attributionControl: false,
     })
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       subdomains: 'abcd',
       maxZoom: 19,
     }).addTo(map)
 
     L.control.zoom({ position: 'topright' }).addTo(map)
 
-    // Custom dark marker
+    // Custom marker with Apple blue
     const icon = L.divIcon({
       className: '',
       html: `<div style="
         width: 14px; height: 14px;
-        background: #06b6d4;
+        background: #007AFF;
         border: 2px solid #fff;
         border-radius: 50%;
-        box-shadow: 0 0 8px rgba(6,182,212,0.6);
+        box-shadow: 0 0 8px rgba(0,122,255,0.4);
       "></div>`,
       iconSize: [14, 14],
       iconAnchor: [7, 7],
@@ -56,7 +56,7 @@ export default function PropertyMap({ lat, lon, address }: Props) {
   }, [lat, lon, address])
 
   return (
-    <div className="bg-slate-900 border border-slate-700/50 rounded-xl overflow-hidden">
+    <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
       <div ref={containerRef} style={{ height: 250 }} />
     </div>
   )

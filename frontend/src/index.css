@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 body {
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  background: #020617; /* slate-950 */
-  color: #e2e8f0; /* slate-200 */
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f5f5f7;
+  color: #1d1d1f;
 }
 
 @keyframes fade-in {
@@ -35,9 +35,9 @@ body {
 .skeleton {
   background: linear-gradient(
     90deg,
-    rgba(148, 163, 184, 0.08) 25%,
-    rgba(148, 163, 184, 0.16) 50%,
-    rgba(148, 163, 184, 0.08) 75%
+    rgba(0, 0, 0, 0.04) 25%,
+    rgba(0, 0, 0, 0.08) 50%,
+    rgba(0, 0, 0, 0.04) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.8s ease-in-out infinite;

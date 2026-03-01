@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        brand: ['"JetBrains Mono"', 'monospace'],
+        brand: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
     },
   },

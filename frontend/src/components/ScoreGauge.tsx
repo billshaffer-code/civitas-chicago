@@ -1,10 +1,10 @@
 type Tier = 'LOW' | 'MODERATE' | 'ELEVATED' | 'HIGH'
 
 const tierConfig: Record<Tier, { text: string; bar: string; pillBg: string; pillText: string; label: string }> = {
-  LOW:      { text: 'text-emerald-400', bar: 'bg-emerald-500', pillBg: 'bg-emerald-500/15', pillText: 'text-emerald-400', label: 'LOW RISK' },
-  MODERATE: { text: 'text-yellow-400',  bar: 'bg-yellow-500',  pillBg: 'bg-yellow-500/15',  pillText: 'text-yellow-400',  label: 'MODERATE RISK' },
-  ELEVATED: { text: 'text-orange-400',  bar: 'bg-orange-500',  pillBg: 'bg-orange-500/15',  pillText: 'text-orange-400',  label: 'ELEVATED RISK' },
-  HIGH:     { text: 'text-red-400',     bar: 'bg-red-500',     pillBg: 'bg-red-500/15',     pillText: 'text-red-400',     label: 'HIGH RISK' },
+  LOW:      { text: 'text-emerald-600', bar: 'bg-emerald-500', pillBg: 'bg-emerald-50', pillText: 'text-emerald-700', label: 'LOW RISK' },
+  MODERATE: { text: 'text-yellow-600',  bar: 'bg-yellow-500',  pillBg: 'bg-yellow-50',  pillText: 'text-yellow-700',  label: 'MODERATE RISK' },
+  ELEVATED: { text: 'text-orange-600',  bar: 'bg-orange-500',  pillBg: 'bg-orange-50',  pillText: 'text-orange-700',  label: 'ELEVATED RISK' },
+  HIGH:     { text: 'text-red-600',     bar: 'bg-red-500',     pillBg: 'bg-red-50',     pillText: 'text-red-700',     label: 'HIGH RISK' },
 }
 
 interface Props {
@@ -22,7 +22,7 @@ export default function ScoreGauge({ score, tier }: Props) {
         {score}
       </span>
 
-      <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+      <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-700 ${cfg.bar}`}
           style={{ width: `${pct}%` }}

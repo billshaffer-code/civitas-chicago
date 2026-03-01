@@ -66,10 +66,10 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
     <div className="animate-fade-in space-y-6">
 
       {/* ── Top Bar ──────────────────────────────────────────────── */}
-      <div className="bg-slate-900 border border-slate-700/50 rounded-xl px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="bg-white shadow-sm border border-gray-200 rounded-xl px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-100">{report.property.address}</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <h2 className="text-lg font-bold text-gray-900">{report.property.address}</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
             Report {report.report_id} &middot; {new Date(report.generated_at).toLocaleString()}
             &middot; Match: {report.match_confidence}
           </p>
@@ -77,13 +77,13 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
         <div className="flex gap-2 flex-shrink-0">
           <button
             onClick={handlePdf}
-            className="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
           >
             Download PDF
           </button>
           <button
             onClick={onNewSearch}
-            className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
           >
             New Search
           </button>
@@ -97,7 +97,7 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
         <div className="lg:col-span-2 space-y-6">
 
           {/* Score */}
-          <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-6">
+          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
             <ScoreGauge score={report.risk_score} tier={report.risk_tier} />
           </div>
 
@@ -107,12 +107,12 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
           )}
 
           {/* Flags grouped by category */}
-          <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-6">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">
+          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
               Risk Flags
             </h3>
             {report.triggered_flags.length === 0 ? (
-              <p className="text-sm text-emerald-400">
+              <p className="text-sm text-emerald-600">
                 No risk flags triggered.
               </p>
             ) : (
@@ -122,15 +122,15 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
 
           {/* Data Freshness */}
           {report.data_freshness && (
-            <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-6">
-              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
                 Data Freshness
               </h3>
               <dl className="space-y-1.5">
                 {Object.entries(report.data_freshness).map(([source, ts]) => (
                   <div key={source} className="flex justify-between text-xs">
-                    <dt className="text-slate-500">{formatSourceName(source)}</dt>
-                    <dd className="text-slate-400 font-mono">
+                    <dt className="text-gray-400">{formatSourceName(source)}</dt>
+                    <dd className="text-gray-600 font-mono">
                       {ts ? new Date(ts).toLocaleDateString() : '\u2014'}
                     </dd>
                   </div>
@@ -144,11 +144,11 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
         <div className="lg:col-span-3 space-y-6">
 
           {/* AI Narrative */}
-          <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-6">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">
+          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
               Risk Summary
             </h3>
-            <div className="prose prose-sm prose-invert max-w-none text-slate-300 prose-headings:text-slate-200 prose-strong:text-slate-200">
+            <div className="prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-strong:text-gray-900">
               <Markdown>{report.ai_summary}</Markdown>
             </div>
           </div>
@@ -159,7 +159,7 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
       </div>
 
       {/* ── Disclaimer ───────────────────────────────────────────── */}
-      <p className="text-[11px] text-slate-600 border-t border-slate-800 pt-3">
+      <p className="text-[11px] text-gray-400 border-t border-gray-200 pt-3">
         {report.disclaimer}
       </p>
     </div>
@@ -179,7 +179,7 @@ function FlagList({ flags }: { flags: FlagResult[] }) {
         if (!items?.length) return null
         return (
           <div key={cat}>
-            <h4 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+            <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
               {categoryLabels[cat] ?? `Category ${cat}`}
             </h4>
             {items.map(f => (
@@ -209,10 +209,10 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
   const rows = records[active] ?? []
 
   return (
-    <div className="bg-slate-900 border border-slate-700/50 rounded-xl overflow-hidden">
+    <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
 
       {/* Tab bar */}
-      <div className="flex overflow-x-auto border-b border-slate-700/50">
+      <div className="flex overflow-x-auto border-b border-gray-200">
         {tabMeta.map(t => {
           const count = (records[t.key] ?? []).length
           const isActive = t.key === active
@@ -222,13 +222,13 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
               onClick={() => setActive(t.key)}
               className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold whitespace-nowrap transition-colors
                 ${isActive
-                  ? 'border-b-2 border-cyan-500 text-cyan-400'
-                  : 'text-slate-500 hover:text-slate-300 border-b-2 border-transparent'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-400 hover:text-gray-600 border-b-2 border-transparent'
                 }`}
             >
               {t.label}
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono
-                ${isActive ? 'bg-cyan-500/15 text-cyan-400' : 'bg-slate-800 text-slate-500'}`}>
+                ${isActive ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
                 {count}
               </span>
             </button>
@@ -239,13 +239,13 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
       {/* Table */}
       <div className="overflow-x-auto">
         {rows.length === 0 ? (
-          <p className="text-sm text-slate-500 italic p-6">No records found.</p>
+          <p className="text-sm text-gray-400 italic p-6">No records found.</p>
         ) : (
           <table className="min-w-full text-xs">
             <thead>
               <tr>
                 {current.columns.map(c => (
-                  <th key={c} className="px-4 py-3 text-left text-slate-400 uppercase tracking-wider text-[11px] font-semibold whitespace-nowrap">
+                  <th key={c} className="px-4 py-3 text-left text-gray-500 uppercase tracking-wider text-[11px] font-semibold whitespace-nowrap">
                     {formatSourceName(c)}
                   </th>
                 ))}
@@ -253,9 +253,9 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
             </thead>
             <tbody>
               {rows.map((row, i) => (
-                <tr key={i} className={i % 2 === 0 ? 'bg-slate-900' : 'bg-slate-800/20'}>
+                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
                   {current.columns.map(c => (
-                    <td key={c} className="px-4 py-2 text-slate-300 max-w-xs truncate">
+                    <td key={c} className="px-4 py-2 text-gray-700 max-w-xs truncate">
                       {formatCellValue(row[c])}
                     </td>
                   ))}

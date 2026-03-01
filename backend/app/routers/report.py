@@ -148,10 +148,10 @@ async def report_history(location_sk: int = Query(...)):
     async with get_conn() as conn:
         rows = await conn.fetch(
             """
-            SELECT report_id, query_address, risk_score, risk_tier, created_at
+            SELECT report_id, query_address, risk_score, risk_tier, generated_at
             FROM report_audit
             WHERE location_sk = $1
-            ORDER BY created_at DESC
+            ORDER BY generated_at DESC
             LIMIT 20
             """,
             location_sk,
@@ -162,7 +162,7 @@ async def report_history(location_sk: int = Query(...)):
             query_address=r["query_address"],
             risk_score=r["risk_score"],
             risk_tier=r["risk_tier"],
-            generated_at=r["created_at"].isoformat() if hasattr(r["created_at"], "isoformat") else str(r["created_at"]),
+            generated_at=r["generated_at"].isoformat() if hasattr(r["generated_at"], "isoformat") else str(r["generated_at"]),
         )
         for r in rows
     ]

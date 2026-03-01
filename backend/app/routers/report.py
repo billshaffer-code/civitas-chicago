@@ -35,7 +35,7 @@ router = APIRouter(prefix="/api/v1/report", tags=["report"])
 @router.post("/generate")
 async def generate_report(
     body: ReportRequest,
-    format: str = Query(default="json", regex="^(json|pdf)$"),
+    format: str = Query(default="json", pattern="^(json|pdf)$"),
 ):
     # ── 1. Validate location_sk ─────────────────────────────────────────────
     async with get_conn() as conn:
@@ -57,6 +57,7 @@ async def generate_report(
     inspections = await rule_engine.get_inspections(body.location_sk)
     permits     = await rule_engine.get_permits(body.location_sk)
     tax_liens   = await rule_engine.get_tax_liens(body.location_sk)
+    service_311 = await rule_engine.get_311_requests(body.location_sk)
 
     # ── 4. Data freshness ───────────────────────────────────────────────────
     freshness = await rule_engine.get_data_freshness()
@@ -97,6 +98,7 @@ async def generate_report(
             "inspections": inspections,
             "permits": permits,
             "tax_liens": tax_liens,
+            "service_311": service_311,
         },
         "ai_summary": narrative,
         "data_freshness": {

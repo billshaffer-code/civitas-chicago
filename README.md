@@ -90,6 +90,7 @@ Each report contains three sections:
 - Building violations table (date, code, status, description, inspection result)
 - Food inspections table
 - Building permits table
+- 311 service requests table (request #, type, code, status, created, closed)
 - Tax lien events table
 
 **Page 3 — Methodology Appendix**
@@ -104,12 +105,14 @@ Each report contains three sections:
 
 | Layer | Technology |
 |-------|-----------|
-| Database | PostgreSQL 12 + PostGIS 3 |
-| ETL | Python 3 + psycopg2 + usaddress |
+| Database | PostgreSQL 16 + PostGIS 3.4 |
+| ETL | Python 3.12 + psycopg2 + usaddress |
 | API | FastAPI + asyncpg |
 | AI Narrative | Anthropic Claude (claude-sonnet-4-6) |
 | PDF | WeasyPrint + Jinja2 |
 | Frontend | React 18 + TypeScript + Vite + Tailwind CSS |
+| Maps | Leaflet 1.9 |
+| Containerization | Docker + Docker Compose |
 
 ---
 
@@ -117,6 +120,8 @@ Each report contains three sections:
 
 ```
 civitas/
+├── docker-compose.yml         # 3-service stack (postgres, backend, frontend)
+├── .env.example
 ├── sql/
 │   ├── 00_schema.sql          # All table DDL
 │   ├── 01_indexes.sql         # Performance indexes
@@ -126,6 +131,8 @@ civitas/
 │       ├── 02_flags.sql       # VIEW_PROPERTY_FLAGS
 │       └── 03_score.sql       # VIEW_PROPERTY_SCORE
 ├── backend/
+│   ├── Dockerfile
+│   ├── requirements.txt
 │   ├── app/                   # FastAPI application
 │   │   ├── main.py
 │   │   ├── config.py
@@ -134,20 +141,24 @@ civitas/
 │   │   ├── services/          # address.py, rule_engine.py, claude_ai.py, pdf.py
 │   │   ├── schemas/           # property.py, report.py
 │   │   └── templates/         # report.html, report.css
-│   └── ingestion/             # ETL scripts
-│       ├── base.py            # BatchTracker, AddressStandardizer
-│       ├── ingest_violations.py
-│       ├── ingest_inspections.py
-│       ├── ingest_permits.py
-│       ├── ingest_311.py
-│       └── ingest_tax_liens.py
+│   ├── ingestion/             # ETL scripts
+│   │   ├── base.py            # BatchTracker, AddressStandardizer
+│   │   ├── ingest_violations.py
+│   │   ├── ingest_inspections.py
+│   │   ├── ingest_permits.py
+│   │   ├── ingest_311.py
+│   │   └── ingest_tax_liens.py
+│   └── tests/                 # 34 tests (pytest + pytest-asyncio)
 └── frontend/
+    ├── Dockerfile             # Multi-stage: node build → nginx
+    ├── nginx.conf             # SPA routing + /api reverse proxy
     └── src/
         ├── App.tsx
         ├── api/civitas.ts
         └── components/
             ├── PropertySearch.tsx
             ├── RiskReport.tsx
+            ├── PropertyMap.tsx
             ├── FlagBadge.tsx
             └── ScoreGauge.tsx
 ```
@@ -158,11 +169,23 @@ civitas/
 
 ### Prerequisites
 
-- PostgreSQL 12+ with PostGIS
-- Python 3.8+
-- Node.js 18+
+- Docker + Docker Compose (recommended), or:
+  - PostgreSQL 16+ with PostGIS
+  - Python 3.8+
+  - Node.js 18+
 
-### 1. Configure environment
+### Quick Start (Docker)
+
+```bash
+cp .env.example .env
+# Edit .env — set ANTHROPIC_API_KEY
+docker-compose up
+# Frontend at http://localhost, API at http://localhost:8000
+```
+
+### Manual Setup
+
+#### 1. Configure environment
 
 ```bash
 cp .env.example .env
@@ -225,8 +248,12 @@ npm run dev
 |--------|----------|-------------|
 | `GET` | `/api/v1/health` | Health check + DB connectivity |
 | `POST` | `/api/v1/property/lookup` | Resolve address/PIN to location_sk |
+| `GET` | `/api/v1/property/autocomplete?q=` | Address autocomplete |
 | `POST` | `/api/v1/report/generate` | Generate JSON risk report |
 | `POST` | `/api/v1/report/generate?format=pdf` | Generate PDF risk report |
+| `GET` | `/api/v1/report/{report_id}` | Retrieve a previous report |
+| `GET` | `/api/v1/report/{report_id}/pdf` | Regenerate PDF from stored report |
+| `GET` | `/api/v1/report/history?location_sk=` | Report history for a location |
 
 ### Property Lookup
 
@@ -243,6 +270,16 @@ curl -X POST http://localhost:8000/api/v1/report/generate \
   -H "Content-Type: application/json" \
   -d '{"location_sk": 1, "address": "3500 N HOYNE AVE"}'
 ```
+
+---
+
+## Testing
+
+```bash
+cd backend && python3 -m pytest tests/ -v
+```
+
+34 tests covering address resolution, rule engine, Claude AI integration, PDF generation, and all API endpoints. Tests use mock database connections and async HTTP clients — no running database required.
 
 ---
 

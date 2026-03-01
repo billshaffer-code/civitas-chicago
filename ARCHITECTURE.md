@@ -176,8 +176,8 @@ Read-only queries against the three SQL views:
 
 - `get_score(location_sk)` → queries `view_property_score`
 - `get_flags(location_sk)` → queries `view_property_flags`
-- `get_violations/inspections/permits/tax_liens(location_sk)` → queries fact tables for supporting records
-- `get_data_freshness()` → queries `ingestion_batch` for latest completion timestamp per dataset
+- `get_violations/inspections/permits/311_requests/tax_liens(location_sk)` → queries fact tables for supporting records
+- `get_data_freshness()` → queries `ingestion_batch` for latest completion timestamp per dataset (violations, inspections, permits, 311, tax liens)
 
 ### Claude AI Service (`services/claude_ai.py`)
 
@@ -216,12 +216,22 @@ search → lookup-loading → lookup-done → report-loading → report-done
 
 **`RiskReport`** — Full report view:
 - `ScoreGauge` — circular badge, color-coded by tier (green/yellow/amber/red)
+- `PropertyMap` — Leaflet map centered on the property location
 - `FlagBadge[]` — one pill per triggered flag, color-coded by category
 - AI narrative — rendered as markdown via `react-markdown` + Tailwind Typography
-- Four `RecordsSection` tables (violations, inspections, permits, tax liens)
+- Five tabbed data tables (violations, inspections, permits, 311 requests, tax liens)
 - PDF download — calls `POST /api/v1/report/generate?format=pdf`, triggers browser download
 
+**Theme:** Apple-inspired light design (white/gray cards, blue-600 accents, clean shadows).
+
 Vite's dev-server proxy forwards all `/api` requests to FastAPI on port 8000, so no CORS configuration is needed during development.
+
+### Deployment
+
+Docker Compose runs three services:
+- **postgres** — `postgis/postgis:16-3.4` with sql/ mounted to `/docker-entrypoint-initdb.d/` for auto-schema on first boot
+- **backend** — `python:3.12-slim` with WeasyPrint system dependencies (libpango, libcairo)
+- **frontend** — Multi-stage build (node:20-alpine → nginx:alpine), reverse-proxies `/api/` to backend
 
 ---
 
@@ -239,8 +249,8 @@ asyncpg is the fastest PostgreSQL driver for Python async workloads (the API is 
 **Why WeasyPrint over a headless browser?**
 WeasyPrint produces predictable, high-quality PDFs from HTML/CSS without the overhead and fragility of launching a Chromium instance. It has no network dependencies at render time, making it safe for server-side use.
 
-**Why not store the full report JSON?**
-Reports are generated on demand and returned inline. The `report_audit` table captures the key metadata (score, tier, flags) for operational monitoring. Full re-generation takes under 5 seconds and ensures the report always reflects the current database state.
+**Why store the full report JSON?**
+The `report_audit` table stores the complete report JSON (as JSONB) alongside key metadata (score, tier, flags). This enables retrieval of previous reports via `GET /api/v1/report/{report_id}` and PDF regeneration from stored data via `GET /api/v1/report/{report_id}/pdf`, providing a full audit trail of all generated reports.
 
 ---
 
@@ -262,7 +272,8 @@ POST /api/v1/report/generate
   rule_engine.get_violations(...)         ← fact_violation
   rule_engine.get_inspections(...)        ← fact_inspection
   rule_engine.get_permits(...)            ← fact_permit
-  rule_engine.get_tax_liens(...)          ← fact_tax_lien
+  rule_engine.get_311_requests(...)       ← fact_311
+  rule_engine.get_tax_liens(...)         ← fact_tax_lien
   rule_engine.get_data_freshness()        ← ingestion_batch
         │
         ▼
@@ -279,6 +290,24 @@ POST /api/v1/report/generate
 response   WeasyPrint
            → bytes
 ```
+
+---
+
+## Testing
+
+34 tests in `backend/tests/`, run with `python3 -m pytest tests/ -v`.
+
+| Test File | Count | Coverage |
+|-----------|-------|----------|
+| `test_address.py` | 8 | PIN normalization, address result building |
+| `test_claude_ai.py` | 5 | Payload structure, truncation, Anthropic API call |
+| `test_rule_engine.py` | 5 | Score/flags queries, data freshness formatting |
+| `test_pdf.py` | 7 | PDF generation, all 4 risk tiers, empty records |
+| `test_api_health.py` | 1 | Health endpoint |
+| `test_api_property.py` | 3 | Lookup, no-match, autocomplete |
+| `test_api_report.py` | 5 | Report generation, retrieval, history |
+
+Tests use `FakeConnection` (mock asyncpg), `httpx.AsyncClient`, and `unittest.mock.AsyncMock`. No running database required.
 
 ---
 

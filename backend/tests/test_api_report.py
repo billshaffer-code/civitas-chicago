@@ -98,7 +98,7 @@ async def test_report_history(client):
             "query_address": "123 N MAIN ST",
             "risk_score": 55,
             "risk_tier": "ELEVATED",
-            "created_at": datetime(2025, 1, 15, 12, 0, 0),
+            "generated_at": datetime(2025, 1, 15, 12, 0, 0),
         }
     ]
     conn = FakeConnection(fetch_return=rows)

@@ -20,10 +20,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 
 from backend.app.database import get_conn
+from backend.app.dependencies import get_current_user
 from backend.app.schemas.report import ReportHistoryItem, ReportRequest, ReportResponse
 from backend.app.services import rule_engine
 from backend.app.services.claude_ai import build_claude_payload, generate_narrative
@@ -36,6 +37,7 @@ router = APIRouter(prefix="/api/v1/report", tags=["report"])
 async def generate_report(
     body: ReportRequest,
     format: str = Query(default="json", pattern="^(json|pdf)$"),
+    user: dict = Depends(get_current_user),
 ):
     # ── 1. Validate location_sk ─────────────────────────────────────────────
     async with get_conn() as conn:
@@ -121,8 +123,8 @@ async def generate_report(
             """
             INSERT INTO report_audit
                 (report_id, query_address, location_sk,
-                 match_confidence, risk_score, risk_tier, flags_json, report_json)
-            VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb)
+                 match_confidence, risk_score, risk_tier, flags_json, report_json, user_id)
+            VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9)
             """,
             report_id, body.address, body.location_sk,
             "EXACT_ADDRESS",
@@ -130,6 +132,7 @@ async def generate_report(
             score.get("risk_tier", "LOW"),
             json.dumps(flags),
             json.dumps(report),
+            user.get("user_id"),
         )
 
     # ── 8. Return ────────────────────────────────────────────────────────────
@@ -147,18 +150,52 @@ async def generate_report(
 
 
 @router.get("/history", response_model=List[ReportHistoryItem])
-async def report_history(location_sk: int = Query(...)):
-    """Return previous reports for a given location."""
+async def report_history(
+    location_sk: int = Query(...),
+    user: dict = Depends(get_current_user),
+):
+    """Return previous reports for a given location (filtered to current user)."""
     async with get_conn() as conn:
         rows = await conn.fetch(
             """
             SELECT report_id, query_address, risk_score, risk_tier, generated_at
             FROM report_audit
-            WHERE location_sk = $1
+            WHERE location_sk = $1 AND user_id = $2
             ORDER BY generated_at DESC
             LIMIT 20
             """,
             location_sk,
+            user["user_id"],
+        )
+    return [
+        ReportHistoryItem(
+            report_id=r["report_id"],
+            query_address=r["query_address"],
+            risk_score=r["risk_score"],
+            risk_tier=r["risk_tier"],
+            generated_at=r["generated_at"].isoformat() if hasattr(r["generated_at"], "isoformat") else str(r["generated_at"]),
+        )
+        for r in rows
+    ]
+
+
+@router.get("/my-reports", response_model=List[ReportHistoryItem])
+async def my_reports(
+    user: dict = Depends(get_current_user),
+    limit: int = Query(default=20, ge=1, le=100),
+):
+    """Return the current user's recent reports across all properties."""
+    async with get_conn() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT report_id, query_address, risk_score, risk_tier, generated_at
+            FROM report_audit
+            WHERE user_id = $1
+            ORDER BY generated_at DESC
+            LIMIT $2
+            """,
+            user["user_id"],
+            limit,
         )
     return [
         ReportHistoryItem(
@@ -173,7 +210,7 @@ async def report_history(location_sk: int = Query(...)):
 
 
 @router.get("/{report_id}")
-async def get_report(report_id: str):
+async def get_report(report_id: str, user: dict = Depends(get_current_user)):
     """Retrieve a previously generated report by ID."""
     async with get_conn() as conn:
         row = await conn.fetchrow(
@@ -188,7 +225,7 @@ async def get_report(report_id: str):
 
 
 @router.get("/{report_id}/pdf")
-async def get_report_pdf(report_id: str):
+async def get_report_pdf(report_id: str, user: dict = Depends(get_current_user)):
     """Generate a PDF from a previously stored report."""
     async with get_conn() as conn:
         row = await conn.fetchrow(

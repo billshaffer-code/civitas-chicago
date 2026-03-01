@@ -5,8 +5,10 @@ CIVITAS – Shared test fixtures.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock, patch
+from uuid import UUID
 
 import pytest
 import httpx
@@ -95,6 +97,30 @@ def sample_location_row():
         "lat": 41.8781,
         "lon": -87.6298,
     }
+
+
+@pytest.fixture(autouse=True)
+def mock_auth():
+    """Override get_current_user so all protected routes work without a token."""
+    from backend.app.main import app
+    from backend.app.dependencies import get_current_user
+
+    mock_user = {
+        "user_id": UUID("00000000-0000-0000-0000-000000000001"),
+        "email": "test@example.com",
+        "full_name": "Test User",
+        "company_name": "Test Co",
+        "is_active": True,
+        "created_at": datetime(2025, 1, 1, tzinfo=timezone.utc),
+        "updated_at": datetime(2025, 1, 1, tzinfo=timezone.utc),
+    }
+
+    async def override():
+        return mock_user
+
+    app.dependency_overrides[get_current_user] = override
+    yield mock_user
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture

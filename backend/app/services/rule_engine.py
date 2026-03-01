@@ -110,6 +110,22 @@ async def get_permits(location_sk: int, limit: int = 50) -> list[dict]:
     return [_date_dict(r) for r in rows]
 
 
+async def get_311_requests(location_sk: int, limit: int = 50) -> list[dict]:
+    async with get_conn() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT source_id, sr_type, sr_short_code, status,
+                   created_date, closed_date
+            FROM fact_311
+            WHERE location_sk = $1
+            ORDER BY created_date DESC NULLS LAST
+            LIMIT $2
+            """,
+            location_sk, limit,
+        )
+    return [_date_dict(r) for r in rows]
+
+
 async def get_tax_liens(location_sk: int) -> list[dict]:
     async with get_conn() as conn:
         rows = await conn.fetch(
@@ -146,6 +162,7 @@ async def get_data_freshness() -> dict[str, str | None]:
         "inspections_as_of": _fmt(mapping.get("food_inspections")),
         "permits_as_of": _fmt(mapping.get("building_permits")),
         "tax_liens_as_of": _fmt(mapping.get("cook_county_tax_liens")),
+        "service_311_as_of": _fmt(mapping.get("311_service_requests")),
     }
 
 

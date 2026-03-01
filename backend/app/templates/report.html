@@ -137,6 +137,32 @@
   </tbody>
 </table>
 
+<h2>311 Service Requests</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Request #</th><th>Type</th><th>Code</th>
+      <th>Status</th><th>Created</th><th>Closed</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% if report.supporting_records.service_311 %}
+    {% for s in report.supporting_records.service_311 %}
+    <tr>
+      <td>{{ s.source_id or '—' }}</td>
+      <td>{{ (s.sr_type or '—')[:40] }}</td>
+      <td>{{ s.sr_short_code or '—' }}</td>
+      <td>{{ s.status or '—' }}</td>
+      <td>{{ s.created_date or '—' }}</td>
+      <td>{{ s.closed_date or '—' }}</td>
+    </tr>
+    {% endfor %}
+  {% else %}
+    <tr class="empty-row"><td colspan="6">No 311 service request records found.</td></tr>
+  {% endif %}
+  </tbody>
+</table>
+
 <h2>Tax Lien Events</h2>
 <table>
   <thead>
@@ -235,6 +261,11 @@ it does not compute scores or trigger flags.</p>
       <td>Building Permits</td>
       <td>Chicago Data Portal – Building Permits</td>
       <td>{{ report.data_freshness.permits_as_of or 'Unknown' }}</td>
+    </tr>
+    <tr>
+      <td>311 Service Requests</td>
+      <td>Chicago Data Portal – 311 Service Requests</td>
+      <td>{{ report.data_freshness.service_311_as_of or 'Unknown' }}</td>
     </tr>
     <tr>
       <td>Tax Lien Events</td>

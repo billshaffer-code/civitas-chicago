@@ -169,7 +169,7 @@ async def report_history(
         )
     return [
         ReportHistoryItem(
-            report_id=r["report_id"],
+            report_id=str(r["report_id"]),
             query_address=r["query_address"],
             risk_score=r["risk_score"],
             risk_tier=r["risk_tier"],
@@ -199,7 +199,7 @@ async def my_reports(
         )
     return [
         ReportHistoryItem(
-            report_id=r["report_id"],
+            report_id=str(r["report_id"]),
             query_address=r["query_address"],
             risk_score=r["risk_score"],
             risk_tier=r["risk_tier"],

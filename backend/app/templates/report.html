@@ -12,21 +12,21 @@
 
 <div class="report-header">
   <div class="title">CIVITAS</div>
-  <div class="subtitle">Municipal &amp; Tax Risk Intelligence · Chicago v1</div>
+  <div class="subtitle">Municipal &amp; Tax Risk Intelligence &middot; Chicago v1</div>
 </div>
 
 <h1>Property Risk Report</h1>
-<p><strong>Address:</strong> {{ report.property.address }}</p>
-<p><strong>Report ID:</strong> {{ report.report_id }}&nbsp;&nbsp;
+<p class="meta-row"><strong>Address:</strong> {{ report.property.address }}</p>
+<p class="meta-row"><strong>Report ID:</strong> {{ report.report_id }}&nbsp;&nbsp;&middot;&nbsp;&nbsp;
    <strong>Generated:</strong> {{ report.generated_at }}</p>
-<p><strong>Address Match:</strong> {{ report.match_confidence }}</p>
+<p class="meta-row"><strong>Address Match:</strong> {{ report.match_confidence }}</p>
 
-<hr style="border:none; border-top:1px solid #334155; margin:10pt 0;">
+<hr class="section-divider">
 
-<div>
+<div class="score-card">
   <div class="risk-badge risk-{{ report.risk_tier }}">{{ report.risk_tier }}</div>
   <div class="score-block score-{{ report.risk_tier }}">{{ report.risk_score }}</div>
-  <div style="color:#94a3b8; font-size:9pt;">Risk Score (max varies by flags triggered)</div>
+  <div class="score-label">Risk Score (max varies by flags triggered)</div>
 </div>
 
 {% if report.triggered_flags %}
@@ -34,14 +34,14 @@
 {% for f in report.triggered_flags %}
 <div class="flag-card flag-cat-{{ f.category }}">
   <span class="flag-code">{{ f.flag_code }}</span>
-  <span class="flag-score">Category {{ f.category }} · +{{ f.severity_score }} pts</span>
+  <span class="flag-score">Category {{ f.category }} &middot; +{{ f.severity_score }} pts</span>
   <div style="clear:both"></div>
-  <div style="font-size:9pt; color:#94a3b8; margin-top:2pt;">{{ f.description }} (count: {{ f.supporting_count }})</div>
+  <div class="flag-detail">{{ f.description }} (count: {{ f.supporting_count }})</div>
 </div>
 {% endfor %}
 {% else %}
 <h2>Risk Flags</h2>
-<p style="color:#34d399;"><strong>No risk flags triggered.</strong> No actionable municipal or tax risk findings were identified for this address.</p>
+<div class="no-flags">No risk flags triggered. No actionable municipal or tax risk findings were identified for this address.</div>
 {% endif %}
 
 <h2>Summary Narrative</h2>
@@ -57,7 +57,7 @@
 
 <div class="report-header">
   <div class="title">CIVITAS</div>
-  <div class="subtitle">Detailed Findings · {{ report.property.address }}</div>
+  <div class="subtitle">Detailed Findings &middot; {{ report.property.address }}</div>
 </div>
 
 <h2>Building Violations</h2>
@@ -234,13 +234,13 @@ implemented entirely in SQL. Claude AI generates only the narrative text;
 it does not compute scores or trigger flags.</p>
 
 <h3>Risk Tiers</h3>
-<table class="tier-table" style="width:50%">
+<table class="tier-table">
   <thead><tr><th>Tier</th><th>Score Range</th></tr></thead>
   <tbody>
-    <tr><td class="risk-badge risk-LOW">LOW</td><td>0–24</td></tr>
-    <tr><td class="risk-badge risk-MODERATE">MODERATE</td><td>25–49</td></tr>
-    <tr><td class="risk-badge risk-ELEVATED">ELEVATED</td><td>50–74</td></tr>
-    <tr><td class="risk-badge risk-HIGH">HIGH</td><td>75+</td></tr>
+    <tr><td><span class="risk-badge risk-LOW">LOW</span></td><td>0–24</td></tr>
+    <tr><td><span class="risk-badge risk-MODERATE">MODERATE</span></td><td>25–49</td></tr>
+    <tr><td><span class="risk-badge risk-ELEVATED">ELEVATED</span></td><td>50–74</td></tr>
+    <tr><td><span class="risk-badge risk-HIGH">HIGH</span></td><td>75+</td></tr>
   </tbody>
 </table>
 </div>
@@ -316,7 +316,7 @@ it does not compute scores or trigger flags.</p>
 (1) Exact Cook County PIN match,
 (2) Exact standardized address match,
 (3) House number + street name + ZIP match,
-(4) Geospatial proximity fallback (≤ 50 m).
+(4) Geospatial proximity fallback (&le; 50 m).
 If no tier produces a match, the report is not generated and a manual verification
 warning is returned.</p>
 </div>

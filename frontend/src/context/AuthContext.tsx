@@ -33,7 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
-    const tokens = await apiLogin(email, password)
+    let tokens: Awaited<ReturnType<typeof apiLogin>>
+    try {
+      tokens = await apiLogin(email, password)
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        throw err // Server responded (401, 422, etc.) — rethrow as-is
+      }
+      throw new Error('Unable to reach the server. Please check your connection and try again.')
+    }
     localStorage.setItem('civitas_access_token', tokens.access_token)
     localStorage.setItem('civitas_refresh_token', tokens.refresh_token)
     const me = await getMe()
@@ -46,7 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fullName: string,
     companyName?: string,
   ) => {
-    await apiRegister(email, password, fullName, companyName)
+    try {
+      await apiRegister(email, password, fullName, companyName)
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        throw err
+      }
+      throw new Error('Unable to reach the server. Please check your connection and try again.')
+    }
     // Auto-login after registration
     const tokens = await apiLogin(email, password)
     localStorage.setItem('civitas_access_token', tokens.access_token)

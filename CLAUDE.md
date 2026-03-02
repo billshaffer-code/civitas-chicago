@@ -1,5 +1,5 @@
 CLAUDE.md
-Project: CIVITAS – Municipal & Tax Risk Agent
+Project: CIVITAS – Municipal Intelligence Agent
 
 Chicago v1 | Real Estate Transaction Intelligence
 

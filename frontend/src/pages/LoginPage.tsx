@@ -33,7 +33,7 @@ export default function LoginPage() {
             CIVITAS
           </h1>
           <p className="text-gray-400 text-sm mt-1">
-            Municipal &amp; Tax Risk Intelligence
+            Municipal Intelligence
           </p>
         </div>
 

@@ -39,7 +39,7 @@ export default function DashboardPage() {
           Welcome back, {user?.full_name?.split(' ')[0]}
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          CIVITAS Municipal &amp; Tax Risk Intelligence
+          CIVITAS Municipal Intelligence
         </p>
       </div>
 

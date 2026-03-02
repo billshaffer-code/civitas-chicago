@@ -126,6 +126,61 @@ export interface UserResponse {
   created_at: string
 }
 
+// ── Batch types ──────────────────────────────────────────────────────────────
+
+export interface BatchUploadResponse {
+  batch_id: string
+  batch_name: string | null
+  total_count: number
+}
+
+export interface BatchItemStatus {
+  row_index: number
+  input_address: string
+  status: string
+  report_id?: string | null
+  risk_score?: number | null
+  risk_tier?: string | null
+  flag_count?: number | null
+  error_message?: string | null
+}
+
+export interface BatchSummary {
+  batch_id: string
+  batch_name: string | null
+  total_count: number
+  completed_count: number
+  failed_count: number
+  status: string
+  created_at: string
+  completed_at?: string | null
+  items: BatchItemStatus[]
+  avg_risk_score?: number | null
+  tier_distribution: Record<string, number>
+}
+
+export interface BatchListItem {
+  batch_id: string
+  batch_name: string | null
+  total_count: number
+  completed_count: number
+  failed_count: number
+  status: string
+  created_at: string
+}
+
+export interface BatchSSEEvent {
+  type: 'processing' | 'completed' | 'failed' | 'done'
+  row_index?: number
+  report_id?: string
+  risk_score?: number
+  risk_tier?: string
+  flag_count?: number
+  error?: string
+  completed?: number
+  failed?: number
+}
+
 // ── Auth API calls ───────────────────────────────────────────────────────────
 
 export async function login(email: string, password: string): Promise<TokenResponse> {
@@ -196,5 +251,36 @@ export async function downloadPdf(location_sk: number, address: string): Promise
     { location_sk, address },
     { responseType: 'blob' },
   )
+  return data
+}
+
+// ── Batch API calls ─────────────────────────────────────────────────────────
+
+export async function uploadBatch(file: File, batchName?: string): Promise<BatchUploadResponse> {
+  const form = new FormData()
+  form.append('file', file)
+  const params = batchName ? { batch_name: batchName } : {}
+  const { data } = await api.post<BatchUploadResponse>('/api/v1/batch/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    params,
+  })
+  return data
+}
+
+export function createBatchEventSource(batchId: string): EventSource {
+  const token = localStorage.getItem('civitas_access_token') ?? ''
+  const base = import.meta.env.VITE_API_URL ?? ''
+  return new EventSource(`${base}/api/v1/batch/${batchId}/stream?token=${encodeURIComponent(token)}`)
+}
+
+export async function getBatch(batchId: string): Promise<BatchSummary> {
+  const { data } = await api.get<BatchSummary>(`/api/v1/batch/${batchId}`)
+  return data
+}
+
+export async function getMyBatches(limit = 20): Promise<BatchListItem[]> {
+  const { data } = await api.get<BatchListItem[]>('/api/v1/batch/my-batches', {
+    params: { limit },
+  })
   return data
 }

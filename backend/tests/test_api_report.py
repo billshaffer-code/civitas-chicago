@@ -13,44 +13,26 @@ from tests.conftest import FakeConnection
 
 @pytest.mark.asyncio
 async def test_generate_report_json(client, sample_report):
-    conn = FakeConnection(
-        fetchrow_return={
-            "location_sk": 42,
-            "full_address_standardized": "123 N MAIN ST 60601",
-            "zip": "60601",
-        },
-    )
+    mock_report = {
+        "report_id": "test-001",
+        "generated_at": "2025-01-15T12:00:00+00:00",
+        "property": {"address": "123 N MAIN ST", "zip": "60601", "city": "Chicago", "state": "IL"},
+        "match_confidence": "EXACT_ADDRESS",
+        "risk_score": 55,
+        "risk_tier": "ELEVATED",
+        "triggered_flags": [],
+        "supporting_records": {"violations": [], "inspections": [], "permits": [], "tax_liens": [], "service_311": [], "vacant_buildings": []},
+        "ai_summary": "AI narrative text.",
+        "data_freshness": {"report_generated_at": "2025-01-15T12:00:00+00:00"},
+        "pdf_url": "/api/v1/report/test-001/pdf",
+        "disclaimer": "Test disclaimer.",
+    }
 
-    @asynccontextmanager
-    async def _get_conn():
-        yield conn
-
-    p1 = patch("backend.app.routers.report.get_conn", _get_conn)
-    p2 = patch("backend.app.routers.report.rule_engine")
-    p3 = patch(
-        "backend.app.routers.report.generate_narrative",
+    with patch(
+        "backend.app.routers.report.generate_single_report",
         new_callable=AsyncMock,
-        return_value="AI narrative text.",
-    )
-
-    with p1, p2 as mock_engine, p3:
-        mock_engine.get_score = AsyncMock(return_value={"raw_score": 55, "risk_tier": "ELEVATED"})
-        mock_engine.get_flags = AsyncMock(return_value=[])
-        mock_engine.get_violations = AsyncMock(return_value=[])
-        mock_engine.get_inspections = AsyncMock(return_value=[])
-        mock_engine.get_permits = AsyncMock(return_value=[])
-        mock_engine.get_tax_liens = AsyncMock(return_value=[])
-        mock_engine.get_311_requests = AsyncMock(return_value=[])
-        mock_engine.get_vacant_buildings = AsyncMock(return_value=[])
-        mock_engine.get_data_freshness = AsyncMock(return_value={
-            "violations_as_of": "2025-01-10",
-            "inspections_as_of": "2025-01-10",
-            "permits_as_of": "2025-01-10",
-            "tax_liens_as_of": "2025-01-10",
-            "service_311_as_of": "2025-01-10",
-            "vacant_buildings_as_of": "2025-01-10",
-        })
-
+        return_value=mock_report,
+    ):
         resp = await client.post(
             "/api/v1/report/generate",
             json={"location_sk": 42, "address": "123 N MAIN ST"},

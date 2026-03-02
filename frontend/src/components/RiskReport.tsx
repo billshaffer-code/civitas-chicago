@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { ReportResponse, FlagResult } from '../api/civitas'
 import ScoreGauge from './ScoreGauge'
 import FlagBadge from './FlagBadge'
@@ -52,6 +53,8 @@ const categoryLabels: Record<string, string> = {
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export default function RiskReport({ report, locationSk, address, lat, lon, onNewSearch }: Props) {
+  const navigate = useNavigate()
+
   async function handlePdf() {
     const blob = await downloadPdf(locationSk, address)
     const url  = URL.createObjectURL(blob)
@@ -75,6 +78,12 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
+          <button
+            onClick={() => navigate(`/compare?a=${report.report_id}`)}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+          >
+            Compare
+          </button>
           <button
             onClick={handlePdf}
             className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-4 py-2 rounded-lg transition-colors"

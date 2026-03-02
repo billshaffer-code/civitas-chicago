@@ -17,10 +17,11 @@ vi.mock('../../context/AuthContext', () => ({
 
 vi.mock('../../api/civitas', () => ({
   getMyReports: vi.fn(),
+  getMyBatches: vi.fn(),
 }))
 
 import { useAuth } from '../../context/AuthContext'
-import { getMyReports } from '../../api/civitas'
+import { getMyReports, getMyBatches } from '../../api/civitas'
 
 function renderDashboard() {
   return render(
@@ -31,6 +32,10 @@ function renderDashboard() {
 }
 
 describe('DashboardPage', () => {
+  beforeEach(() => {
+    vi.mocked(getMyBatches).mockResolvedValue([])
+  })
+
   it('displays welcome message with user first name', async () => {
     vi.mocked(useAuth).mockReturnValue(makeAuthValue({ user: makeUser({ full_name: 'Jane Smith' }) }))
     vi.mocked(getMyReports).mockResolvedValue([])

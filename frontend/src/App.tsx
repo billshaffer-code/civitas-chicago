@@ -6,6 +6,8 @@ import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import DashboardPage from './pages/DashboardPage'
 import SearchPage from './pages/SearchPage'
+import BatchPage from './pages/BatchPage'
+import ComparePage from './pages/ComparePage'
 
 export default function App() {
   return (
@@ -17,6 +19,8 @@ export default function App() {
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/batch" element={<BatchPage />} />
+            <Route path="/compare" element={<ComparePage />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

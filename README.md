@@ -1,4 +1,4 @@
-# CIVITAS — Municipal & Tax Risk Intelligence
+# CIVITAS — Municipal Intelligence
 
 **Chicago v1 | Real Estate Transaction Intelligence**
 

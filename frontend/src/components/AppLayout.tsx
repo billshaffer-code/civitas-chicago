@@ -26,7 +26,7 @@ export default function AppLayout() {
                 CIVITAS
               </span>
               <span className="text-gray-400 text-xs hidden sm:inline">
-                Municipal &amp; Tax Risk Intelligence
+                Municipal Intelligence
               </span>
             </button>
             <nav className="flex items-center gap-4 ml-4">

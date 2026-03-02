@@ -195,20 +195,93 @@ function FlagList({ flags }: { flags: FlagResult[] }) {
 // ── DataTabs ─────────────────────────────────────────────────────────────────
 
 type TabKey = 'violations' | 'inspections' | 'permits' | 'service_311' | 'tax_liens' | 'vacant_buildings'
+type ColType = 'string' | 'date' | 'number'
+type ColDef = { key: string; label?: string; type: ColType }
+type SortDir = 'asc' | 'desc'
 
-const tabMeta: { key: TabKey; label: string; columns: string[] }[] = [
-  { key: 'violations',       label: 'Violations',       columns: ['violation_date', 'violation_code', 'violation_status', 'violation_description', 'inspection_status'] },
-  { key: 'inspections',      label: 'Inspections',      columns: ['inspection_date', 'dba_name', 'facility_type', 'risk_level', 'results'] },
-  { key: 'permits',          label: 'Permits',          columns: ['permit_number', 'permit_type', 'permit_status', 'application_start_date', 'issue_date', 'processing_time'] },
-  { key: 'service_311',      label: '311 Requests',     columns: ['source_id', 'sr_type', 'sr_short_code', 'status', 'created_date', 'closed_date'] },
-  { key: 'tax_liens',        label: 'Tax Liens',        columns: ['tax_sale_year', 'lien_type', 'sold_at_sale', 'total_amount_offered', 'buyer_name'] },
-  { key: 'vacant_buildings', label: 'Vacant Buildings', columns: ['docket_number', 'issued_date', 'violation_type', 'disposition_description', 'current_amount_due', 'total_paid'] },
+const tabMeta: { key: TabKey; label: string; columns: ColDef[] }[] = [
+  { key: 'violations',       label: 'Violations',       columns: [
+    { key: 'violation_date', type: 'date' }, { key: 'violation_code', type: 'string' }, { key: 'violation_status', type: 'string' }, { key: 'violation_description', type: 'string' }, { key: 'inspection_status', type: 'string' },
+  ]},
+  { key: 'inspections',      label: 'Inspections',      columns: [
+    { key: 'inspection_date', type: 'date' }, { key: 'dba_name', type: 'string' }, { key: 'facility_type', type: 'string' }, { key: 'risk_level', type: 'string' }, { key: 'results', type: 'string' },
+  ]},
+  { key: 'permits',          label: 'Permits',          columns: [
+    { key: 'permit_number', type: 'string' }, { key: 'permit_type', type: 'string' }, { key: 'permit_status', type: 'string' }, { key: 'application_start_date', type: 'date' }, { key: 'issue_date', type: 'date' }, { key: 'processing_time', type: 'number' },
+  ]},
+  { key: 'service_311',      label: '311 Requests',     columns: [
+    { key: 'source_id', type: 'string' }, { key: 'sr_type', type: 'string' }, { key: 'sr_short_code', type: 'string' }, { key: 'status', type: 'string' }, { key: 'created_date', type: 'date' }, { key: 'closed_date', type: 'date' },
+  ]},
+  { key: 'tax_liens',        label: 'Tax Liens',        columns: [
+    { key: 'tax_sale_year', type: 'number' }, { key: 'lien_type', type: 'string' }, { key: 'sold_at_sale', type: 'string' }, { key: 'total_amount_offered', type: 'number' }, { key: 'buyer_name', type: 'string' },
+  ]},
+  { key: 'vacant_buildings', label: 'Vacant Buildings', columns: [
+    { key: 'docket_number', type: 'string' }, { key: 'issued_date', type: 'date' }, { key: 'violation_type', type: 'string' }, { key: 'disposition_description', type: 'string' }, { key: 'current_amount_due', type: 'number' }, { key: 'total_paid', type: 'number' },
+  ]},
 ]
+
+function sortComparator(a: unknown, b: unknown, colType: ColType): number {
+  const aNull = a == null || a === ''
+  const bNull = b == null || b === ''
+  if (aNull && bNull) return 0
+  if (aNull) return 1
+  if (bNull) return -1
+
+  if (colType === 'date') {
+    return new Date(String(a)).getTime() - new Date(String(b)).getTime()
+  }
+  if (colType === 'number') {
+    return (parseFloat(String(a)) || 0) - (parseFloat(String(b)) || 0)
+  }
+  return String(a).localeCompare(String(b))
+}
 
 function DataTabs({ records }: { records: Record<string, Record<string, unknown>[]> }) {
   const [active, setActive] = useState<TabKey>('violations')
+  const [filter, setFilter] = useState('')
+  const [sortCol, setSortCol] = useState<string | null>(null)
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [expandedRow, setExpandedRow] = useState<number | null>(null)
+
   const current = tabMeta.find(t => t.key === active)!
-  const rows = records[active] ?? []
+  const rawRows = records[active] ?? []
+
+  function handleTabSwitch(tab: TabKey) {
+    setActive(tab)
+    setFilter('')
+    setSortCol(null)
+    setSortDir('asc')
+    setExpandedRow(null)
+  }
+
+  function handleSort(colKey: string) {
+    if (sortCol !== colKey) {
+      setSortCol(colKey)
+      setSortDir('asc')
+    } else if (sortDir === 'asc') {
+      setSortDir('desc')
+    } else {
+      setSortCol(null)
+      setSortDir('asc')
+    }
+  }
+
+  // Filter rows
+  const lowerFilter = filter.toLowerCase()
+  const filteredRows = lowerFilter
+    ? rawRows.filter(row =>
+        current.columns.some(col => formatCellValue(row[col.key]).toLowerCase().includes(lowerFilter))
+      )
+    : rawRows
+
+  // Sort rows
+  const rows = sortCol
+    ? [...filteredRows].sort((a, b) => {
+        const colDef = current.columns.find(c => c.key === sortCol)!
+        const cmp = sortComparator(a[sortCol], b[sortCol], colDef.type)
+        return sortDir === 'desc' ? -cmp : cmp
+      })
+    : filteredRows
 
   return (
     <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
@@ -221,7 +294,7 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
           return (
             <button
               key={t.key}
-              onClick={() => setActive(t.key)}
+              onClick={() => handleTabSwitch(t.key)}
               className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold whitespace-nowrap transition-colors
                 ${isActive
                   ? 'border-b-2 border-blue-600 text-blue-600'
@@ -238,31 +311,70 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
         })}
       </div>
 
+      {/* Filter input */}
+      {rawRows.length > 0 && (
+        <div className="px-4 py-3 border-b border-gray-100">
+          <input
+            type="text"
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            placeholder="Filter records..."
+            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-300"
+          />
+        </div>
+      )}
+
       {/* Table */}
       <div className="overflow-x-auto">
         {rows.length === 0 ? (
-          <p className="text-sm text-gray-400 italic p-6">No records found.</p>
+          <p className="text-sm text-gray-400 italic p-6">
+            {rawRows.length > 0 && filter ? 'No matching records.' : 'No records found.'}
+          </p>
         ) : (
           <table className="min-w-full text-xs">
             <thead>
               <tr>
-                {current.columns.map(c => (
-                  <th key={c} className="px-4 py-3 text-left text-gray-500 uppercase tracking-wider text-[11px] font-semibold whitespace-nowrap">
-                    {formatSourceName(c)}
-                  </th>
-                ))}
+                {current.columns.map(col => {
+                  const isSorted = sortCol === col.key
+                  const arrow = isSorted ? (sortDir === 'asc' ? ' \u25B2' : ' \u25BC') : ' \u21C5'
+                  return (
+                    <th key={col.key} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap">
+                      <button
+                        onClick={() => handleSort(col.key)}
+                        className={`inline-flex items-center gap-0.5 transition-colors ${isSorted ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                      >
+                        {col.label ?? formatSourceName(col.key)}
+                        <span className="text-[9px]">{arrow}</span>
+                      </button>
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => (
-                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                  {current.columns.map(c => (
-                    <td key={c} className="px-4 py-2 text-gray-700 max-w-xs truncate">
-                      {formatCellValue(row[c])}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {rows.map((row, i) => {
+                const isExpanded = expandedRow === i
+                return (
+                  <tr
+                    key={i}
+                    onClick={() => setExpandedRow(isExpanded ? null : i)}
+                    className={`cursor-pointer transition-colors ${
+                      isExpanded
+                        ? 'bg-blue-50/50'
+                        : i % 2 === 0 ? 'bg-white hover:bg-gray-100' : 'bg-gray-50/50 hover:bg-gray-100'
+                    }`}
+                  >
+                    {current.columns.map(col => (
+                      <td
+                        key={col.key}
+                        className={`px-4 py-2 text-gray-700 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'max-w-xs truncate'}`}
+                      >
+                        {formatCellValue(row[col.key])}
+                      </td>
+                    ))}
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}

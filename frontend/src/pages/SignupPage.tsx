@@ -32,7 +32,9 @@ export default function SignupPage() {
       await register(email, password, fullName, companyName || undefined)
       navigate('/dashboard')
     } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'response' in err) {
+      if (err instanceof Error) {
+        setError(err.message)
+      } else if (err && typeof err === 'object' && 'response' in err) {
         const resp = (err as { response: { status: number } }).response
         if (resp.status === 409) {
           setError('An account with this email already exists')

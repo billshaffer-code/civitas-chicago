@@ -18,8 +18,19 @@ export default function LoginPage() {
     try {
       await login(email, password)
       navigate('/dashboard')
-    } catch {
-      setError('Invalid email or password')
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message)
+      } else if (err && typeof err === 'object' && 'response' in err) {
+        const resp = (err as { response: { status: number } }).response
+        if (resp.status === 401) {
+          setError('Invalid email or password')
+        } else {
+          setError('Login failed. Please try again.')
+        }
+      } else {
+        setError('An unexpected error occurred.')
+      }
     } finally {
       setLoading(false)
     }

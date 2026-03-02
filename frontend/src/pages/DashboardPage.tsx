@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getMyReports, getReport } from '../api/civitas'
+import { getMyReports } from '../api/civitas'
 import type { ReportHistoryItem } from '../api/civitas'
 
 const tierColors: Record<string, string> = {
@@ -14,15 +14,22 @@ const tierColors: Record<string, string> = {
 export default function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [reports, setReports] = useState<ReportHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const fetchReports = useCallback(() => {
+    setLoading(true)
     getMyReports()
       .then(setReports)
       .catch(() => setReports([]))
       .finally(() => setLoading(false))
   }, [])
+
+  // Re-fetch every time we navigate to this page
+  useEffect(() => {
+    fetchReports()
+  }, [location.key, fetchReports])
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">

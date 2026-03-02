@@ -1,13 +1,13 @@
-/* CIVITAS – PDF Report Stylesheet (Dark Theme) */
+/* CIVITAS – PDF Report Stylesheet (Apple-inspired Light Theme) */
 
 @page {
     size: letter;
     margin: 0.75in;
     @bottom-center {
         content: "CIVITAS Municipal Risk Report  |  Page " counter(page) " of " counter(pages);
-        font-size: 9pt;
-        color: #64748b;
-        font-family: 'Helvetica Neue', Arial, sans-serif;
+        font-size: 8pt;
+        color: #9ca3af;
+        font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
     }
 }
 
@@ -18,117 +18,164 @@
 }
 
 body {
-    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
     font-size: 10pt;
-    color: #f1f5f9;
-    background: #020617;
+    color: #111827;
+    background: #ffffff;
     line-height: 1.5;
 }
 
-h1 { font-size: 18pt; margin: 0 0 4pt; color: #f1f5f9; }
-h2 { font-size: 13pt; margin: 16pt 0 6pt; border-bottom: 1px solid #334155; padding-bottom: 3pt; color: #e2e8f0; }
-h3 { font-size: 11pt; margin: 12pt 0 4pt; color: #e2e8f0; }
+h1 { font-size: 20pt; margin: 0 0 4pt; color: #111827; font-weight: 700; }
+h2 { font-size: 12pt; margin: 18pt 0 8pt; color: #374151; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5pt; }
+h3 { font-size: 10pt; margin: 12pt 0 4pt; color: #374151; font-weight: 600; }
 
 /* ── Header bar ─────────────────────────────────────── */
 .report-header {
-    background: #0f172a;
-    color: white;
-    padding: 14pt 18pt;
+    border-bottom: 2pt solid #2563eb;
+    padding: 0 0 10pt 0;
     margin-bottom: 16pt;
-    border-bottom: 3pt solid #0891b2;
 }
-.report-header .title { font-size: 22pt; font-weight: 700; letter-spacing: 2pt; }
-.report-header .subtitle { font-size: 10pt; opacity: 0.75; }
+.report-header .title {
+    font-size: 24pt;
+    font-weight: 800;
+    letter-spacing: 3pt;
+    color: #111827;
+}
+.report-header .subtitle {
+    font-size: 9pt;
+    color: #6b7280;
+    margin-top: 2pt;
+}
+
+/* ── Meta info ──────────────────────────────────────── */
+.meta-row {
+    font-size: 9pt;
+    color: #6b7280;
+    margin-bottom: 2pt;
+}
+.meta-row strong {
+    color: #374151;
+}
 
 /* ── Risk badge ─────────────────────────────────────── */
 .risk-badge {
     display: inline-block;
-    padding: 4pt 14pt;
+    padding: 4pt 16pt;
     border-radius: 20pt;
-    font-size: 14pt;
+    font-size: 12pt;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1pt;
-    margin-bottom: 8pt;
+    margin-bottom: 6pt;
 }
-.risk-HIGH     { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1pt solid #f87171; }
-.risk-ELEVATED { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1pt solid #fb923c; }
-.risk-MODERATE { background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1pt solid #facc15; }
-.risk-LOW      { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1pt solid #34d399; }
+.risk-HIGH     { background: #fef2f2; color: #dc2626; border: 1pt solid #fecaca; }
+.risk-ELEVATED { background: #fff7ed; color: #ea580c; border: 1pt solid #fed7aa; }
+.risk-MODERATE { background: #fefce8; color: #ca8a04; border: 1pt solid #fef08a; }
+.risk-LOW      { background: #f0fdf4; color: #16a34a; border: 1pt solid #bbf7d0; }
 
 /* ── Score display ───────────────────────────────────── */
 .score-block {
-    font-size: 36pt;
-    font-weight: 700;
+    font-size: 42pt;
+    font-weight: 800;
     line-height: 1;
-    margin-bottom: 4pt;
+    margin-bottom: 2pt;
 }
-.score-HIGH     { color: #f87171; }
-.score-ELEVATED { color: #fb923c; }
-.score-MODERATE { color: #facc15; }
-.score-LOW      { color: #34d399; }
+.score-HIGH     { color: #dc2626; }
+.score-ELEVATED { color: #ea580c; }
+.score-MODERATE { color: #ca8a04; }
+.score-LOW      { color: #16a34a; }
+
+.score-label {
+    font-size: 9pt;
+    color: #9ca3af;
+}
+
+/* ── Score card ──────────────────────────────────────── */
+.score-card {
+    border: 1pt solid #e5e7eb;
+    border-radius: 8pt;
+    padding: 16pt;
+    margin: 12pt 0;
+    text-align: center;
+}
 
 /* ── Flag cards ─────────────────────────────────────── */
 .flag-card {
-    border-left: 4pt solid #475569;
-    padding: 6pt 10pt;
+    border-left: 3pt solid #d1d5db;
+    border-radius: 0 6pt 6pt 0;
+    padding: 8pt 12pt;
     margin-bottom: 6pt;
-    border-radius: 2pt;
+    background: #ffffff;
 }
-.flag-cat-A { border-color: #f87171; background: rgba(239, 68, 68, 0.10); }
-.flag-cat-B { border-color: #fb923c; background: rgba(249, 115, 22, 0.10); }
-.flag-cat-C { border-color: #facc15; background: rgba(234, 179, 8, 0.10); }
-.flag-cat-D { border-color: #60a5fa; background: rgba(96, 165, 250, 0.10); }
-.flag-code { font-weight: 700; font-size: 10pt; color: #f1f5f9; }
-.flag-score { float: right; font-size: 9pt; color: #94a3b8; }
+.flag-cat-A { border-color: #ef4444; background: #fef2f2; }
+.flag-cat-B { border-color: #f97316; background: #fff7ed; }
+.flag-cat-C { border-color: #eab308; background: #fefce8; }
+.flag-cat-D { border-color: #3b82f6; background: #eff6ff; }
+.flag-code { font-weight: 700; font-size: 9pt; color: #111827; font-family: 'SF Mono', 'Menlo', monospace; }
+.flag-score { float: right; font-size: 9pt; color: #6b7280; }
+.flag-detail { font-size: 9pt; color: #6b7280; margin-top: 2pt; }
+
+/* ── No flags ───────────────────────────────────────── */
+.no-flags {
+    color: #16a34a;
+    font-weight: 600;
+    background: #f0fdf4;
+    border: 1pt solid #bbf7d0;
+    border-radius: 6pt;
+    padding: 10pt 14pt;
+    font-size: 10pt;
+}
 
 /* ── Narrative ───────────────────────────────────────── */
 .ai-narrative {
-    background: #0f172a;
-    border: 1pt solid #334155;
-    border-radius: 3pt;
-    padding: 10pt 12pt;
+    background: #f9fafb;
+    border: 1pt solid #e5e7eb;
+    border-radius: 6pt;
+    padding: 12pt 14pt;
     font-size: 10pt;
-    line-height: 1.6;
+    line-height: 1.7;
     margin: 10pt 0;
     white-space: pre-wrap;
-    color: #cbd5e1;
+    color: #374151;
 }
 
 /* ── Tables ─────────────────────────────────────────── */
 table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 9pt;
-    margin-bottom: 10pt;
+    font-size: 8.5pt;
+    margin-bottom: 12pt;
+    border: 1pt solid #e5e7eb;
+    border-radius: 4pt;
 }
 th {
-    background: #0f172a;
-    color: #94a3b8;
-    padding: 5pt 7pt;
+    background: #f9fafb;
+    color: #6b7280;
+    padding: 6pt 8pt;
     text-align: left;
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 8pt;
+    font-size: 7.5pt;
     letter-spacing: 0.5pt;
+    border-bottom: 1pt solid #e5e7eb;
 }
 td {
-    padding: 4pt 7pt;
-    border-bottom: 0.5pt solid #1e293b;
+    padding: 5pt 8pt;
+    border-bottom: 0.5pt solid #f3f4f6;
     vertical-align: top;
-    color: #e2e8f0;
+    color: #374151;
 }
-tr:nth-child(odd) td { background: #0f172a; }
-tr:nth-child(even) td { background: #1e293b; }
-.empty-row td { color: #64748b; font-style: italic; }
+tr:nth-child(even) td { background: #f9fafb; }
+.empty-row td { color: #9ca3af; font-style: italic; }
 
 /* ── Disclaimer ─────────────────────────────────────── */
 .disclaimer {
-    font-size: 8pt;
-    color: #475569;
-    border-top: 1pt solid #334155;
-    margin-top: 12pt;
+    font-size: 7.5pt;
+    color: #9ca3af;
+    border-top: 1pt solid #e5e7eb;
+    margin-top: 14pt;
     padding-top: 6pt;
+    line-height: 1.4;
 }
 
 /* ── Page breaks ─────────────────────────────────────── */
@@ -136,5 +183,13 @@ tr:nth-child(even) td { background: #1e293b; }
 
 /* ── Methodology ─────────────────────────────────────── */
 .method-section { margin-bottom: 14pt; }
-.method-section p { color: #cbd5e1; }
+.method-section p { color: #4b5563; line-height: 1.6; }
+.tier-table { width: 55%; }
 .tier-table td:first-child { font-weight: 700; }
+
+/* ── Section divider ─────────────────────────────────── */
+.section-divider {
+    border: none;
+    border-top: 1pt solid #e5e7eb;
+    margin: 14pt 0;
+}

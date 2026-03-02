@@ -1,10 +1,12 @@
 """
-Tests for backend.app.services.address — pure function tests.
+Tests for backend.app.services.address — pure function + async resolution tests.
 """
 
 import pytest
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, patch
 
-from backend.app.services.address import _normalize_pin, _build_result
+from backend.app.services.address import _normalize_pin, _build_result, resolve_address
 
 
 class TestNormalizePin:
@@ -60,3 +62,98 @@ class TestBuildResult:
         result = _build_result(row, "STREET_ZIP")
         assert result["resolved"] is True
         assert result["parcel_id"] is None
+
+
+# ── Helper for sequential fetchrow returns ──────────────────────────────────
+
+class SequentialConnection:
+    """FakeConnection that returns different values on successive fetchrow calls."""
+
+    def __init__(self, returns):
+        self._returns = list(returns)
+        self._call_idx = 0
+
+    async def fetchrow(self, query, *args):
+        if self._call_idx < len(self._returns):
+            val = self._returns[self._call_idx]
+        else:
+            val = None
+        self._call_idx += 1
+        return val
+
+    async def fetch(self, query, *args):
+        return []
+
+    async def fetchval(self, query, *args):
+        return None
+
+
+def _make_loc_row(location_sk=1, addr="3500 N HOYNE AVE", parcel_id=None):
+    return {
+        "location_sk": location_sk,
+        "full_address_standardized": addr,
+        "house_number": "3500",
+        "street_direction": "N",
+        "street_name": "HOYNE",
+        "street_type": "AVE",
+        "zip": "60618",
+        "lat": 41.95,
+        "lon": -87.68,
+        "parcel_id": parcel_id,
+    }
+
+
+def _patch_conn(conn):
+    @asynccontextmanager
+    async def _get_conn():
+        yield conn
+    return patch("backend.app.services.address.get_conn", _get_conn)
+
+
+class TestResolveAddressTier2:
+    """Tests for the split Tier 2 (2a/2b/2c) resolution."""
+
+    @pytest.mark.asyncio
+    async def test_street_only_matches_tier2a(self):
+        """Street-only input matches on Tier 2a."""
+        conn = SequentialConnection([_make_loc_row()])
+        with _patch_conn(conn):
+            result = await resolve_address("3500 N HOYNE AVE")
+        assert result["resolved"] is True
+        assert result["location_sk"] == 1
+        assert result["match_confidence"] == "EXACT_ADDRESS"
+
+    @pytest.mark.asyncio
+    async def test_full_address_resolves_via_street_only_tier2a(self):
+        """Full address with city/zip still resolves via street-only Tier 2a."""
+        # Tier 2a (street-only) finds the record on first fetchrow
+        conn = SequentialConnection([_make_loc_row()])
+        with _patch_conn(conn):
+            result = await resolve_address("3500 N HOYNE AVE, CHICAGO IL 60618")
+        assert result["resolved"] is True
+        assert result["location_sk"] == 1
+        assert result["match_confidence"] == "EXACT_ADDRESS"
+
+    @pytest.mark.asyncio
+    async def test_tier2b_full_form_when_no_street_only(self):
+        """Tier 2b fires when street-only has no match but full form does."""
+        row = _make_loc_row(location_sk=99, addr="3500 N HOYNE AVE CHICAGO IL 60618")
+        # Tier 2a miss, Tier 2b hit
+        conn = SequentialConnection([None, row])
+        with _patch_conn(conn):
+            result = await resolve_address("3500 N HOYNE AVE, CHICAGO IL 60618")
+        assert result["resolved"] is True
+        assert result["location_sk"] == 99
+        assert result["match_confidence"] == "EXACT_ADDRESS"
+
+    @pytest.mark.asyncio
+    async def test_tier2c_component_match(self):
+        """Tier 2c component match fires when neither standardized form matches."""
+        row = _make_loc_row(location_sk=77)
+        # Tier 2a miss, Tier 2b miss, Tier 2c hit
+        conn = SequentialConnection([None, None, row])
+        with _patch_conn(conn):
+            result = await resolve_address("3500 N HOYNE AVE, CHICAGO IL 60618")
+        assert result["resolved"] is True
+        assert result["location_sk"] == 77
+        assert result["match_confidence"] == "COMPONENT_MATCH"

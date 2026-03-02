@@ -1,11 +1,13 @@
 """
 CIVITAS – Runtime address resolution service.
 
-Implements the 4-tier address resolution hierarchy (read-only against dim_*):
-  1. Exact PIN match → dim_parcel → location_sk
-  2. Exact standardized address match → dim_location
-  3. house_number + street_name + zip match → dim_location
-  4. Geospatial fallback (if lat/lon present, within configured radius)
+Implements the address resolution hierarchy (read-only against dim_*):
+  1.  Exact PIN match → dim_parcel → location_sk
+  2a. Street-only canonical match → dim_location (deduplicates city/zip variants)
+  2b. Full standardized address match → dim_location
+  2c. Component match (house + direction + street + type) → dim_location
+  3.  house_number + street_name + zip match → dim_location
+  4.  Geospatial fallback (if lat/lon present, within configured radius)
 
 Returns structured result including match_confidence code.
 """
@@ -79,22 +81,78 @@ async def resolve_address(
             result["warning"] = "Address could not be parsed. Manual verification recommended."
             return result
 
-        # ── Tier 2: Exact standardized address ───────────────────────────────
-        row = await conn.fetchrow(
-            """
-            SELECT l.location_sk, l.full_address_standardized,
-                   l.house_number, l.street_direction, l.street_name,
-                   l.street_type, l.zip, l.lat, l.lon,
-                   p.parcel_id
-            FROM dim_location l
-            LEFT JOIN dim_parcel p ON p.location_sk = l.location_sk
-            WHERE l.full_address_standardized = $1
-            LIMIT 1
-            """,
-            parsed.full_address_standardized,
-        )
-        if row:
-            return _build_result(row, "EXACT_ADDRESS", parcel_id=row["parcel_id"])
+        # Build street-only canonical form (no city/state/zip) for dedup
+        parts = [parsed.house_number, parsed.street_direction,
+                 parsed.street_name, parsed.street_type]
+        street_only = " ".join(p for p in parts if p)
+
+        # ── Tier 2a: Street-only exact match ───────────────────────────────
+        # Matches the canonical ETL form without city/state/zip suffix
+        if street_only:
+            row = await conn.fetchrow(
+                """
+                SELECT l.location_sk, l.full_address_standardized,
+                       l.house_number, l.street_direction, l.street_name,
+                       l.street_type, l.zip, l.lat, l.lon,
+                       p.parcel_id
+                FROM dim_location l
+                LEFT JOIN dim_parcel p ON p.location_sk = l.location_sk
+                WHERE l.full_address_standardized = $1
+                LIMIT 1
+                """,
+                street_only,
+            )
+            if row:
+                return _build_result(row, "EXACT_ADDRESS", parcel_id=row["parcel_id"])
+
+        # ── Tier 2b: Full parsed form exact match ──────────────────────────
+        # Only if full form differs from street-only (has city/zip suffix)
+        if parsed.full_address_standardized != street_only:
+            row = await conn.fetchrow(
+                """
+                SELECT l.location_sk, l.full_address_standardized,
+                       l.house_number, l.street_direction, l.street_name,
+                       l.street_type, l.zip, l.lat, l.lon,
+                       p.parcel_id
+                FROM dim_location l
+                LEFT JOIN dim_parcel p ON p.location_sk = l.location_sk
+                WHERE l.full_address_standardized = $1
+                LIMIT 1
+                """,
+                parsed.full_address_standardized,
+            )
+            if row:
+                return _build_result(row, "EXACT_ADDRESS", parcel_id=row["parcel_id"])
+
+        # ── Tier 2c: Component match (no zip) ──────────────────────────────
+        # Catches formatting variations by matching individual columns
+        if parsed.house_number and parsed.street_name:
+            conditions = ["l.house_number = $1", "l.street_name = $2"]
+            params = [parsed.house_number, parsed.street_name]
+            idx = 3
+            if parsed.street_direction:
+                conditions.append(f"l.street_direction = ${idx}")
+                params.append(parsed.street_direction)
+                idx += 1
+            if parsed.street_type:
+                conditions.append(f"l.street_type = ${idx}")
+                params.append(parsed.street_type)
+            where = " AND ".join(conditions)
+            row = await conn.fetchrow(
+                f"""
+                SELECT l.location_sk, l.full_address_standardized,
+                       l.house_number, l.street_direction, l.street_name,
+                       l.street_type, l.zip, l.lat, l.lon,
+                       p.parcel_id
+                FROM dim_location l
+                LEFT JOIN dim_parcel p ON p.location_sk = l.location_sk
+                WHERE {where}
+                LIMIT 1
+                """,
+                *params,
+            )
+            if row:
+                return _build_result(row, "COMPONENT_MATCH", parcel_id=row["parcel_id"])
 
         # ── Tier 3: house_number + street_name + zip ─────────────────────────
         if parsed.house_number and parsed.street_name and parsed.zip:

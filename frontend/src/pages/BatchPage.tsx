@@ -175,7 +175,7 @@ export default function BatchPage() {
   const progressPct = totalCount > 0 ? Math.round((processed / totalCount) * 100) : 0
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
+    <main className="mx-auto max-w-7xl px-4 py-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Portfolio Analysis</h1>
 
       {/* ── Upload Phase ─────────────────────────────────────── */}

@@ -6,8 +6,6 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const isWidePage = location.pathname === '/search' || location.pathname === '/compare'
-
   function handleLogout() {
     logout()
     navigate('/login')
@@ -16,7 +14,7 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen bg-[#f5f5f7] text-gray-900">
       <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-200 px-6 py-3">
-        <div className={`mx-auto flex items-center justify-between ${isWidePage ? 'max-w-7xl' : 'max-w-5xl'}`}>
+        <div className="mx-auto max-w-7xl flex items-center justify-between">
           <div className="flex items-center gap-6">
             <button
               onClick={() => navigate('/dashboard')}

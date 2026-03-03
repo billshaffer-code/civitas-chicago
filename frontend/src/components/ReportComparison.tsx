@@ -32,7 +32,7 @@ export default function ReportComparison({ reportA, reportB }: Props) {
   return (
     <div className="space-y-6">
       {/* Header row */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Report A</h3>
           <p className="text-lg font-bold text-gray-900">{reportA.property.address}</p>
@@ -46,7 +46,7 @@ export default function ReportComparison({ reportA, reportB }: Props) {
       </div>
 
       {/* Score comparison */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
           <ScoreGauge score={reportA.risk_score} tier={reportA.risk_tier} />
         </div>
@@ -136,7 +136,7 @@ export default function ReportComparison({ reportA, reportB }: Props) {
       </div>
 
       {/* AI Summaries side-by-side */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
             AI Summary — A

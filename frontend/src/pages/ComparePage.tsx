@@ -58,7 +58,7 @@ export default function ComparePage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="mx-auto max-w-7xl px-4 py-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Compare Reports</h1>
 
       {/* Selection */}

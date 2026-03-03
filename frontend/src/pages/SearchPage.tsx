@@ -117,7 +117,7 @@ export default function SearchPage() {
   const isReportView = phase === 'report-done' && report
 
   return (
-    <main className={`mx-auto px-4 py-8 ${isReportView ? 'max-w-7xl' : 'max-w-lg'}`}>
+    <main className={`mx-auto px-4 py-8 ${isReportView ? 'max-w-7xl' : 'max-w-2xl'}`}>
       {/* Search — vertically centered when no report */}
       {!isReportView && (
         <div className={phase === 'search' ? 'min-h-[60vh] flex flex-col justify-center' : ''}>

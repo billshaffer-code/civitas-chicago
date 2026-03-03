@@ -100,13 +100,13 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
       </div>
 
       {/* ── Two Column Layout ────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
 
-        {/* ── Left Column (2/5) ──────────────────────────────────── */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* ── Left Column (1/4) ──────────────────────────────────── */}
+        <div className="lg:col-span-1 space-y-4">
 
           {/* Score */}
-          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
+          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
             <ScoreGauge score={report.risk_score} tier={report.risk_tier} />
           </div>
 
@@ -116,7 +116,7 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
           )}
 
           {/* Flags grouped by category */}
-          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
+          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
               Risk Flags
             </h3>
@@ -131,7 +131,7 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
 
           {/* Data Freshness */}
           {report.data_freshness && (
-            <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
+            <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
                 Data Freshness
               </h3>
@@ -149,11 +149,11 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
           )}
         </div>
 
-        {/* ── Right Column (3/5) ─────────────────────────────────── */}
-        <div className="lg:col-span-3 space-y-6">
+        {/* ── Right Column (3/4) ─────────────────────────────────── */}
+        <div className="lg:col-span-3 space-y-4">
 
           {/* AI Narrative */}
-          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
+          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
               Risk Summary
             </h3>
@@ -161,11 +161,11 @@ export default function RiskReport({ report, locationSk, address, lat, lon, onNe
               <Markdown>{report.ai_summary}</Markdown>
             </div>
           </div>
-
-          {/* Tabbed Data Tables */}
-          <DataTabs records={report.supporting_records} />
         </div>
       </div>
+
+      {/* ── Full-Width Data Tables ──────────────────────────────── */}
+      <DataTabs records={report.supporting_records} />
 
       {/* ── Disclaimer ───────────────────────────────────────────── */}
       <p className="text-[11px] text-gray-400 border-t border-gray-200 pt-3">
@@ -347,7 +347,7 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
                   const isSorted = sortCol === col.key
                   const arrow = isSorted ? (sortDir === 'asc' ? ' \u25B2' : ' \u25BC') : ' \u21C5'
                   return (
-                    <th key={col.key} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap">
+                    <th key={col.key} className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap">
                       <button
                         onClick={() => handleSort(col.key)}
                         className={`inline-flex items-center gap-0.5 transition-colors ${isSorted ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
@@ -376,7 +376,7 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
                     {current.columns.map(col => (
                       <td
                         key={col.key}
-                        className={`px-4 py-2 text-gray-700 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'max-w-xs truncate'}`}
+                        className={`px-3 py-1.5 text-gray-700 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'max-w-xs truncate'}`}
                       >
                         {formatCellValue(row[col.key])}
                       </td>

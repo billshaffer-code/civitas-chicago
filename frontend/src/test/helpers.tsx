@@ -35,6 +35,7 @@ export function makeFlag(overrides: Partial<FlagResult> = {}): FlagResult {
     description: 'Active violation on record',
     severity_score: 25,
     supporting_count: 3,
+    action_group: 'Review Recommended',
     ...overrides,
   }
 }
@@ -45,8 +46,8 @@ export function makeReport(overrides: Partial<ReportResponse> = {}): ReportRespo
     generated_at: '2025-06-01T12:00:00Z',
     property: { address: '123 N MAIN ST', zip: '60601', city: 'CHICAGO', state: 'IL' },
     match_confidence: 'EXACT',
-    risk_score: 45,
-    risk_tier: 'MODERATE',
+    activity_score: 45,
+    activity_level: 'TYPICAL',
     triggered_flags: [makeFlag()],
     supporting_records: {
       violations: [],
@@ -69,8 +70,8 @@ export function makeReportHistoryItem(
   return {
     report_id: 'rpt-1',
     query_address: '123 N MAIN ST',
-    risk_score: 45,
-    risk_tier: 'MODERATE',
+    activity_score: 45,
+    activity_level: 'TYPICAL',
     generated_at: '2025-06-01T12:00:00Z',
     ...overrides,
   }

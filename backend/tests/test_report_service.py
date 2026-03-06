@@ -23,7 +23,7 @@ LOCATION_ROW = {
     "lon": -87.6298,
 }
 
-SCORE = {"raw_score": 55, "risk_tier": "ELEVATED"}
+SCORE = {"raw_score": 55, "activity_level": "ACTIVE"}
 
 FLAGS = [
     {
@@ -32,6 +32,7 @@ FLAGS = [
         "description": "Open building violations",
         "severity_score": 25,
         "supporting_count": 3,
+        "action_group": "Review Recommended",
     }
 ]
 
@@ -85,13 +86,14 @@ async def test_generate_single_report_returns_valid_dict(mock_deps):
         user_id=UUID("00000000-0000-0000-0000-000000000001"),
     )
 
-    assert report["risk_score"] == 55
-    assert report["risk_tier"] == "ELEVATED"
+    assert report["activity_score"] == 55
+    assert report["activity_level"] == "ACTIVE"
     assert report["property"]["address"] == "123 N MAIN ST"
     assert report["ai_summary"] == "Test narrative"
     assert len(report["triggered_flags"]) == 1
     assert "report_id" in report
     assert "disclaimer" in report
+    assert "baselines" in report
 
 
 async def test_generate_single_report_missing_location(mock_deps):

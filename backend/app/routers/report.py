@@ -21,11 +21,12 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 
+from backend.app.constants import TIER_LABELS
 from backend.app.database import get_conn
 from backend.app.dependencies import get_current_user
 from backend.app.schemas.report import ReportHistoryItem, ReportRequest, ReportResponse
 from backend.app.services.pdf import generate_pdf
-from backend.app.services.report import generate_single_report
+from backend.app.services.report import generate_single_report, normalize_report
 
 router = APIRouter(prefix="/api/v1/report", tags=["report"])
 
@@ -50,11 +51,16 @@ async def generate_report(
             content=pdf_bytes,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'attachment; filename="civitas_{report_id}.pdf"'
+                "Content-Disposition": f'attachment; filename="civitas_{report["report_id"]}.pdf"'
             },
         )
 
     return report
+
+
+def _normalize_tier(tier: str) -> str:
+    """Map old tier names (LOW/MODERATE/ELEVATED/HIGH) to new activity levels."""
+    return TIER_LABELS.get(tier, tier)
 
 
 @router.get("/history", response_model=List[ReportHistoryItem])
@@ -79,8 +85,8 @@ async def report_history(
         ReportHistoryItem(
             report_id=str(r["report_id"]),
             query_address=r["query_address"],
-            risk_score=r["risk_score"],
-            risk_tier=r["risk_tier"],
+            activity_score=r["risk_score"],
+            activity_level=_normalize_tier(r["risk_tier"]),
             generated_at=r["generated_at"].isoformat() if hasattr(r["generated_at"], "isoformat") else str(r["generated_at"]),
         )
         for r in rows
@@ -109,8 +115,8 @@ async def my_reports(
         ReportHistoryItem(
             report_id=str(r["report_id"]),
             query_address=r["query_address"],
-            risk_score=r["risk_score"],
-            risk_tier=r["risk_tier"],
+            activity_score=r["risk_score"],
+            activity_level=_normalize_tier(r["risk_tier"]),
             generated_at=r["generated_at"].isoformat() if hasattr(r["generated_at"], "isoformat") else str(r["generated_at"]),
         )
         for r in rows
@@ -129,11 +135,16 @@ async def get_report(report_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Report not found")
     # asyncpg returns JSONB as a str — parse it before FastAPI re-serializes
     raw = row["report_json"]
-    return json.loads(raw) if isinstance(raw, str) else raw
+    report = json.loads(raw) if isinstance(raw, str) else raw
+    return normalize_report(report)
 
 
 @router.get("/{report_id}/pdf")
-async def get_report_pdf(report_id: str, user: dict = Depends(get_current_user)):
+async def get_report_pdf(
+    report_id: str,
+    view: str = Query(default="detail", pattern="^(detail|client)$"),
+    user: dict = Depends(get_current_user),
+):
     """Generate a PDF from a previously stored report."""
     async with get_conn() as conn:
         row = await conn.fetchrow(
@@ -145,6 +156,9 @@ async def get_report_pdf(report_id: str, user: dict = Depends(get_current_user))
 
     raw = row["report_json"]
     report = json.loads(raw) if isinstance(raw, str) else dict(raw)
+    report = normalize_report(report)
+    if view == "client":
+        report["_view"] = "client"
     pdf_bytes = generate_pdf(report)
     return Response(
         content=pdf_bytes,

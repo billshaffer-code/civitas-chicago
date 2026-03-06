@@ -1,10 +1,10 @@
-/* CIVITAS – PDF Report Stylesheet (Apple-inspired Light Theme) */
+/* CIVITAS – PDF Report Stylesheet (Neutral Blue-Scale Theme) */
 
 @page {
     size: letter;
     margin: 0.75in;
     @bottom-center {
-        content: "CIVITAS Municipal Risk Report  |  Page " counter(page) " of " counter(pages);
+        content: "CIVITAS Municipal Profile Report  |  Page " counter(page) " of " counter(pages);
         font-size: 8pt;
         color: #9ca3af;
         font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
@@ -57,8 +57,8 @@ h3 { font-size: 10pt; margin: 12pt 0 4pt; color: #374151; font-weight: 600; }
     color: #374151;
 }
 
-/* ── Risk badge ─────────────────────────────────────── */
-.risk-badge {
+/* ── Activity level badge ──────────────────────────── */
+.level-badge {
     display: inline-block;
     padding: 4pt 16pt;
     border-radius: 20pt;
@@ -68,10 +68,10 @@ h3 { font-size: 10pt; margin: 12pt 0 4pt; color: #374151; font-weight: 600; }
     letter-spacing: 1pt;
     margin-bottom: 6pt;
 }
-.risk-HIGH     { background: #fef2f2; color: #dc2626; border: 1pt solid #fecaca; }
-.risk-ELEVATED { background: #fff7ed; color: #ea580c; border: 1pt solid #fed7aa; }
-.risk-MODERATE { background: #fefce8; color: #ca8a04; border: 1pt solid #fef08a; }
-.risk-LOW      { background: #f0fdf4; color: #16a34a; border: 1pt solid #bbf7d0; }
+.level-COMPLEX { background: #1e3a5f; color: #ffffff; border: 1pt solid #1e3a5f; }
+.level-ACTIVE  { background: #dbeafe; color: #2563eb; border: 1pt solid #93c5fd; }
+.level-TYPICAL { background: #eff6ff; color: #3b82f6; border: 1pt solid #bfdbfe; }
+.level-QUIET   { background: #f1f5f9; color: #64748b; border: 1pt solid #cbd5e1; }
 
 /* ── Score display ───────────────────────────────────── */
 .score-block {
@@ -80,10 +80,10 @@ h3 { font-size: 10pt; margin: 12pt 0 4pt; color: #374151; font-weight: 600; }
     line-height: 1;
     margin-bottom: 2pt;
 }
-.score-HIGH     { color: #dc2626; }
-.score-ELEVATED { color: #ea580c; }
-.score-MODERATE { color: #ca8a04; }
-.score-LOW      { color: #16a34a; }
+.score-COMPLEX { color: #1e3a5f; }
+.score-ACTIVE  { color: #2563eb; }
+.score-TYPICAL { color: #3b82f6; }
+.score-QUIET   { color: #64748b; }
 
 .score-label {
     font-size: 9pt;
@@ -99,7 +99,7 @@ h3 { font-size: 10pt; margin: 12pt 0 4pt; color: #374151; font-weight: 600; }
     text-align: center;
 }
 
-/* ── Flag cards ─────────────────────────────────────── */
+/* ── Finding cards by action group ─────────────────── */
 .flag-card {
     border-left: 3pt solid #d1d5db;
     border-radius: 0 6pt 6pt 0;
@@ -107,20 +107,20 @@ h3 { font-size: 10pt; margin: 12pt 0 4pt; color: #374151; font-weight: 600; }
     margin-bottom: 6pt;
     background: #ffffff;
 }
-.flag-cat-A { border-color: #ef4444; background: #fef2f2; }
-.flag-cat-B { border-color: #f97316; background: #fff7ed; }
-.flag-cat-C { border-color: #eab308; background: #fefce8; }
-.flag-cat-D { border-color: #3b82f6; background: #eff6ff; }
+.action-informational       { border-color: #cbd5e1; background: #f8fafc; }
+.action-worth-noting        { border-color: #93c5fd; background: #eff6ff; }
+.action-review-recommended  { border-color: #3b82f6; background: #dbeafe; }
+.action-action-required     { border-color: #fbbf24; background: #fffbeb; }
 .flag-code { font-weight: 700; font-size: 9pt; color: #111827; font-family: 'SF Mono', 'Menlo', monospace; }
 .flag-score { float: right; font-size: 9pt; color: #6b7280; }
 .flag-detail { font-size: 9pt; color: #6b7280; margin-top: 2pt; }
 
-/* ── No flags ───────────────────────────────────────── */
+/* ── No findings ───────────────────────────────────── */
 .no-flags {
-    color: #16a34a;
+    color: #64748b;
     font-weight: 600;
-    background: #f0fdf4;
-    border: 1pt solid #bbf7d0;
+    background: #f8fafc;
+    border: 1pt solid #e2e8f0;
     border-radius: 6pt;
     padding: 10pt 14pt;
     font-size: 10pt;

@@ -24,14 +24,14 @@ class TestGetScore:
 
         conn = FakeConnection(fetchrow_return={
             "raw_score": 55,
-            "risk_tier": "ELEVATED",
+            "activity_level": "ACTIVE",
             "flag_count": 2,
             "triggered_flags": ["A", "B"],
         })
         with _patch_conn(conn):
             result = await get_score(1)
         assert result["raw_score"] == 55
-        assert result["risk_tier"] == "ELEVATED"
+        assert result["activity_level"] == "ACTIVE"
 
     @pytest.mark.asyncio
     async def test_no_data_defaults(self):
@@ -41,7 +41,7 @@ class TestGetScore:
         with _patch_conn(conn):
             result = await get_score(999)
         assert result["raw_score"] == 0
-        assert result["risk_tier"] == "LOW"
+        assert result["activity_level"] == "QUIET"
 
 
 class TestGetFlags:
@@ -51,12 +51,14 @@ class TestGetFlags:
 
         conn = FakeConnection(fetch_return=[
             {"flag_code": "ACTIVE_MUNICIPAL_VIOLATION", "category": "A",
-             "description": "Open violations", "severity_score": 25, "supporting_count": 3}
+             "description": "Open violations", "severity_score": 25,
+             "supporting_count": 3, "action_group": "Review Recommended"}
         ])
         with _patch_conn(conn):
             result = await get_flags(1)
         assert len(result) == 1
         assert result[0]["flag_code"] == "ACTIVE_MUNICIPAL_VIOLATION"
+        assert result[0]["action_group"] == "Review Recommended"
 
     @pytest.mark.asyncio
     async def test_empty(self):

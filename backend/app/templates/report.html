@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CIVITAS Property Risk Report</title>
+  <title>CIVITAS Property Municipal Profile</title>
 </head>
 <body>
 
@@ -15,7 +15,7 @@
   <div class="subtitle">Municipal Intelligence &middot; Chicago v1</div>
 </div>
 
-<h1>Property Risk Report</h1>
+<h1>Property Municipal Profile</h1>
 <p class="meta-row"><strong>Address:</strong> {{ report.property.address }}</p>
 <p class="meta-row"><strong>Report ID:</strong> {{ report.report_id }}&nbsp;&nbsp;&middot;&nbsp;&nbsp;
    <strong>Generated:</strong> {{ report.generated_at }}</p>
@@ -23,28 +23,39 @@
 
 <hr class="section-divider">
 
+{% if report._view != 'client' %}
 <div class="score-card">
-  <div class="risk-badge risk-{{ report.risk_tier }}">{{ report.risk_tier }}</div>
-  <div class="score-block score-{{ report.risk_tier }}">{{ report.risk_score }}</div>
-  <div class="score-label">Risk Score (max varies by flags triggered)</div>
+  <div class="level-badge level-{{ report.activity_level }}">{{ report.activity_level }}</div>
+  <div class="score-block score-{{ report.activity_level }}">{{ report.activity_score }}</div>
+  <div class="score-label">Activity Score (max varies by findings triggered)</div>
 </div>
+{% else %}
+<div class="score-card">
+  <div class="level-badge level-{{ report.activity_level }}">{{ report.activity_level }}</div>
+  <div class="score-label">Activity Level</div>
+</div>
+{% endif %}
 
 {% if report.triggered_flags %}
-<h2>Triggered Risk Flags</h2>
+<h2>Findings</h2>
 {% for f in report.triggered_flags %}
-<div class="flag-card flag-cat-{{ f.category }}">
+<div class="flag-card action-{{ f.action_group | lower | replace(' ', '-') }}">
   <span class="flag-code">{{ f.flag_code }}</span>
-  <span class="flag-score">Category {{ f.category }} &middot; +{{ f.severity_score }} pts</span>
+  {% if report._view != 'client' %}
+  <span class="flag-score">{{ f.action_group }}</span>
+  {% else %}
+  <span class="flag-score">{{ f.action_group }}</span>
+  {% endif %}
   <div style="clear:both"></div>
   <div class="flag-detail">{{ f.description }} (count: {{ f.supporting_count }})</div>
 </div>
 {% endfor %}
 {% else %}
-<h2>Risk Flags</h2>
-<div class="no-flags">No risk flags triggered. No actionable municipal or tax risk findings were identified for this address.</div>
+<h2>Findings</h2>
+<div class="no-flags">No findings identified. No actionable municipal or tax findings were identified for this address.</div>
 {% endif %}
 
-<h2>Summary Narrative</h2>
+<h2>Property Summary</h2>
 <div class="ai-narrative">{{ report.ai_summary }}</div>
 
 <div class="disclaimer">{{ report.disclaimer }}</div>
@@ -228,19 +239,19 @@
 </div>
 
 <div class="method-section">
-<h2>Risk Scoring Model</h2>
-<p>Risk scores are computed by a deterministic, weighted additive rule engine
+<h2>Activity Scoring Model</h2>
+<p>Activity scores are computed by a deterministic, weighted additive rule engine
 implemented entirely in SQL. Claude AI generates only the narrative text;
-it does not compute scores or trigger flags.</p>
+it does not compute scores or trigger findings.</p>
 
-<h3>Risk Tiers</h3>
+<h3>Activity Levels</h3>
 <table class="tier-table">
-  <thead><tr><th>Tier</th><th>Score Range</th></tr></thead>
+  <thead><tr><th>Level</th><th>Score Range</th></tr></thead>
   <tbody>
-    <tr><td><span class="risk-badge risk-LOW">LOW</span></td><td>0–24</td></tr>
-    <tr><td><span class="risk-badge risk-MODERATE">MODERATE</span></td><td>25–49</td></tr>
-    <tr><td><span class="risk-badge risk-ELEVATED">ELEVATED</span></td><td>50–74</td></tr>
-    <tr><td><span class="risk-badge risk-HIGH">HIGH</span></td><td>75+</td></tr>
+    <tr><td><span class="level-badge level-QUIET">QUIET</span></td><td>0–24</td></tr>
+    <tr><td><span class="level-badge level-TYPICAL">TYPICAL</span></td><td>25–49</td></tr>
+    <tr><td><span class="level-badge level-ACTIVE">ACTIVE</span></td><td>50–74</td></tr>
+    <tr><td><span class="level-badge level-COMPLEX">COMPLEX</span></td><td>75+</td></tr>
   </tbody>
 </table>
 </div>
@@ -249,24 +260,24 @@ it does not compute scores or trigger flags.</p>
 <h2>Rule Definitions</h2>
 <table>
   <thead>
-    <tr><th>Code</th><th>Cat</th><th>Description</th><th>Score</th></tr>
+    <tr><th>Code</th><th>Group</th><th>Description</th></tr>
   </thead>
   <tbody>
-    <tr><td>ACTIVE_MUNICIPAL_VIOLATION</td><td>A</td><td>One or more open building violations</td><td>25</td></tr>
-    <tr><td>AGED_ENFORCEMENT_RISK</td><td>A</td><td>Open violation older than 180 days</td><td>30</td></tr>
-    <tr><td>SEVERE_ENFORCEMENT_ACTION</td><td>A</td><td>Inspection FAILED with critical violation category</td><td>35</td></tr>
-    <tr><td>DEMOLITION_PERMIT_ISSUED</td><td>A</td><td>Wrecking/demolition permit issued for this property</td><td>20</td></tr>
-    <tr><td>VACANT_BUILDING_VIOLATION</td><td>A</td><td>Active vacant building violation recorded</td><td>25</td></tr>
-    <tr><td>REPEAT_COMPLIANCE_ISSUE</td><td>B</td><td>3 or more violations at this address</td><td>20</td></tr>
-    <tr><td>ABOVE_NORMAL_INSPECTION_FAIL</td><td>B</td><td>2+ failed food inspections in past 24 months</td><td>15</td></tr>
-    <tr><td>PERMIT_PROCESSING_DELAY</td><td>C</td><td>Permit processing time exceeded 90 days</td><td>10</td></tr>
-    <tr><td>ELEVATED_DISTRESS_SIGNALS</td><td>C</td><td>5+ 311 service requests in past 12 months</td><td>10</td></tr>
-    <tr><td>ENFORCEMENT_INTENSITY_INCREASE</td><td>C</td><td>Violation count increased year-over-year</td><td>15</td></tr>
-    <tr><td>ACTIVE_TAX_LIEN</td><td>D</td><td>Property offered at tax sale in current or prior year</td><td>40</td></tr>
-    <tr><td>AGED_TAX_LIEN</td><td>D</td><td>Tax lien event older than 3 years with no resolution</td><td>30</td></tr>
-    <tr><td>MULTIPLE_LIEN_EVENTS</td><td>D</td><td>Property appeared at tax sale 2 or more times</td><td>35</td></tr>
-    <tr><td>HIGH_VALUE_LIEN</td><td>D</td><td>Total tax amount offered exceeds $10,000</td><td>25</td></tr>
-    <tr><td>HIGH_VACANT_BUILDING_FINES</td><td>D</td><td>Outstanding vacant building fines exceed $5,000</td><td>30</td></tr>
+    <tr><td>ACTIVE_MUNICIPAL_VIOLATION</td><td>Review Recommended</td><td>One or more open building violations</td></tr>
+    <tr><td>AGED_ENFORCEMENT_RISK</td><td>Review Recommended</td><td>Open violation older than 180 days</td></tr>
+    <tr><td>SEVERE_ENFORCEMENT_ACTION</td><td>Review Recommended</td><td>Inspection FAILED with critical violation category</td></tr>
+    <tr><td>DEMOLITION_PERMIT_ISSUED</td><td>Review Recommended</td><td>Wrecking/demolition permit issued for this property</td></tr>
+    <tr><td>VACANT_BUILDING_VIOLATION</td><td>Review Recommended</td><td>Active vacant building violation recorded</td></tr>
+    <tr><td>REPEAT_COMPLIANCE_ISSUE</td><td>Worth Noting</td><td>3 or more violations at this address</td></tr>
+    <tr><td>ABOVE_NORMAL_INSPECTION_FAIL</td><td>Worth Noting</td><td>2+ failed food inspections in past 24 months</td></tr>
+    <tr><td>PERMIT_PROCESSING_DELAY</td><td>Informational</td><td>Permit processing time exceeded 90 days</td></tr>
+    <tr><td>ELEVATED_DISTRESS_SIGNALS</td><td>Informational</td><td>5+ 311 service requests in past 12 months</td></tr>
+    <tr><td>ENFORCEMENT_INTENSITY_INCREASE</td><td>Informational</td><td>Violation count increased year-over-year</td></tr>
+    <tr><td>ACTIVE_TAX_LIEN</td><td>Action Required</td><td>Property offered at tax sale in current or prior year</td></tr>
+    <tr><td>AGED_TAX_LIEN</td><td>Action Required</td><td>Tax lien event older than 3 years with no resolution</td></tr>
+    <tr><td>MULTIPLE_LIEN_EVENTS</td><td>Action Required</td><td>Property appeared at tax sale 2 or more times</td></tr>
+    <tr><td>HIGH_VALUE_LIEN</td><td>Action Required</td><td>Total tax amount offered exceeds $10,000</td></tr>
+    <tr><td>HIGH_VACANT_BUILDING_FINES</td><td>Action Required</td><td>Outstanding vacant building fines exceed $5,000</td></tr>
   </tbody>
 </table>
 </div>

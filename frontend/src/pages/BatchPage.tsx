@@ -6,13 +6,7 @@ import {
   getBatch,
 } from '../api/civitas'
 import type { BatchSSEEvent, BatchItemStatus } from '../api/civitas'
-
-const tierColors: Record<string, string> = {
-  LOW: 'bg-emerald-50 text-emerald-600',
-  MODERATE: 'bg-yellow-50 text-yellow-600',
-  ELEVATED: 'bg-orange-50 text-orange-600',
-  HIGH: 'bg-red-50 text-red-600',
-}
+import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
 
 type Phase = 'upload' | 'processing' | 'results'
 
@@ -31,7 +25,7 @@ export default function BatchPage() {
   const [completedCount, setCompletedCount] = useState(0)
   const [failedCount, setFailedCount] = useState(0)
   const [avgScore, setAvgScore] = useState<number | null>(null)
-  const [tierDist, setTierDist] = useState<Record<string, number>>({})
+  const [levelDist, setLevelDist] = useState<Record<string, number>>({})
   const esRef = useRef<EventSource | null>(null)
 
   // Load existing batch from URL params
@@ -45,8 +39,8 @@ export default function BatchPage() {
           setItems(batch.items)
           setCompletedCount(batch.completed_count)
           setFailedCount(batch.failed_count)
-          setAvgScore(batch.avg_risk_score ?? null)
-          setTierDist(batch.tier_distribution)
+          setAvgScore(batch.avg_activity_score ?? null)
+          setLevelDist(batch.level_distribution)
           setPhase('results')
         })
         .catch(() => setError('Batch not found'))
@@ -100,15 +94,15 @@ export default function BatchPage() {
   const handleSSEDone = useCallback(() => {
     // Compute summary stats from items
     const scores: number[] = []
-    const tiers: Record<string, number> = {}
+    const levels: Record<string, number> = {}
     // Use latest items from state via functional pattern
     setItems((current) => {
       for (const it of current) {
-        if (it.risk_score != null) scores.push(it.risk_score)
-        if (it.risk_tier) tiers[it.risk_tier] = (tiers[it.risk_tier] || 0) + 1
+        if (it.activity_score != null) scores.push(it.activity_score)
+        if (it.activity_level) levels[it.activity_level] = (levels[it.activity_level] || 0) + 1
       }
       setAvgScore(scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null)
-      setTierDist(tiers)
+      setLevelDist(levels)
       setPhase('results')
       return current
     })
@@ -136,8 +130,8 @@ export default function BatchPage() {
                   ...it,
                   status: 'completed',
                   report_id: data.report_id,
-                  risk_score: data.risk_score,
-                  risk_tier: data.risk_tier,
+                  activity_score: data.activity_score,
+                  activity_level: data.activity_level,
                   flag_count: data.flag_count,
                 }
               : it
@@ -263,34 +257,37 @@ export default function BatchPage() {
 
             {/* Items table */}
             <div className="space-y-2">
-              {items.map((it) => (
-                <div
-                  key={it.row_index}
-                  className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5"
-                >
-                  <div className="flex items-center gap-3">
-                    <StatusIcon status={it.status} />
-                    <span className="text-sm text-gray-700">{it.input_address}</span>
+              {items.map((it) => {
+                const levelCfg = it.activity_level ? LEVEL_CONFIG[it.activity_level as ActivityLevel] : null
+                return (
+                  <div
+                    key={it.row_index}
+                    className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5"
+                  >
+                    <div className="flex items-center gap-3">
+                      <StatusIcon status={it.status} />
+                      <span className="text-sm text-gray-700">{it.input_address}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {it.activity_score != null && (
+                        <span className="text-xs font-mono text-gray-600">
+                          Score: {it.activity_score}
+                        </span>
+                      )}
+                      {it.activity_level && levelCfg && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${levelCfg.bgAccent}`}>
+                          {it.activity_level}
+                        </span>
+                      )}
+                      {it.error_message && (
+                        <span className="text-xs text-red-500" title={it.error_message}>
+                          Error
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {it.risk_score != null && (
-                      <span className="text-xs font-mono text-gray-600">
-                        Score: {it.risk_score}
-                      </span>
-                    )}
-                    {it.risk_tier && (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tierColors[it.risk_tier] ?? ''}`}>
-                        {it.risk_tier}
-                      </span>
-                    )}
-                    {it.error_message && (
-                      <span className="text-xs text-red-500" title={it.error_message}>
-                        Error
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
@@ -321,18 +318,19 @@ export default function BatchPage() {
             </div>
           </div>
 
-          {/* Tier distribution */}
-          {Object.keys(tierDist).length > 0 && (
+          {/* Level distribution */}
+          {Object.keys(levelDist).length > 0 && (
             <div className="flex gap-2">
-              {['LOW', 'MODERATE', 'ELEVATED', 'HIGH'].map((tier) => {
-                const count = tierDist[tier]
+              {(['QUIET', 'TYPICAL', 'ACTIVE', 'COMPLEX'] as ActivityLevel[]).map((level) => {
+                const count = levelDist[level]
                 if (!count) return null
+                const cfg = LEVEL_CONFIG[level]
                 return (
                   <span
-                    key={tier}
-                    className={`text-xs font-bold px-3 py-1 rounded-full ${tierColors[tier] ?? ''}`}
+                    key={level}
+                    className={`text-xs font-bold px-3 py-1 rounded-full ${cfg.bgAccent}`}
                   >
-                    {tier}: {count}
+                    {level}: {count}
                   </span>
                 )
               })}
@@ -347,40 +345,43 @@ export default function BatchPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">#</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Address</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Score</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Tier</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Flags</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Level</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Findings</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((it) => (
-                  <tr
-                    key={it.row_index}
-                    onClick={() => it.report_id && navigate(`/search?report=${it.report_id}`)}
-                    className={`border-b border-gray-100 transition-colors ${
-                      it.report_id
-                        ? 'cursor-pointer hover:bg-gray-50'
-                        : ''
-                    }`}
-                  >
-                    <td className="px-4 py-3 text-gray-400">{it.row_index + 1}</td>
-                    <td className="px-4 py-3 text-gray-900">{it.input_address}</td>
-                    <td className="px-4 py-3 font-mono text-gray-700">
-                      {it.risk_score ?? '--'}
-                    </td>
-                    <td className="px-4 py-3">
-                      {it.risk_tier ? (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tierColors[it.risk_tier] ?? ''}`}>
-                          {it.risk_tier}
-                        </span>
-                      ) : '--'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{it.flag_count ?? '--'}</td>
-                    <td className="px-4 py-3">
-                      <StatusIcon status={it.status} />
-                    </td>
-                  </tr>
-                ))}
+                {items.map((it) => {
+                  const levelCfg = it.activity_level ? LEVEL_CONFIG[it.activity_level as ActivityLevel] : null
+                  return (
+                    <tr
+                      key={it.row_index}
+                      onClick={() => it.report_id && navigate(`/search?report=${it.report_id}`)}
+                      className={`border-b border-gray-100 transition-colors ${
+                        it.report_id
+                          ? 'cursor-pointer hover:bg-gray-50'
+                          : ''
+                      }`}
+                    >
+                      <td className="px-4 py-3 text-gray-400">{it.row_index + 1}</td>
+                      <td className="px-4 py-3 text-gray-900">{it.input_address}</td>
+                      <td className="px-4 py-3 font-mono text-gray-700">
+                        {it.activity_score ?? '--'}
+                      </td>
+                      <td className="px-4 py-3">
+                        {it.activity_level && levelCfg ? (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${levelCfg.bgAccent}`}>
+                            {it.activity_level}
+                          </span>
+                        ) : '--'}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{it.flag_count ?? '--'}</td>
+                      <td className="px-4 py-3">
+                        <StatusIcon status={it.status} />
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -395,7 +396,7 @@ export default function BatchPage() {
               setCompletedCount(0)
               setFailedCount(0)
               setAvgScore(null)
-              setTierDist({})
+              setLevelDist({})
               setError('')
             }}
             className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition-colors"

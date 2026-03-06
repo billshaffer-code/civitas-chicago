@@ -21,6 +21,7 @@ from fastapi.responses import StreamingResponse
 
 from backend.app.database import get_conn
 from backend.app.dependencies import get_current_user
+from backend.app.constants import TIER_LABELS
 from backend.app.schemas.batch import (
     BatchItemStatus,
     BatchListItem,
@@ -216,7 +217,7 @@ async def stream_batch(
 
                 completed += 1
 
-                yield f"data: {json.dumps({'type': 'completed', 'row_index': row_index, 'report_id': report['report_id'], 'risk_score': report['risk_score'], 'risk_tier': report['risk_tier'], 'flag_count': len(report['triggered_flags'])})}\n\n"
+                yield f"data: {json.dumps({'type': 'completed', 'row_index': row_index, 'report_id': report['report_id'], 'activity_score': report['activity_score'], 'activity_level': report['activity_level'], 'flag_count': len(report['triggered_flags'])})}\n\n"
 
             except Exception as exc:
                 error_msg = str(exc)[:500]
@@ -326,11 +327,12 @@ async def get_batch(
 
     item_list = []
     scores = []
-    tiers: dict[str, int] = {}
+    levels: dict[str, int] = {}
 
     for it in items:
-        risk_score = it["risk_score"]
-        risk_tier = it["risk_tier"]
+        score = it["risk_score"]
+        raw_level = it["risk_tier"]
+        level = TIER_LABELS.get(raw_level, raw_level) if raw_level else None
         fc = it["flag_count"] if it["flag_count"] is not None else None
 
         item_list.append(
@@ -339,17 +341,17 @@ async def get_batch(
                 input_address=it["input_address"],
                 status=it["status"],
                 report_id=str(it["report_id"]) if it["report_id"] else None,
-                risk_score=risk_score,
-                risk_tier=risk_tier,
+                activity_score=score,
+                activity_level=level,
                 flag_count=fc,
                 error_message=it["error_message"],
             )
         )
 
-        if risk_score is not None:
-            scores.append(risk_score)
-        if risk_tier:
-            tiers[risk_tier] = tiers.get(risk_tier, 0) + 1
+        if score is not None:
+            scores.append(score)
+        if level:
+            levels[level] = levels.get(level, 0) + 1
 
     avg_score = round(sum(scores) / len(scores), 1) if scores else None
 
@@ -363,6 +365,6 @@ async def get_batch(
         created_at=batch["created_at"].isoformat() if hasattr(batch["created_at"], "isoformat") else str(batch["created_at"]),
         completed_at=batch["completed_at"].isoformat() if batch["completed_at"] and hasattr(batch["completed_at"], "isoformat") else None,
         items=item_list,
-        avg_risk_score=avg_score,
-        tier_distribution=tiers,
+        avg_activity_score=avg_score,
+        level_distribution=levels,
     )

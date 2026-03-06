@@ -149,7 +149,7 @@ async def test_get_batch_found(client):
             "report_id": UUID("11111111-1111-1111-1111-111111111111"),
             "error_message": None,
             "risk_score": 55,
-            "risk_tier": "ELEVATED",
+            "risk_tier": "ACTIVE",
             "flag_count": 2,
         },
         {
@@ -159,7 +159,7 @@ async def test_get_batch_found(client):
             "report_id": UUID("22222222-2222-2222-2222-222222222222"),
             "error_message": None,
             "risk_score": 10,
-            "risk_tier": "LOW",
+            "risk_tier": "QUIET",
             "flag_count": 0,
         },
     ]
@@ -187,9 +187,9 @@ async def test_get_batch_found(client):
     assert data["batch_id"] == MOCK_BATCH_ID
     assert data["total_count"] == 2
     assert len(data["items"]) == 2
-    assert data["avg_risk_score"] == 32.5
-    assert data["tier_distribution"]["ELEVATED"] == 1
-    assert data["tier_distribution"]["LOW"] == 1
+    assert data["avg_activity_score"] == 32.5
+    assert data["level_distribution"]["ACTIVE"] == 1
+    assert data["level_distribution"]["QUIET"] == 1
 
 
 # ── My Batches Test ──────────────────────────────────────────────────────────

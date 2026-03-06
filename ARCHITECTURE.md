@@ -4,7 +4,7 @@
 
 CIVITAS is built on a single overriding principle: **determinism first**.
 
-All risk logic is expressed in SQL. No risk factor is invented, inferred, or computed outside of the database. Claude receives structured findings as input and produces a human-readable narrative as output — it never scores, never flags, and never overrides the rule engine. This makes every report auditable, reproducible, and explainable without reference to any AI system.
+All scoring logic is expressed in SQL. No finding is invented, inferred, or computed outside of the database. Claude receives structured findings as input and produces a human-readable narrative as output — it never scores, never flags, and never overrides the rule engine. This makes every report auditable, reproducible, and explainable without reference to any AI system.
 
 ---
 
@@ -39,7 +39,8 @@ All risk logic is expressed in SQL. No risk factor is invented, inferred, or com
 │  /api/v1/auth/*               AuthService (JWT + bcrypt)    │
 │  /api/v1/property/lookup      AddressService (4-tier)       │
 │  /api/v1/report/generate      RuleEngineService             │
-│  /api/v1/report/my-reports    ClaudeAIService               │
+│  /api/v1/report/my-reports    ReportService                 │
+│  /api/v1/batch/*              ClaudeAIService               │
 │                               PDFService (WeasyPrint)       │
 │                               get_current_user dependency   │
 └──────────────────────┬──────────────────────────────────────┘
@@ -49,9 +50,11 @@ All risk logic is expressed in SQL. No risk factor is invented, inferred, or com
 │                React Frontend (Vite + React Router)          │
 │                                                             │
 │  /login → /signup → /dashboard → /search                    │
+│  /batch → /compare                                          │
 │  AuthContext   ProtectedRoute   AppLayout                   │
-│  PropertySearch → LookupResult → RiskReport                 │
-│  ScoreGauge  FlagBadge  RecordsTables  PDF download          │
+│  PropertySearch → LookupResult → PropertyReport             │
+│  ActivityBar  FindingCard  RecordsTables  PDF download       │
+│  BatchPage (CSV upload + SSE)  ComparePage (side-by-side)   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -86,9 +89,11 @@ Every fact table carries `source_dataset` and `ingestion_batch_id` for full prov
 
 **`ingestion_batch`** — Records every ETL run: source dataset, file path, start time, completion time, row count, and status (`running` / `complete` / `failed`).
 
-**`rule_config`** — Parameterizes all 15 risk rules. Each row has a `rule_code`, `category` (A/B/C/D), `description`, `severity_score`, `is_active` flag, and `version`. Deactivating or reweighting a rule requires only an `UPDATE` to this table — no code changes.
+**`rule_config`** — Parameterizes all 15 rules. Each row has a `rule_code`, `category` (A/B/C/D), `description`, `severity_score`, `is_active` flag, and `version`. Categories are mapped to action groups at the presentation layer (A→Review Recommended, B→Worth Noting, C→Informational, D→Action Required). Deactivating or reweighting a rule requires only an `UPDATE` to this table — no code changes.
 
-**`report_audit`** — Logs every report generation: query address, matched location, match confidence, risk score, risk tier, triggered flags (JSONB), full report JSON, `user_id` (nullable FK to `users`), and timestamp.
+**`report_audit`** — Logs every report generation: query address, matched location, match confidence, activity score, activity level, triggered findings (JSONB), full report JSON, `user_id` (nullable FK to `users`), and timestamp.
+
+**`batch_job`** / **`batch_job_item`** — Track batch/portfolio analysis jobs. A batch job records the uploaded CSV metadata, status, and user. Each item tracks an individual address within the batch, linking to its `location_sk` and `report_audit` row upon completion.
 
 ---
 
@@ -116,12 +121,13 @@ Evaluates each of the 15 rules against `view_property_summary`. Implemented as a
 - Applies the rule's threshold predicate
 - Returns `location_sk`, `flag_code`, and `supporting_count`
 - Joins to `rule_config` to attach `category`, `description`, and `severity_score`
+- Computes `action_group` via a `CASE` on category (A→Review Recommended, B→Worth Noting, C→Informational, D→Action Required)
 
-Only triggered flags appear in the output. Non-firing rules produce no rows.
+Only triggered findings appear in the output. Non-firing rules produce no rows.
 
 ### Layer 3 — `view_property_score`
 
-Groups `view_property_flags` by `location_sk`, sums `severity_score` to produce `raw_score`, assigns a `risk_tier` via a `CASE` expression, and aggregates triggered flag codes into an array.
+Groups `view_property_flags` by `location_sk`, sums `severity_score` to produce `raw_score`, assigns an `activity_level` via a `CASE` expression (QUIET/TYPICAL/ACTIVE/COMPLEX), and aggregates triggered flag codes into an array.
 
 **No application code participates in scoring.** The API reads this view — it does not compute.
 
@@ -221,10 +227,11 @@ Builds a structured JSON payload from the rule engine output and sends it to the
 **Max tokens:** 800
 
 **System prompt constraints (enforced):**
+- Act as a municipal data analyst, not a risk assessor
 - Only cite structured findings provided in the input JSON
+- Use neutral, informational language — avoid words like "risk", "danger", "alarming"
 - Do not speculate, invent records, or provide legal advice
 - Do not recommend for or against any transaction
-- Use formal, professionally cautious language
 - Close every summary with the required legal disclaimer
 
 Claude never sees raw database records — only the pre-structured payload built by the rule engine service.
@@ -233,16 +240,16 @@ Claude never sees raw database records — only the pre-structured payload built
 
 Uses **WeasyPrint** with a Jinja2 HTML template (`backend/app/templates/report.html`). The full report dict is passed as template context. WeasyPrint renders HTML + CSS to PDF in memory and returns bytes — no temporary files on the hot path.
 
-The PDF uses an Apple-inspired light theme matching the frontend: white background, blue-600 accent header, light-tinted flag cards by category, clean gray table borders, and system font stack.
+The PDF uses an Apple-inspired light theme matching the frontend: white background, blue-600 accent header, finding cards colored by action group (blue-scale with amber for Action Required), clean gray table borders, and system font stack. A `?view=client` query parameter generates a simplified client-facing version that hides the numeric score.
 
 ---
 
 ## Frontend
 
-The React frontend uses **React Router** with four routes, all behind authentication:
+The React frontend uses **React Router** with six routes, all behind authentication:
 
 ```
-/login → /signup → /dashboard → /search
+/login → /signup → /dashboard → /search → /batch → /compare
 ```
 
 ### Authentication Layer
@@ -259,7 +266,7 @@ The React frontend uses **React Router** with four routes, all behind authentica
 
 **`SignupPage`** — Registration form (name, email, password, confirm password, optional company) with client-side validation (min 8 chars, match check).
 
-**`DashboardPage`** — Landing page after login. Shows welcome greeting, "Run Property Search" action card, total reports count, and a recent reports list. Re-fetches on every navigation via `location.key`.
+**`DashboardPage`** — Landing page after login. Shows welcome greeting, action cards (Property Search, Portfolio Analysis, Compare Reports), total reports count, recent reports list, and recent batches. Re-fetches on every navigation via `location.key`.
 
 **`SearchPage`** — The full property search and report flow (extracted from the original `App.tsx` state machine):
 
@@ -267,19 +274,26 @@ The React frontend uses **React Router** with four routes, all behind authentica
 search → lookup-loading → lookup-done → report-loading → report-done
 ```
 
-**`AppLayout`** — Shared header with CIVITAS branding, Dashboard/Search nav links, user name, and Sign Out button. Renders an `<Outlet />` for nested route content.
+**`BatchPage`** — CSV upload for portfolio analysis. Supports drag-and-drop, SSE streaming of processing progress, and a results dashboard with level distribution and sortable results table.
+
+**`ComparePage`** — Side-by-side report comparison. Select two reports from history and view score deltas, finding differences (shared, only-in-A, only-in-B), and AI summary comparison.
+
+**`AppLayout`** — Shared header with CIVITAS branding, Dashboard/Search/Batch/Compare nav links, user name, and Sign Out button. Renders an `<Outlet />` for nested route content.
 
 ### Report View Components
 
-**`RiskReport`** — Full report view with two-column layout:
-- `ScoreGauge` — large score number, color-coded progress bar and tier badge
+**`PropertyReport`** — Full report view with client/detail view toggle:
+- `ActivityBar` — horizontal segmented bar with score marker, four labeled segments (QUIET/TYPICAL/ACTIVE/COMPLEX) in blue-scale
 - `PropertyMap` — Leaflet map centered on the property location
-- `FlagBadge[]` — one card per triggered flag, color-coded by category (A=red, B=orange, C=yellow, D=blue)
+- `FindingCard[]` — one card per triggered finding, colored by action group (blue-scale with amber for Action Required), grouped by ACTION_ORDER
 - AI narrative — rendered as markdown via `react-markdown` + Tailwind Typography
 - Six tabbed data tables (violations, inspections, permits, 311 requests, tax liens, vacant buildings)
+- Client view hides numeric score, shows clean level badge only
 - PDF download — calls `POST /api/v1/report/generate?format=pdf`, triggers browser download
 
-**Theme:** Apple-inspired light design (white/gray cards, blue-600 accents, clean shadows, `#f5f5f7` background).
+**`ReportComparison`** — Side-by-side diff component showing score deltas (neutral blue), finding differences, record count changes, and AI summary comparison. Used by `ComparePage`.
+
+**Theme:** Apple-inspired light design (white/gray cards, blue-600 accents, clean shadows, `#f5f5f7` background). Blue-scale palette throughout — no red/orange/yellow severity colors.
 
 ### Deployment
 
@@ -313,6 +327,9 @@ Short-lived access tokens (30 min) limit exposure if a token is compromised. Ref
 **Why localStorage for tokens?**
 For this MVP, localStorage provides the simplest cross-tab persistence. The trade-off (XSS vulnerability) is acceptable given that the app doesn't handle third-party content. A production deployment could migrate to httpOnly cookies.
 
+**Why neutral terminology instead of "risk" language?**
+CIVITAS is an informational tool, not a risk rating agency. Using alarming terms like "risk score" and "HIGH risk" could create liability exposure and distort how users interpret municipal data. The neutral vocabulary (activity score, findings, QUIET/TYPICAL/ACTIVE/COMPLEX) presents the same deterministic data without implied judgment, letting attorneys and title professionals draw their own conclusions. The underlying SQL rules and scoring weights are unchanged — this is purely a presentation-layer decision.
+
 ---
 
 ## Data Flow: Single Report Request
@@ -345,7 +362,7 @@ POST /api/v1/report/generate  [Bearer token required]
   generate_narrative(payload)             ← Anthropic API
         │
         ▼
-  Assemble ReportResponse
+  Assemble ReportResponse (activity_score, activity_level, findings)
   INSERT report_audit (with user_id)
         │
   ┌─────┴──────┐
@@ -359,18 +376,43 @@ response   WeasyPrint
 
 ## Testing
 
-48 tests in `backend/tests/`, run with `python3 -m pytest backend/tests/ -v`.
+126 total tests across backend and frontend.
+
+### Backend (63 tests)
+
+Run with `python3 -m pytest backend/tests/ -v`.
 
 | Test File | Count | Coverage |
 |-----------|-------|----------|
-| `test_address.py` | 8 | PIN normalization, address result building |
+| `test_address.py` | 12 | PIN normalization, address result building, tier 2 resolution |
 | `test_auth.py` | 14 | Password hashing, JWT encode/decode, register, login, refresh, /me, protected routes |
-| `test_claude_ai.py` | 5 | Payload structure, truncation, Anthropic API call |
-| `test_rule_engine.py` | 5 | Score/flags queries, data freshness formatting |
-| `test_pdf.py` | 7 | PDF generation, all 4 risk tiers, empty records |
+| `test_claude_ai.py` | 5 | Payload structure (activity_score/level/action_group), truncation, Anthropic API call |
+| `test_rule_engine.py` | 5 | Score/flags queries (activity_level), data freshness formatting |
+| `test_pdf.py` | 7 | PDF generation, all 4 activity levels (QUIET/TYPICAL/ACTIVE/COMPLEX), empty records |
+| `test_report_service.py` | 3 | Report generation, missing location, audit storage |
+| `test_batch.py` | 8 | CSV upload, validation, batch retrieval, level distribution |
 | `test_api_health.py` | 1 | Health endpoint |
 | `test_api_property.py` | 3 | Lookup, no-match, autocomplete |
 | `test_api_report.py` | 5 | Report generation, retrieval, history |
+
+### Frontend (63 tests)
+
+Run with `cd frontend && npm run test:run`.
+
+| Test File | Count | Coverage |
+|-----------|-------|----------|
+| `AuthContext.test.tsx` | 8 | Auth state, login, register, logout |
+| `LoginPage.test.tsx` | 6 | Form rendering, auth flow, error handling |
+| `SignupPage.test.tsx` | 7 | Registration, validation, error states |
+| `DashboardPage.test.tsx` | 6 | Welcome, loading, report cards, navigation |
+| `PropertySearch.test.tsx` | 6 | Input, submit, autocomplete, keyboard nav |
+| `AppLayout.test.tsx` | 4 | Header, nav, sign out |
+| `ProtectedRoute.test.tsx` | 3 | Auth guard, redirect, children rendering |
+| `ActivityBar.test.tsx` | 4 | Score display, level label, all activity levels |
+| `FindingCard.test.tsx` | 4 | Flag code, action group, border colors, fallback |
+| `ScoreGauge.test.tsx` | 4 | Legacy component tests |
+| `FlagBadge.test.tsx` | 4 | Legacy component tests |
+| `civitas.test.ts` | 7 | API client, auth interceptors |
 
 Tests use `FakeConnection` (mock asyncpg), `httpx.AsyncClient`, `unittest.mock.AsyncMock`, and an autouse `mock_auth` fixture that overrides `get_current_user` for all non-auth tests. No running database required.
 
@@ -381,5 +423,5 @@ Tests use `FakeConnection` (mock asyncpg), `httpx.AsyncClient`, `unittest.mock.A
 - **Horizontal API scaling:** The API is stateless. Multiple FastAPI instances behind a load balancer require only a shared PostgreSQL connection pool.
 - **ETL scheduling:** Current scripts are run manually. A simple cron job or Airflow DAG could refresh each dataset on a weekly cadence.
 - **Multi-city expansion:** The schema is city-agnostic (`city_id` on `dim_location`). Adding a second city requires new ETL scripts and address standardization tuning — the rule engine and API are unchanged.
-- **Portfolio analysis:** The rule engine views accept any `location_sk`. A batch endpoint could accept a list of addresses and return scores for all of them in a single response.
+- **Portfolio analysis:** Implemented — CSV upload via `/api/v1/batch/upload` processes up to 100 addresses with SSE progress streaming. Results include per-property activity scores and a portfolio-level summary with level distribution.
 - **Production auth hardening:** Migrate tokens to httpOnly cookies, add rate limiting on auth endpoints, add password reset flow, consider OAuth2 for enterprise SSO.

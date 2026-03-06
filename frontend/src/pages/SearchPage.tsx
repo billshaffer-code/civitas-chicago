@@ -1,18 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import PropertySearch from '../components/PropertySearch'
-import RiskReport from '../components/RiskReport'
+import PropertyReport from '../components/PropertyReport'
 import { lookupProperty, generateReport, getReportHistory, getReport } from '../api/civitas'
 import type { LookupRequest, LookupResponse, ReportResponse, ReportHistoryItem } from '../api/civitas'
+import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
 
 type Phase = 'search' | 'lookup-loading' | 'lookup-done' | 'report-loading' | 'report-done'
-
-const tierColors: Record<string, string> = {
-  LOW: 'bg-emerald-50 text-emerald-600',
-  MODERATE: 'bg-yellow-50 text-yellow-600',
-  ELEVATED: 'bg-orange-50 text-orange-600',
-  HIGH: 'bg-red-50 text-red-600',
-}
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -165,7 +159,7 @@ export default function SearchPage() {
                     className="mt-4 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-200 disabled:text-gray-400
                                text-white font-semibold px-6 py-2 rounded-lg transition-colors text-sm"
                   >
-                    {phase === 'report-loading' ? 'Generating report...' : 'Generate Risk Report'}
+                    {phase === 'report-loading' ? 'Generating report...' : 'Generate Report'}
                   </button>
 
                   {/* Report History */}
@@ -178,28 +172,31 @@ export default function SearchPage() {
                         </span>
                       </h4>
                       <div className="space-y-2">
-                        {history.map(h => (
-                          <button
-                            key={h.report_id}
-                            onClick={() => handleLoadHistorical(h.report_id)}
-                            disabled={phase === 'report-loading'}
-                            className="w-full flex items-center justify-between bg-gray-50 hover:bg-gray-100
-                                       border border-gray-200 rounded-lg px-4 py-2.5 text-left transition-colors
-                                       disabled:opacity-50"
-                          >
-                            <span className="text-xs text-gray-500">
-                              {new Date(h.generated_at).toLocaleString()}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-mono text-gray-700">
-                                Score: {h.risk_score}
+                        {history.map(h => {
+                          const levelCfg = LEVEL_CONFIG[h.activity_level as ActivityLevel]
+                          return (
+                            <button
+                              key={h.report_id}
+                              onClick={() => handleLoadHistorical(h.report_id)}
+                              disabled={phase === 'report-loading'}
+                              className="w-full flex items-center justify-between bg-gray-50 hover:bg-gray-100
+                                         border border-gray-200 rounded-lg px-4 py-2.5 text-left transition-colors
+                                         disabled:opacity-50"
+                            >
+                              <span className="text-xs text-gray-500">
+                                {new Date(h.generated_at).toLocaleString()}
                               </span>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tierColors[h.risk_tier] ?? 'bg-gray-100 text-gray-500'}`}>
-                                {h.risk_tier}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-gray-700">
+                                  Score: {h.activity_score}
+                                </span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${levelCfg?.bgAccent ?? 'bg-gray-100 text-gray-500'}`}>
+                                  {h.activity_level}
+                                </span>
+                              </div>
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
                   )}
@@ -228,7 +225,7 @@ export default function SearchPage() {
 
       {/* Full report */}
       {isReportView && report && (
-        <RiskReport
+        <PropertyReport
           report={report}
           locationSk={lookup?.location_sk ?? 0}
           address={lastReq.address}

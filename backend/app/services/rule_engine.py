@@ -20,7 +20,7 @@ async def get_score(location_sk: int) -> dict[str, Any]:
     async with get_conn() as conn:
         row = await conn.fetchrow(
             """
-            SELECT raw_score, risk_tier, flag_count, triggered_flags
+            SELECT raw_score, activity_level, flag_count, triggered_flags
             FROM view_property_score
             WHERE location_sk = $1
             """,
@@ -28,7 +28,7 @@ async def get_score(location_sk: int) -> dict[str, Any]:
         )
 
     if not row:
-        return {"raw_score": 0, "risk_tier": "LOW", "flag_count": 0, "triggered_flags": []}
+        return {"raw_score": 0, "activity_level": "QUIET", "flag_count": 0, "triggered_flags": []}
 
     return dict(row)
 
@@ -41,7 +41,8 @@ async def get_flags(location_sk: int) -> list[dict[str, Any]]:
     async with get_conn() as conn:
         rows = await conn.fetch(
             """
-            SELECT flag_code, category, description, severity_score, supporting_count
+            SELECT flag_code, category, description, severity_score,
+                   supporting_count, action_group
             FROM view_property_flags
             WHERE location_sk = $1
             ORDER BY category, severity_score DESC

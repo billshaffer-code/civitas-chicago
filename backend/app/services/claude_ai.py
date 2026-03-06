@@ -1,8 +1,8 @@
 """
 CIVITAS – Claude AI narrative generation service.
 
-Claude receives structured JSON containing property metadata, triggered flags,
-risk score, and supporting records. It returns only a professional narrative.
+Claude receives structured JSON containing property metadata, triggered findings,
+activity score, and supporting records. It returns only a professional narrative.
 
 Constraints (enforced via system prompt):
 - Never invent missing records
@@ -21,29 +21,30 @@ from datetime import datetime
 import anthropic
 
 from backend.app.config import settings
+from backend.app.constants import CATEGORY_ACTIONS
 
 log = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """\
-You are a municipal risk analyst for CIVITAS, preparing property risk summaries \
+You are a municipal data analyst for CIVITAS, preparing property activity summaries \
 for real estate professionals.
 
 STRICT RULES:
 1. Only cite facts explicitly provided in the structured JSON input.
 2. Do NOT invent, infer, or speculate about records not present in the input.
 3. Do NOT provide legal advice, closing recommendations, or transaction guidance.
-4. Do NOT recalculate the risk score or override triggered flag codes.
-5. Do NOT make probabilistic or predictive statements about future risk.
-6. Reference specific FLAG_CODEs and their underlying data counts.
-7. Use formal, professionally cautious language.
+4. Do NOT recalculate the activity score or override triggered findings.
+5. Do NOT make probabilistic or predictive statements about future outcomes.
+6. Reference specific finding codes and their underlying data counts.
+7. Use formal, professionally neutral language. Avoid alarming or sensational terms.
 8. Close every summary with this exact sentence:
    "This report does not constitute legal advice or a title examination."
 
 OUTPUT STRUCTURE (3–5 paragraphs):
-- Para 1: Property overview, risk tier, risk score.
-- Para 2: Active enforcement findings (Cat A/B flags), or note absence.
-- Para 3: Regulatory friction findings (Cat C flags), or note absence.
-- Para 4: Tax and financial risk findings (Cat D flags), or note absence.
+- Para 1: Property overview, activity level, activity score.
+- Para 2: Items requiring review (Review Recommended / Worth Noting findings), or note absence.
+- Para 3: Informational context (Informational findings), or note absence.
+- Para 4: Items requiring action (Action Required findings — tax/financial), or note absence.
 - Para 5: Data scope statement and required disclaimer.
 """
 
@@ -56,7 +57,7 @@ async def generate_narrative(payload: dict) -> str:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
     user_msg = (
-        "Generate a CIVITAS property risk narrative based on the following "
+        "Generate a CIVITAS property activity summary based on the following "
         "structured findings:\n\n"
         "```json\n"
         + json.dumps(payload, indent=2, default=str)
@@ -95,12 +96,13 @@ def build_claude_payload(
             "state": "IL",
             "match_confidence": match_confidence,
         },
-        "risk_score": score.get("raw_score", 0),
-        "risk_tier": score.get("risk_tier", "LOW"),
+        "activity_score": score.get("raw_score", 0),
+        "activity_level": score.get("activity_level", "QUIET"),
         "triggered_flags": [
             {
                 "flag_code": f["flag_code"],
                 "category": f["category"],
+                "action_group": f.get("action_group") or CATEGORY_ACTIONS.get(f["category"], ""),
                 "description": f["description"],
                 "severity_score": f["severity_score"],
                 "supporting_count": f["supporting_count"],

@@ -20,8 +20,8 @@ class BatchItemStatus(BaseModel):
     input_address: str
     status: str
     report_id: Optional[str] = None
-    risk_score: Optional[int] = None
-    risk_tier: Optional[str] = None
+    activity_score: Optional[int] = None
+    activity_level: Optional[str] = None
     flag_count: Optional[int] = None
     error_message: Optional[str] = None
 
@@ -36,8 +36,8 @@ class BatchSummary(BaseModel):
     created_at: str
     completed_at: Optional[str] = None
     items: List[BatchItemStatus]
-    avg_risk_score: Optional[float] = None
-    tier_distribution: Dict[str, int] = {}
+    avg_activity_score: Optional[float] = None
+    level_distribution: Dict[str, int] = {}
 
 
 class BatchListItem(BaseModel):

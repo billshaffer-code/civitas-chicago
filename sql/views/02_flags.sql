@@ -16,7 +16,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.active_violation_count                        AS supporting_count
+    s.active_violation_count                        AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'ACTIVE_MUNICIPAL_VIOLATION' AND rc.is_active = TRUE
@@ -38,7 +40,9 @@ SELECT
         WHERE fv2.location_sk    = s.location_sk
           AND UPPER(fv2.violation_status) = 'OPEN'
           AND fv2.violation_date  < NOW() - INTERVAL '180 days'
-    )                                               AS supporting_count
+    )                                               AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'AGED_ENFORCEMENT_RISK' AND rc.is_active = TRUE
@@ -53,7 +57,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.failed_violation_count                        AS supporting_count
+    s.failed_violation_count                        AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'SEVERE_ENFORCEMENT_ACTION' AND rc.is_active = TRUE
@@ -68,7 +74,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.demolition_permit_count                     AS supporting_count
+    s.demolition_permit_count                     AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'DEMOLITION_PERMIT_ISSUED' AND rc.is_active = TRUE
@@ -83,7 +91,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.vacant_violation_count                      AS supporting_count
+    s.vacant_violation_count                      AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'VACANT_BUILDING_VIOLATION' AND rc.is_active = TRUE
@@ -102,7 +112,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.total_violations                              AS supporting_count
+    s.total_violations                              AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'REPEAT_COMPLIANCE_ISSUE' AND rc.is_active = TRUE
@@ -117,7 +129,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.failed_inspection_count_24mo                  AS supporting_count
+    s.failed_inspection_count_24mo                  AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'ABOVE_NORMAL_INSPECTION_FAIL' AND rc.is_active = TRUE
@@ -136,7 +150,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.delayed_permit_count                          AS supporting_count
+    s.delayed_permit_count                          AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'PERMIT_PROCESSING_DELAY' AND rc.is_active = TRUE
@@ -151,7 +167,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.sr_count_12mo                                 AS supporting_count
+    s.sr_count_12mo                                 AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'ELEVATED_DISTRESS_SIGNALS' AND rc.is_active = TRUE
@@ -166,7 +184,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.violations_this_year                          AS supporting_count
+    s.violations_this_year                          AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'ENFORCEMENT_INTENSITY_INCREASE' AND rc.is_active = TRUE
@@ -186,7 +206,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.total_lien_events                             AS supporting_count
+    s.total_lien_events                             AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'ACTIVE_TAX_LIEN' AND rc.is_active = TRUE
@@ -201,7 +223,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.total_lien_events                             AS supporting_count
+    s.total_lien_events                             AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'AGED_TAX_LIEN' AND rc.is_active = TRUE
@@ -217,7 +241,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.total_lien_events                             AS supporting_count
+    s.total_lien_events                             AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'MULTIPLE_LIEN_EVENTS' AND rc.is_active = TRUE
@@ -232,7 +258,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.total_lien_events                             AS supporting_count
+    s.total_lien_events                             AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'HIGH_VALUE_LIEN' AND rc.is_active = TRUE
@@ -247,7 +275,9 @@ SELECT
     rc.category,
     rc.description,
     rc.severity_score,
-    s.vacant_violation_count                      AS supporting_count
+    s.vacant_violation_count                      AS supporting_count,
+    CASE rc.category WHEN 'C' THEN 'Informational' WHEN 'B' THEN 'Worth Noting'
+      WHEN 'A' THEN 'Review Recommended' WHEN 'D' THEN 'Action Required' END AS action_group
 FROM view_property_summary s
 JOIN rule_config rc
     ON rc.rule_code = 'HIGH_VACANT_BUILDING_FINES' AND rc.is_active = TRUE

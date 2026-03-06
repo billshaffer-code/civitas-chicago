@@ -17,10 +17,10 @@ class TestGeneratePdf:
         result = generate_pdf(sample_report)
         assert result[:5] == b"%PDF-"
 
-    @pytest.mark.parametrize("tier", ["LOW", "MODERATE", "ELEVATED", "HIGH"])
-    def test_all_tiers_render(self, sample_report, tier):
-        sample_report["risk_tier"] = tier
-        sample_report["risk_score"] = {"LOW": 10, "MODERATE": 35, "ELEVATED": 55, "HIGH": 85}[tier]
+    @pytest.mark.parametrize("level", ["QUIET", "TYPICAL", "ACTIVE", "COMPLEX"])
+    def test_all_levels_render(self, sample_report, level):
+        sample_report["activity_level"] = level
+        sample_report["activity_score"] = {"QUIET": 10, "TYPICAL": 35, "ACTIVE": 55, "COMPLEX": 85}[level]
         result = generate_pdf(sample_report)
         assert result[:5] == b"%PDF-"
 
@@ -32,7 +32,7 @@ class TestGeneratePdf:
             "tax_liens": [],
         }
         sample_report["triggered_flags"] = []
-        sample_report["risk_tier"] = "LOW"
-        sample_report["risk_score"] = 0
+        sample_report["activity_level"] = "QUIET"
+        sample_report["activity_score"] = 0
         result = generate_pdf(sample_report)
         assert result[:5] == b"%PDF-"

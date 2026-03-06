@@ -70,8 +70,8 @@ describe('DashboardPage', () => {
       makeReportHistoryItem({
         report_id: 'r1',
         query_address: '456 W OAK ST',
-        risk_score: 72,
-        risk_tier: 'ELEVATED',
+        activity_score: 72,
+        activity_level: 'ACTIVE',
       }),
     ]
     vi.mocked(useAuth).mockReturnValue(makeAuthValue())
@@ -81,7 +81,7 @@ describe('DashboardPage', () => {
     await waitFor(() => {
       expect(screen.getByText('456 W OAK ST')).toBeInTheDocument()
       expect(screen.getByText('Score: 72')).toBeInTheDocument()
-      expect(screen.getByText('ELEVATED')).toBeInTheDocument()
+      expect(screen.getByText('ACTIVE')).toBeInTheDocument()
     })
   })
 

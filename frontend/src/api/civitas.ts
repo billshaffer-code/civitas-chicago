@@ -75,6 +75,7 @@ export interface FlagResult {
   description: string
   severity_score: number
   supporting_count: number
+  action_group: string
 }
 
 export interface ReportResponse {
@@ -82,8 +83,8 @@ export interface ReportResponse {
   generated_at: string
   property: { address: string; zip?: string; city: string; state: string }
   match_confidence: string
-  risk_score: number
-  risk_tier: 'LOW' | 'MODERATE' | 'ELEVATED' | 'HIGH'
+  activity_score: number
+  activity_level: 'QUIET' | 'TYPICAL' | 'ACTIVE' | 'COMPLEX'
   triggered_flags: FlagResult[]
   supporting_records: {
     violations: Record<string, unknown>[]
@@ -96,6 +97,7 @@ export interface ReportResponse {
   ai_summary: string
   data_freshness: Record<string, string | null>
   pdf_url?: string
+  baselines?: Record<string, number>
   disclaimer: string
 }
 
@@ -107,8 +109,8 @@ export interface AutocompleteItem {
 export interface ReportHistoryItem {
   report_id: string
   query_address: string
-  risk_score: number
-  risk_tier: string
+  activity_score: number
+  activity_level: string
   generated_at: string
 }
 
@@ -139,8 +141,8 @@ export interface BatchItemStatus {
   input_address: string
   status: string
   report_id?: string | null
-  risk_score?: number | null
-  risk_tier?: string | null
+  activity_score?: number | null
+  activity_level?: string | null
   flag_count?: number | null
   error_message?: string | null
 }
@@ -155,8 +157,8 @@ export interface BatchSummary {
   created_at: string
   completed_at?: string | null
   items: BatchItemStatus[]
-  avg_risk_score?: number | null
-  tier_distribution: Record<string, number>
+  avg_activity_score?: number | null
+  level_distribution: Record<string, number>
 }
 
 export interface BatchListItem {
@@ -173,8 +175,8 @@ export interface BatchSSEEvent {
   type: 'processing' | 'completed' | 'failed' | 'done'
   row_index?: number
   report_id?: string
-  risk_score?: number
-  risk_tier?: string
+  activity_score?: number
+  activity_level?: string
   flag_count?: number
   error?: string
   completed?: number

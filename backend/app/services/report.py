@@ -10,9 +10,35 @@ import json
 import uuid
 from datetime import datetime, timezone
 
+from backend.app.constants import CATEGORY_ACTIONS, TIER_LABELS
 from backend.app.database import get_conn
 from backend.app.services import rule_engine
+from backend.app.services.baselines import CHICAGO_BASELINES
 from backend.app.services.claude_ai import build_claude_payload, generate_narrative
+
+
+def normalize_report(report: dict) -> dict:
+    """
+    Translate old stored reports (risk_score/risk_tier) to new terminology.
+    Idempotent — safe to call on already-normalized reports.
+    """
+    # Rename top-level fields
+    if "risk_score" in report and "activity_score" not in report:
+        report["activity_score"] = report.pop("risk_score")
+    if "risk_tier" in report and "activity_level" not in report:
+        old_tier = report.pop("risk_tier")
+        report["activity_level"] = TIER_LABELS.get(old_tier, old_tier)
+
+    # Normalize flags
+    for flag in report.get("triggered_flags", []):
+        if "action_group" not in flag or not flag["action_group"]:
+            flag["action_group"] = CATEGORY_ACTIONS.get(flag.get("category", ""), "")
+
+    # Add baselines if missing
+    if "baselines" not in report:
+        report["baselines"] = CHICAGO_BASELINES
+
+    return report
 
 
 async def generate_single_report(location_sk: int, address: str, user_id) -> dict:
@@ -75,8 +101,8 @@ async def generate_single_report(location_sk: int, address: str, user_id) -> dic
             "state": "IL",
         },
         "match_confidence": "EXACT_ADDRESS",
-        "risk_score": score.get("raw_score", 0),
-        "risk_tier": score.get("risk_tier", "LOW"),
+        "activity_score": score.get("raw_score", 0),
+        "activity_level": score.get("activity_level", "QUIET"),
         "triggered_flags": flags,
         "supporting_records": {
             "violations": violations,
@@ -92,6 +118,7 @@ async def generate_single_report(location_sk: int, address: str, user_id) -> dic
             "report_generated_at": now_iso,
         },
         "pdf_url": f"/api/v1/report/{report_id}/pdf",
+        "baselines": CHICAGO_BASELINES,
         "disclaimer": (
             "This report does not constitute legal advice or a title examination. "
             "It is based solely on structured municipal data as of the dates noted "
@@ -111,7 +138,7 @@ async def generate_single_report(location_sk: int, address: str, user_id) -> dic
             report_id, address, location_sk,
             "EXACT_ADDRESS",
             score.get("raw_score", 0),
-            score.get("risk_tier", "LOW"),
+            score.get("activity_level", "QUIET"),
             json.dumps(flags),
             json.dumps(report),
             user_id,

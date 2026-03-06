@@ -1,6 +1,6 @@
-import type { ReportResponse, FlagResult } from '../api/civitas'
-import ScoreGauge from './ScoreGauge'
-import FlagBadge from './FlagBadge'
+import type { ReportResponse } from '../api/civitas'
+import ActivityBar from './ActivityBar'
+import FindingCard from './FindingCard'
 
 interface Props {
   reportA: ReportResponse
@@ -17,9 +17,9 @@ const recordLabels: Record<string, string> = {
 }
 
 export default function ReportComparison({ reportA, reportB }: Props) {
-  const scoreDelta = reportB.risk_score - reportA.risk_score
+  const scoreDelta = reportB.activity_score - reportA.activity_score
 
-  // Flag set diff
+  // Finding set diff
   const flagsA = new Set(reportA.triggered_flags.map((f) => f.flag_code))
   const flagsB = new Set(reportB.triggered_flags.map((f) => f.flag_code))
   const onlyA = reportA.triggered_flags.filter((f) => !flagsB.has(f.flag_code))
@@ -48,35 +48,35 @@ export default function ReportComparison({ reportA, reportB }: Props) {
       {/* Score comparison */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
-          <ScoreGauge score={reportA.risk_score} tier={reportA.risk_tier} />
+          <ActivityBar score={reportA.activity_score} level={reportA.activity_level} />
         </div>
         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
-          <ScoreGauge score={reportB.risk_score} tier={reportB.risk_tier} />
+          <ActivityBar score={reportB.activity_score} level={reportB.activity_level} />
         </div>
       </div>
 
       {/* Score delta */}
       <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
         <span className="text-sm text-gray-500">Score Delta: </span>
-        <span className={`text-lg font-bold ${scoreDelta > 0 ? 'text-red-600' : scoreDelta < 0 ? 'text-emerald-600' : 'text-gray-600'}`}>
+        <span className={`text-lg font-bold ${scoreDelta !== 0 ? 'text-blue-600' : 'text-gray-600'}`}>
           {scoreDelta > 0 ? '+' : ''}{scoreDelta}
         </span>
       </div>
 
-      {/* Flags comparison */}
+      {/* Findings comparison */}
       <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-          Flag Comparison
+          Findings Comparison
         </h3>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <h4 className="text-xs font-semibold text-red-500 uppercase mb-2">
+            <h4 className="text-xs font-semibold text-blue-700 uppercase mb-2">
               Only in A ({onlyA.length})
             </h4>
             {onlyA.length === 0 ? (
               <p className="text-xs text-gray-400 italic">None</p>
             ) : (
-              onlyA.map((f) => <FlagBadge key={f.flag_code} flag={f} />)
+              onlyA.map((f) => <FindingCard key={f.flag_code} flag={f} />)
             )}
           </div>
           <div>
@@ -86,17 +86,17 @@ export default function ReportComparison({ reportA, reportB }: Props) {
             {shared.length === 0 ? (
               <p className="text-xs text-gray-400 italic">None</p>
             ) : (
-              shared.map((f) => <FlagBadge key={f.flag_code} flag={f} />)
+              shared.map((f) => <FindingCard key={f.flag_code} flag={f} />)
             )}
           </div>
           <div>
-            <h4 className="text-xs font-semibold text-orange-500 uppercase mb-2">
+            <h4 className="text-xs font-semibold text-blue-400 uppercase mb-2">
               Only in B ({onlyB.length})
             </h4>
             {onlyB.length === 0 ? (
               <p className="text-xs text-gray-400 italic">None</p>
             ) : (
-              onlyB.map((f) => <FlagBadge key={f.flag_code} flag={f} />)
+              onlyB.map((f) => <FindingCard key={f.flag_code} flag={f} />)
             )}
           </div>
         </div>
@@ -124,7 +124,7 @@ export default function ReportComparison({ reportA, reportB }: Props) {
                   <td className="px-4 py-2.5 text-center font-mono text-gray-700">{countA}</td>
                   <td className="px-4 py-2.5 text-center font-mono text-gray-700">{countB}</td>
                   <td className="px-4 py-2.5 text-center font-mono">
-                    <span className={delta > 0 ? 'text-red-600' : delta < 0 ? 'text-emerald-600' : 'text-gray-400'}>
+                    <span className={delta !== 0 ? 'text-blue-600' : 'text-gray-400'}>
                       {delta > 0 ? '+' : ''}{delta}
                     </span>
                   </td>
@@ -139,13 +139,13 @@ export default function ReportComparison({ reportA, reportB }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            AI Summary — A
+            Summary — A
           </h3>
           <p className="text-sm text-gray-700 whitespace-pre-wrap">{reportA.ai_summary}</p>
         </div>
         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            AI Summary — B
+            Summary — B
           </h3>
           <p className="text-sm text-gray-700 whitespace-pre-wrap">{reportB.ai_summary}</p>
         </div>

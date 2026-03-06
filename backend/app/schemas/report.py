@@ -3,7 +3,7 @@ CIVITAS – Report Pydantic models.
 """
 
 from __future__ import annotations
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -19,6 +19,7 @@ class FlagResult(BaseModel):
     description: str
     severity_score: int
     supporting_count: int
+    action_group: str = ""
 
 
 class ViolationRecord(BaseModel):
@@ -66,8 +67,8 @@ class DataFreshness(BaseModel):
 class ReportHistoryItem(BaseModel):
     report_id: str
     query_address: str
-    risk_score: int
-    risk_tier: str
+    activity_score: int
+    activity_level: str
     generated_at: str
 
 
@@ -76,13 +77,14 @@ class ReportResponse(BaseModel):
     generated_at: str
     property: dict
     match_confidence: str
-    risk_score: int
-    risk_tier: str                  # LOW | MODERATE | ELEVATED | HIGH
+    activity_score: int
+    activity_level: str          # QUIET | TYPICAL | ACTIVE | COMPLEX
     triggered_flags: List[FlagResult]
     supporting_records: dict
     ai_summary: str
     data_freshness: DataFreshness
     pdf_url: Optional[str]
+    baselines: Optional[Dict[str, Any]] = None
     disclaimer: str = (
         "This report does not constitute legal advice or a title examination. "
         "It is based solely on structured municipal data as of the dates noted "

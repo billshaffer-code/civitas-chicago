@@ -18,8 +18,8 @@ async def test_generate_report_json(client, sample_report):
         "generated_at": "2025-01-15T12:00:00+00:00",
         "property": {"address": "123 N MAIN ST", "zip": "60601", "city": "Chicago", "state": "IL"},
         "match_confidence": "EXACT_ADDRESS",
-        "risk_score": 55,
-        "risk_tier": "ELEVATED",
+        "activity_score": 55,
+        "activity_level": "ACTIVE",
         "triggered_flags": [],
         "supporting_records": {"violations": [], "inspections": [], "permits": [], "tax_liens": [], "service_311": [], "vacant_buildings": []},
         "ai_summary": "AI narrative text.",
@@ -41,7 +41,7 @@ async def test_generate_report_json(client, sample_report):
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["risk_tier"] == "ELEVATED"
+    assert data["activity_level"] == "ACTIVE"
     assert data["ai_summary"] == "AI narrative text."
 
 
@@ -83,7 +83,7 @@ async def test_report_history(client):
             "report_id": "r1",
             "query_address": "123 N MAIN ST",
             "risk_score": 55,
-            "risk_tier": "ELEVATED",
+            "risk_tier": "ACTIVE",
             "generated_at": datetime(2025, 1, 15, 12, 0, 0),
         }
     ]
@@ -100,6 +100,8 @@ async def test_report_history(client):
     data = resp.json()
     assert len(data) == 1
     assert data[0]["report_id"] == "r1"
+    assert data[0]["activity_score"] == 55
+    assert data[0]["activity_level"] == "ACTIVE"
 
 
 @pytest.mark.asyncio

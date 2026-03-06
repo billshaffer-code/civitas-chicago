@@ -135,8 +135,8 @@ def sample_report():
             "state": "IL",
         },
         "match_confidence": "EXACT_ADDRESS",
-        "risk_score": 55,
-        "risk_tier": "ELEVATED",
+        "activity_score": 55,
+        "activity_level": "ACTIVE",
         "triggered_flags": [
             {
                 "flag_code": "ACTIVE_MUNICIPAL_VIOLATION",
@@ -144,6 +144,7 @@ def sample_report():
                 "description": "One or more open building violations",
                 "severity_score": 25,
                 "supporting_count": 3,
+                "action_group": "Review Recommended",
             },
             {
                 "flag_code": "AGED_ENFORCEMENT_RISK",
@@ -151,6 +152,7 @@ def sample_report():
                 "description": "Open violation older than 180 days",
                 "severity_score": 30,
                 "supporting_count": 1,
+                "action_group": "Review Recommended",
             },
         ],
         "supporting_records": {
@@ -169,7 +171,7 @@ def sample_report():
             "service_311": [],
             "vacant_buildings": [],
         },
-        "ai_summary": "The property at 123 N MAIN ST has an ELEVATED risk profile.",
+        "ai_summary": "The property at 123 N MAIN ST has an ACTIVE activity profile.",
         "data_freshness": {
             "violations_as_of": "2025-01-10T00:00:00",
             "inspections_as_of": "2025-01-10T00:00:00",
@@ -180,6 +182,11 @@ def sample_report():
             "report_generated_at": "2025-01-15T12:00:00Z",
         },
         "pdf_url": "/api/v1/report/test-report-001/pdf",
+        "baselines": {
+            "avg_violations_per_property": 2.1,
+            "pct_properties_with_violations": 18.0,
+            "avg_311_requests_12mo": 3.4,
+        },
         "disclaimer": (
             "This report does not constitute legal advice or a title examination. "
             "It is based solely on structured municipal data as of the dates noted "

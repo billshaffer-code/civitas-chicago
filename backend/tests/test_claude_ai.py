@@ -16,11 +16,12 @@ class TestBuildClaudePayload:
                 "full_address_standardized": "123 N MAIN ST 60601",
                 "zip": "60601",
             },
-            score={"raw_score": 55, "risk_tier": "ELEVATED"},
+            score={"raw_score": 55, "activity_level": "ACTIVE"},
             flags=[
                 {
                     "flag_code": "ACTIVE_MUNICIPAL_VIOLATION",
                     "category": "A",
+                    "action_group": "Review Recommended",
                     "description": "Open violations",
                     "severity_score": 25,
                     "supporting_count": 3,
@@ -44,8 +45,8 @@ class TestBuildClaudePayload:
     def test_structure(self):
         payload = self._make_payload()
         assert "property" in payload
-        assert "risk_score" in payload
-        assert "risk_tier" in payload
+        assert "activity_score" in payload
+        assert "activity_level" in payload
         assert "triggered_flags" in payload
         assert "supporting_records" in payload
         assert "data_freshness" in payload
@@ -56,14 +57,15 @@ class TestBuildClaudePayload:
 
     def test_default_score_when_missing(self):
         payload = self._make_payload(score={})
-        assert payload["risk_score"] == 0
-        assert payload["risk_tier"] == "LOW"
+        assert payload["activity_score"] == 0
+        assert payload["activity_level"] == "QUIET"
 
     def test_flag_structure(self):
         payload = self._make_payload()
         flag = payload["triggered_flags"][0]
         assert flag["flag_code"] == "ACTIVE_MUNICIPAL_VIOLATION"
         assert flag["severity_score"] == 25
+        assert flag["action_group"] == "Review Recommended"
 
 
 class TestGenerateNarrative:

@@ -3,13 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { getMyReports, getReport } from '../api/civitas'
 import type { ReportHistoryItem, ReportResponse } from '../api/civitas'
 import ReportComparison from '../components/ReportComparison'
-
-const tierColors: Record<string, string> = {
-  LOW: 'bg-emerald-50 text-emerald-600',
-  MODERATE: 'bg-yellow-50 text-yellow-600',
-  ELEVATED: 'bg-orange-50 text-orange-600',
-  HIGH: 'bg-red-50 text-red-600',
-}
+import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
 
 export default function ComparePage() {
   const [searchParams] = useSearchParams()
@@ -88,7 +82,7 @@ export default function ComparePage() {
                     <option value="">Select a report...</option>
                     {reports.map((r) => (
                       <option key={r.report_id} value={r.report_id}>
-                        {r.query_address} — Score: {r.risk_score} ({r.risk_tier}) — {new Date(r.generated_at).toLocaleDateString()}
+                        {r.query_address} — Score: {r.activity_score} ({r.activity_level}) — {new Date(r.generated_at).toLocaleDateString()}
                       </option>
                     ))}
                   </select>
@@ -103,7 +97,7 @@ export default function ComparePage() {
                     <option value="">Select a report...</option>
                     {reports.map((r) => (
                       <option key={r.report_id} value={r.report_id}>
-                        {r.query_address} — Score: {r.risk_score} ({r.risk_tier}) — {new Date(r.generated_at).toLocaleDateString()}
+                        {r.query_address} — Score: {r.activity_score} ({r.activity_level}) — {new Date(r.generated_at).toLocaleDateString()}
                       </option>
                     ))}
                   </select>
@@ -115,13 +109,14 @@ export default function ComparePage() {
                 {[idA, idB].map((id, idx) => {
                   const r = reports.find((rep) => rep.report_id === id)
                   if (!r) return <div key={idx} />
+                  const levelCfg = LEVEL_CONFIG[r.activity_level as ActivityLevel]
                   return (
                     <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                       <p className="text-sm font-medium text-gray-900">{r.query_address}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs font-mono text-gray-600">Score: {r.risk_score}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tierColors[r.risk_tier] ?? ''}`}>
-                          {r.risk_tier}
+                        <span className="text-xs font-mono text-gray-600">Score: {r.activity_score}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${levelCfg?.bgAccent ?? 'bg-gray-100 text-gray-500'}`}>
+                          {r.activity_level}
                         </span>
                       </div>
                     </div>

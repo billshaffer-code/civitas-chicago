@@ -3,13 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getMyReports, getMyBatches } from '../api/civitas'
 import type { ReportHistoryItem, BatchListItem } from '../api/civitas'
-
-const tierColors: Record<string, string> = {
-  LOW: 'bg-emerald-50 text-emerald-600',
-  MODERATE: 'bg-yellow-50 text-yellow-600',
-  ELEVATED: 'bg-orange-50 text-orange-600',
-  HIGH: 'bg-red-50 text-red-600',
-}
+import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -119,29 +113,32 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {reports.map((r) => (
-              <button
-                key={r.report_id}
-                onClick={() => navigate(`/search?report=${r.report_id}`)}
-                className="w-full flex items-center justify-between bg-gray-50 hover:bg-gray-100
-                           border border-gray-200 rounded-lg px-4 py-3 text-left transition-colors"
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{r.query_address}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {new Date(r.generated_at).toLocaleString()}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono text-gray-600">
-                    Score: {r.risk_score}
-                  </span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tierColors[r.risk_tier] ?? 'bg-gray-100 text-gray-500'}`}>
-                    {r.risk_tier}
-                  </span>
-                </div>
-              </button>
-            ))}
+            {reports.map((r) => {
+              const levelCfg = LEVEL_CONFIG[r.activity_level as ActivityLevel]
+              return (
+                <button
+                  key={r.report_id}
+                  onClick={() => navigate(`/search?report=${r.report_id}`)}
+                  className="w-full flex items-center justify-between bg-gray-50 hover:bg-gray-100
+                             border border-gray-200 rounded-lg px-4 py-3 text-left transition-colors"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{r.query_address}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {new Date(r.generated_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-gray-600">
+                      Score: {r.activity_score}
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${levelCfg?.bgAccent ?? 'bg-gray-100 text-gray-500'}`}>
+                      {r.activity_level}
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         )}
       </div>

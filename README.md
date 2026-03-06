@@ -2,7 +2,7 @@
 
 **Chicago v1 | Real Estate Transaction Intelligence**
 
-CIVITAS is a deterministic property risk intelligence system built for small real estate law firms and title companies. Given a Chicago property address or Cook County PIN, it aggregates open municipal data, applies a transparent SQL rule engine, generates a structured risk score, and produces a professionally formatted PDF report — augmented by a Claude AI narrative that explains the findings in plain language.
+CIVITAS is a deterministic municipal intelligence system built for small real estate law firms and title companies. Given a Chicago property address or Cook County PIN, it aggregates open municipal data, applies a transparent SQL rule engine, generates a structured activity score, and produces a professionally formatted PDF report — augmented by a Claude AI narrative that explains the findings in plain language.
 
 > **CIVITAS does not provide legal advice and does not replace formal title examination.**
 > All output is grounded in structured municipal data and clearly timestamped.
@@ -16,10 +16,10 @@ Before closing on a Chicago property, attorneys and title professionals need to 
 CIVITAS automates that research into a sub-60-second workflow:
 
 1. Sign in to your account
-2. Enter an address or PIN
-3. Get a deterministic risk score with every triggered flag explained
-4. Download a 3-page PDF suitable for a transaction file
-5. Review past reports from your dashboard
+2. Enter an address or PIN (or upload a CSV for batch analysis)
+3. Get a deterministic activity score with every finding explained
+4. Toggle between detail and client views; download a 3-page PDF
+5. Review past reports from your dashboard or compare reports side-by-side
 
 ---
 
@@ -38,27 +38,27 @@ All data is loaded into a local PostgreSQL database via a versioned ETL pipeline
 
 ---
 
-## Risk Scoring
+## Activity Scoring
 
-CIVITAS applies **15 deterministic red-flag rules** across four categories. Every rule is implemented as a SQL view — no risk logic lives in application code or AI.
+CIVITAS applies **15 deterministic rules** across four action groups. Every rule is implemented as a SQL view — no scoring logic lives in application code or AI.
 
-| Category | Rules | Max Points |
-|----------|-------|------------|
-| **A — Active Enforcement** | ACTIVE_MUNICIPAL_VIOLATION, AGED_ENFORCEMENT_RISK, SEVERE_ENFORCEMENT_ACTION, DEMOLITION_PERMIT_ISSUED, VACANT_BUILDING_VIOLATION | 135 |
-| **B — Recurring Compliance** | REPEAT_COMPLIANCE_ISSUE, ABOVE_NORMAL_INSPECTION_FAILURE | 35 |
-| **C — Regulatory Friction** | PERMIT_PROCESSING_DELAY, ELEVATED_DISTRESS_SIGNALS, ENFORCEMENT_INTENSITY_INCREASE | 35 |
-| **D — Tax & Financial** | ACTIVE_TAX_LIEN, AGED_TAX_LIEN, MULTIPLE_LIEN_EVENTS, HIGH_VALUE_LIEN, HIGH_VACANT_BUILDING_FINES | 160 |
+| Action Group | Rules | Max Points |
+|--------------|-------|------------|
+| **Review Recommended** (Cat A) | ACTIVE_MUNICIPAL_VIOLATION, AGED_ENFORCEMENT_RISK, SEVERE_ENFORCEMENT_ACTION, DEMOLITION_PERMIT_ISSUED, VACANT_BUILDING_VIOLATION | 135 |
+| **Worth Noting** (Cat B) | REPEAT_COMPLIANCE_ISSUE, ABOVE_NORMAL_INSPECTION_FAILURE | 35 |
+| **Informational** (Cat C) | PERMIT_PROCESSING_DELAY, ELEVATED_DISTRESS_SIGNALS, ENFORCEMENT_INTENSITY_INCREASE | 35 |
+| **Action Required** (Cat D) | ACTIVE_TAX_LIEN, AGED_TAX_LIEN, MULTIPLE_LIEN_EVENTS, HIGH_VALUE_LIEN, HIGH_VACANT_BUILDING_FINES | 160 |
 
-**Risk Tiers**
+**Activity Levels**
 
-| Score | Tier |
-|-------|------|
-| 0 – 24 | LOW |
-| 25 – 49 | MODERATE |
-| 50 – 74 | ELEVATED |
-| 75+ | HIGH |
+| Score | Level |
+|-------|-------|
+| 0 – 24 | QUIET |
+| 25 – 49 | TYPICAL |
+| 50 – 74 | ACTIVE |
+| 75+ | COMPLEX |
 
-Scores are additive. Every triggered flag is returned alongside its description, category, severity weight, and supporting record count. Score without explanation is prohibited by design.
+Scores are additive. Every triggered finding is returned alongside its description, action group, severity weight, and supporting record count. Score without explanation is prohibited by design.
 
 ---
 
@@ -97,8 +97,8 @@ Each report contains three sections:
 
 **Page 1 — Executive Summary**
 - Property address and match confidence
-- Risk score and tier (color-coded badge)
-- All triggered flags with category, severity score, and supporting count
+- Activity score and level (blue-scale badge)
+- All findings grouped by action group (Action Required, Review Recommended, Worth Noting, Informational)
 - Claude AI narrative — professionally worded, cites only structured findings
 - Legal disclaimer
 
@@ -111,10 +111,12 @@ Each report contains three sections:
 - Vacant building violations table
 
 **Page 3 — Methodology Appendix**
-- All 15 rule definitions with scoring weights
+- All 15 rule definitions with action groups and scoring weights
 - Data source descriptions and URLs
-- Scoring tier thresholds
+- Activity level thresholds
 - Data freshness timestamps per dataset
+
+Reports support a **client/detail view toggle**: detail view shows full scoring data, client view presents a cleaner summary suitable for sharing with transaction parties.
 
 ---
 
@@ -157,9 +159,9 @@ civitas/
 │   │   ├── config.py
 │   │   ├── database.py
 │   │   ├── dependencies.py    # JWT auth dependency
-│   │   ├── routers/           # auth.py, property.py, report.py
-│   │   ├── services/          # auth.py, address.py, rule_engine.py, claude_ai.py, pdf.py
-│   │   ├── schemas/           # auth.py, property.py, report.py
+│   │   ├── routers/           # auth.py, property.py, report.py, batch.py
+│   │   ├── services/          # auth.py, address.py, rule_engine.py, report.py, claude_ai.py, pdf.py
+│   │   ├── schemas/           # auth.py, property.py, report.py, batch.py
 │   │   └── templates/         # report.html, report.css
 │   ├── ingestion/             # ETL scripts
 │   │   ├── base.py            # BatchTracker, AddressStandardizer
@@ -169,7 +171,7 @@ civitas/
 │   │   ├── ingest_311.py
 │   │   ├── ingest_tax_liens.py
 │   │   └── ingest_vacant_buildings.py
-│   └── tests/                 # 48 tests (pytest + pytest-asyncio)
+│   └── tests/                 # 63 tests (pytest + pytest-asyncio)
 └── frontend/
     ├── Dockerfile             # Multi-stage: node build → nginx
     ├── nginx.conf             # SPA routing + /api reverse proxy
@@ -178,19 +180,24 @@ civitas/
         ├── api/civitas.ts     # Axios client + auth interceptors
         ├── context/
         │   └── AuthContext.tsx # User state, login, register, logout
+        ├── constants/
+        │   └── terminology.ts    # Level/action group configs
         ├── pages/
         │   ├── LoginPage.tsx
         │   ├── SignupPage.tsx
         │   ├── DashboardPage.tsx
-        │   └── SearchPage.tsx
+        │   ├── SearchPage.tsx
+        │   ├── BatchPage.tsx     # CSV upload + SSE processing
+        │   └── ComparePage.tsx   # Side-by-side report comparison
         └── components/
             ├── ProtectedRoute.tsx
             ├── AppLayout.tsx
             ├── PropertySearch.tsx
-            ├── RiskReport.tsx
+            ├── PropertyReport.tsx  # Full report with client/detail toggle
             ├── PropertyMap.tsx
-            ├── FlagBadge.tsx
-            └── ScoreGauge.tsx
+            ├── ActivityBar.tsx     # Horizontal segmented score bar
+            ├── FindingCard.tsx     # Action-group colored finding card
+            └── ReportComparison.tsx
 ```
 
 ---
@@ -229,6 +236,7 @@ psql $DATABASE_URL -f sql/00_schema.sql
 psql $DATABASE_URL -f sql/01_indexes.sql
 psql $DATABASE_URL -f sql/02_seed_rules.sql
 psql $DATABASE_URL -f sql/03_users.sql
+psql $DATABASE_URL -f sql/04_batch.sql
 psql $DATABASE_URL -f sql/views/01_summary.sql
 psql $DATABASE_URL -f sql/views/02_flags.sql
 psql $DATABASE_URL -f sql/views/03_score.sql
@@ -292,12 +300,21 @@ npm run dev
 | `GET` | `/api/v1/health` | Health check + DB connectivity |
 | `POST` | `/api/v1/property/lookup` | Resolve address/PIN to location_sk |
 | `GET` | `/api/v1/property/autocomplete?q=` | Address autocomplete |
-| `POST` | `/api/v1/report/generate` | Generate JSON risk report |
-| `POST` | `/api/v1/report/generate?format=pdf` | Generate PDF risk report |
+| `POST` | `/api/v1/report/generate` | Generate JSON report |
+| `POST` | `/api/v1/report/generate?format=pdf` | Generate PDF report |
 | `GET` | `/api/v1/report/{report_id}` | Retrieve a previous report |
-| `GET` | `/api/v1/report/{report_id}/pdf` | Regenerate PDF from stored report |
+| `GET` | `/api/v1/report/{report_id}/pdf` | Regenerate PDF (`?view=client` for client view) |
 | `GET` | `/api/v1/report/history?location_sk=` | Report history for a location (user-scoped) |
 | `GET` | `/api/v1/report/my-reports` | All reports for the current user |
+
+### Batch / Portfolio Analysis (Bearer token required)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/batch/upload` | Upload CSV of addresses (max 100 rows) |
+| `GET` | `/api/v1/batch/{batch_id}/stream` | SSE stream of processing progress |
+| `GET` | `/api/v1/batch/{batch_id}` | Retrieve batch results and summary |
+| `GET` | `/api/v1/batch/my-batches` | List user's batch jobs |
 
 ### Example: Register + Login + Lookup
 
@@ -330,10 +347,14 @@ curl -X POST http://localhost:8000/api/v1/report/generate \
 ## Testing
 
 ```bash
+# Backend (63 tests)
 cd /path/to/Civitas && python3 -m pytest backend/tests/ -v
+
+# Frontend (63 tests)
+cd /path/to/Civitas/frontend && npm run test:run
 ```
 
-48 tests covering authentication, address resolution, rule engine, Claude AI integration, PDF generation, and all API endpoints. Tests use mock database connections, async HTTP clients, and an autouse auth fixture — no running database required.
+**126 total tests** across backend and frontend. Backend tests cover authentication, address resolution, rule engine, Claude AI integration, PDF generation, batch processing, report service, and all API endpoints. Frontend tests cover auth context, all pages, and all components. Tests use mock database connections, async HTTP clients, and autouse auth fixtures — no running database required.
 
 ---
 

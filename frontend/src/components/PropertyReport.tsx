@@ -48,8 +48,6 @@ function formatCellValue(v: unknown): string {
 
 export default function PropertyReport({ report, locationSk, address, lat, lon, onNewSearch }: Props) {
   const navigate = useNavigate()
-  const [viewMode, setViewMode] = useState<'detail' | 'client'>('detail')
-
   async function handlePdf() {
     const blob = await downloadPdf(locationSk, address)
     const url  = URL.createObjectURL(blob)
@@ -73,12 +71,6 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          <button
-            onClick={() => setViewMode(viewMode === 'detail' ? 'client' : 'detail')}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
-          >
-            {viewMode === 'detail' ? 'Client View' : 'Detail View'}
-          </button>
           <button
             onClick={() => navigate(`/compare?a=${report.report_id}`)}
             className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
@@ -108,21 +100,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
 
           {/* Score */}
           <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-            {viewMode === 'detail' ? (
-              <ActivityBar score={report.activity_score} level={report.activity_level} />
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold tracking-wider ${
-                  report.activity_level === 'COMPLEX' ? 'bg-blue-900 text-white' :
-                  report.activity_level === 'ACTIVE' ? 'bg-blue-100 text-blue-700' :
-                  report.activity_level === 'TYPICAL' ? 'bg-blue-50 text-blue-500' :
-                  'bg-slate-100 text-slate-600'
-                }`}>
-                  {report.activity_level}
-                </span>
-                <span className="text-xs text-gray-400">Activity Level</span>
-              </div>
-            )}
+            <ActivityBar score={report.activity_score} level={report.activity_level} />
           </div>
 
           {/* Map */}

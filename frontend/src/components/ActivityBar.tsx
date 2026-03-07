@@ -36,14 +36,6 @@ export default function ActivityBar({ score, level }: Props) {
         })}
       </div>
 
-      {/* Marker position */}
-      <div className="w-full relative h-0">
-        <div
-          className={`absolute -top-1 w-2.5 h-2.5 rounded-full border-2 border-white shadow ${cfg.bar}`}
-          style={{ left: `${pct}%`, transform: 'translateX(-50%)' }}
-        />
-      </div>
-
       <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold tracking-wider ${cfg.pillBg} ${cfg.pillText}`}>
         {cfg.label}
       </span>

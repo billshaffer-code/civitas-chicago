@@ -34,12 +34,18 @@ function ActionIcon({ icon }: { icon: string }) {
   )
 }
 
-export default function FindingCard({ flag }: { flag: FlagResult }) {
+export default function FindingCard({ flag, onClick }: { flag: FlagResult; onClick?: () => void }) {
   const group = flag.action_group as ActionGroup
   const c = ACTION_GROUP_CONFIG[group] ?? fallback
 
   return (
-    <div className={`border-l-2 ${c.border} ${c.bg} rounded-r-lg px-3 py-2 mb-2 min-w-0`}>
+    <div
+      className={`border-l-2 ${c.border} ${c.bg} rounded-r-lg px-3 py-2 mb-2 min-w-0 ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
+    >
       <div className="flex justify-between items-start gap-2">
         <span className={`font-mono font-bold text-xs ${c.code} break-words min-w-0`}>
           <ActionIcon icon={c.icon} />

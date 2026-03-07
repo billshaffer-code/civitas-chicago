@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ReportResponse, FlagResult } from '../api/civitas'
 import ActivityBar from './ActivityBar'
@@ -36,7 +36,6 @@ function formatCellValue(v: unknown): string {
   if (v == null) return '\u2014'
   if (typeof v === 'number') return v.toLocaleString()
   const s = String(v)
-  // ISO date detection
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
     const d = new Date(s)
     if (!isNaN(d.getTime())) return d.toLocaleDateString()
@@ -44,10 +43,42 @@ function formatCellValue(v: unknown): string {
   return s
 }
 
+// Map flag_code → relevant data tab
+const FLAG_TO_TAB: Record<string, TabKey> = {
+  ACTIVE_MUNICIPAL_VIOLATION: 'violations',
+  AGED_ENFORCEMENT_RISK: 'violations',
+  SEVERE_ENFORCEMENT_ACTION: 'violations',
+  ENFORCEMENT_INTENSITY_INCREASE: 'violations',
+  DEMOLITION_PERMIT_ISSUED: 'permits',
+  PERMIT_PROCESSING_DELAY: 'permits',
+  VACANT_BUILDING_VIOLATION: 'vacant_buildings',
+  HIGH_VACANT_BUILDING_FINES: 'vacant_buildings',
+  REPEAT_COMPLIANCE_ISSUE: 'inspections',
+  ABOVE_NORMAL_INSPECTION_FAIL: 'inspections',
+  ELEVATED_DISTRESS_SIGNALS: 'service_311',
+  ACTIVE_TAX_LIEN: 'tax_liens',
+  AGED_TAX_LIEN: 'tax_liens',
+  MULTIPLE_LIEN_EVENTS: 'tax_liens',
+  HIGH_VALUE_LIEN: 'tax_liens',
+}
+
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export default function PropertyReport({ report, locationSk, address, lat, lon, onNewSearch }: Props) {
   const navigate = useNavigate()
+  const dataTabsRef = useRef<HTMLDivElement>(null)
+  const [activeTab, setActiveTab] = useState<TabKey>('violations')
+
+  const handleFindingClick = useCallback((flagCode: string) => {
+    const tab = FLAG_TO_TAB[flagCode]
+    if (tab) {
+      setActiveTab(tab)
+      setTimeout(() => {
+        dataTabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 50)
+    }
+  }, [])
+
   async function handlePdf() {
     const blob = await downloadPdf(locationSk, address)
     const url  = URL.createObjectURL(blob)
@@ -118,7 +149,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
                 No findings identified.
               </p>
             ) : (
-              <FindingList flags={report.triggered_flags} />
+              <FindingList flags={report.triggered_flags} onFindingClick={handleFindingClick} />
             )}
           </div>
 
@@ -158,7 +189,9 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
       </div>
 
       {/* ── Full-Width Data Tables ──────────────────────────────── */}
-      <DataTabs records={report.supporting_records} />
+      <div ref={dataTabsRef}>
+        <DataTabs records={report.supporting_records} activeTab={activeTab} onTabChange={setActiveTab} />
+      </div>
 
       {/* ── Disclaimer ───────────────────────────────────────────── */}
       <p className="text-[11px] text-gray-400 border-t border-gray-200 pt-3">
@@ -170,7 +203,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
 
 // ── FindingList (grouped by action group) ───────────────────────────────────
 
-function FindingList({ flags }: { flags: FlagResult[] }) {
+function FindingList({ flags, onFindingClick }: { flags: FlagResult[]; onFindingClick: (code: string) => void }) {
   const grouped = groupBy(flags, f => f.action_group || 'Informational')
 
   return (
@@ -184,7 +217,7 @@ function FindingList({ flags }: { flags: FlagResult[] }) {
               {group}
             </h4>
             {items.map(f => (
-              <FindingCard key={f.flag_code} flag={f} />
+              <FindingCard key={f.flag_code} flag={f} onClick={() => onFindingClick(f.flag_code)} />
             ))}
           </div>
         )
@@ -199,6 +232,8 @@ type TabKey = 'violations' | 'inspections' | 'permits' | 'service_311' | 'tax_li
 type ColType = 'string' | 'date' | 'number'
 type ColDef = { key: string; label?: string; type: ColType }
 type SortDir = 'asc' | 'desc'
+
+const PAGE_SIZE = 25
 
 const tabMeta: { key: TabKey; label: string; columns: ColDef[] }[] = [
   { key: 'violations',       label: 'Violations',       columns: [
@@ -237,22 +272,48 @@ function sortComparator(a: unknown, b: unknown, colType: ColType): number {
   return String(a).localeCompare(String(b))
 }
 
-function DataTabs({ records }: { records: Record<string, Record<string, unknown>[]> }) {
-  const [active, setActive] = useState<TabKey>('violations')
+function exportCsv(rows: Record<string, unknown>[], columns: ColDef[], filename: string) {
+  const header = columns.map(c => c.label ?? formatSourceName(c.key)).join(',')
+  const body = rows.map(row =>
+    columns.map(c => {
+      const val = formatCellValue(row[c.key])
+      // Escape quotes and wrap in quotes if contains comma/quote/newline
+      if (/[,"\n]/.test(val)) return `"${val.replace(/"/g, '""')}"`
+      return val
+    }).join(',')
+  ).join('\n')
+  const blob = new Blob([header + '\n' + body], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+interface DataTabsProps {
+  records: Record<string, Record<string, unknown>[]>
+  activeTab: TabKey
+  onTabChange: (tab: TabKey) => void
+}
+
+function DataTabs({ records, activeTab, onTabChange }: DataTabsProps) {
   const [filter, setFilter] = useState('')
   const [sortCol, setSortCol] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
+  const [page, setPage] = useState(0)
 
-  const current = tabMeta.find(t => t.key === active)!
-  const rawRows = records[active] ?? []
+  const current = tabMeta.find(t => t.key === activeTab)!
+  const rawRows = records[activeTab] ?? []
 
   function handleTabSwitch(tab: TabKey) {
-    setActive(tab)
+    onTabChange(tab)
     setFilter('')
     setSortCol(null)
     setSortDir('asc')
     setExpandedRow(null)
+    setPage(0)
   }
 
   function handleSort(colKey: string) {
@@ -265,6 +326,13 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
       setSortCol(null)
       setSortDir('asc')
     }
+    setPage(0)
+  }
+
+  function handleFilterChange(value: string) {
+    setFilter(value)
+    setPage(0)
+    setExpandedRow(null)
   }
 
   // Filter rows
@@ -276,13 +344,17 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
     : rawRows
 
   // Sort rows
-  const rows = sortCol
+  const sortedRows = sortCol
     ? [...filteredRows].sort((a, b) => {
         const colDef = current.columns.find(c => c.key === sortCol)!
         const cmp = sortComparator(a[sortCol], b[sortCol], colDef.type)
         return sortDir === 'desc' ? -cmp : cmp
       })
     : filteredRows
+
+  // Paginate
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / PAGE_SIZE))
+  const rows = sortedRows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   return (
     <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
@@ -291,7 +363,7 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
       <div className="flex overflow-x-auto border-b border-gray-200">
         {tabMeta.map(t => {
           const count = (records[t.key] ?? []).length
-          const isActive = t.key === active
+          const isActive = t.key === activeTab
           return (
             <button
               key={t.key}
@@ -312,34 +384,53 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
         })}
       </div>
 
-      {/* Filter input */}
-      {rawRows.length > 0 && (
-        <div className="px-4 py-3 border-b border-gray-100">
+      {/* Toolbar: filter + record count + export */}
+      <div className="px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+        <div className="flex-1 max-w-md">
           <input
             type="text"
             value={filter}
-            onChange={e => setFilter(e.target.value)}
+            onChange={e => handleFilterChange(e.target.value)}
             placeholder="Filter records..."
             className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-300"
           />
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] text-gray-400">
+            {filter
+              ? `${sortedRows.length} of ${rawRows.length} records`
+              : `${rawRows.length} records`
+            }
+          </span>
+          {rawRows.length > 0 && (
+            <button
+              onClick={() => exportCsv(sortedRows, current.columns, `civitas_${activeTab}.csv`)}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-blue-600 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Export CSV
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Table */}
       <div className="overflow-x-auto">
-        {rows.length === 0 ? (
+        {sortedRows.length === 0 ? (
           <p className="text-sm text-gray-400 italic p-6">
             {rawRows.length > 0 && filter ? 'No matching records.' : 'No records found.'}
           </p>
         ) : (
           <table className="min-w-full text-xs">
-            <thead>
+            <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#e5e7eb]">
               <tr>
                 {current.columns.map(col => {
                   const isSorted = sortCol === col.key
                   const arrow = isSorted ? (sortDir === 'asc' ? ' \u25B2' : ' \u25BC') : ' \u21C5'
                   return (
-                    <th key={col.key} className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap">
+                    <th key={col.key} className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap bg-white">
                       <button
                         onClick={() => handleSort(col.key)}
                         className={`inline-flex items-center gap-0.5 transition-colors ${isSorted ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
@@ -354,21 +445,22 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
             </thead>
             <tbody>
               {rows.map((row, i) => {
-                const isExpanded = expandedRow === i
+                const globalIdx = page * PAGE_SIZE + i
+                const isExpanded = expandedRow === globalIdx
                 return (
                   <tr
-                    key={i}
-                    onClick={() => setExpandedRow(isExpanded ? null : i)}
+                    key={globalIdx}
+                    onClick={() => setExpandedRow(isExpanded ? null : globalIdx)}
                     className={`cursor-pointer transition-colors ${
                       isExpanded
                         ? 'bg-blue-50/50'
-                        : i % 2 === 0 ? 'bg-white hover:bg-gray-100' : 'bg-gray-50/50 hover:bg-gray-100'
+                        : i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/30 hover:bg-gray-100/50'
                     }`}
                   >
                     {current.columns.map(col => (
                       <td
                         key={col.key}
-                        className={`px-3 py-1.5 text-gray-700 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'max-w-xs truncate'}`}
+                        className={`px-3 py-2 text-gray-700 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'max-w-xs truncate'}`}
                       >
                         {formatCellValue(row[col.key])}
                       </td>
@@ -380,6 +472,52 @@ function DataTabs({ records }: { records: Record<string, Record<string, unknown>
           </table>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+          <button
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="text-xs font-semibold text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+          >
+            Previous
+          </button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i)
+              .filter(i => i === 0 || i === totalPages - 1 || Math.abs(i - page) <= 2)
+              .reduce<(number | 'ellipsis')[]>((acc, i, idx, arr) => {
+                if (idx > 0 && arr[idx - 1] !== i - 1) acc.push('ellipsis')
+                acc.push(i)
+                return acc
+              }, [])
+              .map((item, idx) =>
+                item === 'ellipsis' ? (
+                  <span key={`e${idx}`} className="text-xs text-gray-300 px-1">&hellip;</span>
+                ) : (
+                  <button
+                    key={item}
+                    onClick={() => setPage(item)}
+                    className={`min-w-[28px] h-7 rounded text-xs font-semibold transition-colors ${
+                      page === item
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-500 hover:bg-gray-100'
+                    }`}
+                  >
+                    {item + 1}
+                  </button>
+                )
+              )}
+          </div>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+            disabled={page === totalPages - 1}
+            className="text-xs font-semibold text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -277,8 +277,48 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
 cd frontend
 npm install
 npm run dev
-# Open http://localhost:3000
+# Open http://localhost:5173
 ```
+
+### Quick Start (using backup)
+
+If you have a database backup (e.g., from `backups/`), you can skip steps 2-4 entirely:
+
+```bash
+# 1. Start PostgreSQL
+docker compose up -d postgres
+
+# 2. Wait for healthy
+until docker exec civitas_db pg_isready -U civitas -q; do sleep 1; done
+
+# 3. Restore the backup
+docker exec -i civitas_db pg_restore -U civitas -d civitas --clean --if-exists < backups/civitas_20260307.dump
+
+# 4. Start backend + frontend
+./start.sh   # or start them individually (steps 5-6 above)
+```
+
+### Database Backup & Restore
+
+**Create a backup:**
+```bash
+docker exec civitas_db pg_dump -U civitas -Fc civitas > backups/civitas_$(date +%Y%m%d).dump
+```
+
+**Restore a backup:**
+```bash
+# Into a running PostgreSQL container (drops and recreates all objects)
+docker exec -i civitas_db pg_restore -U civitas -d civitas --clean --if-exists < backups/civitas_20260307.dump
+```
+
+**Restore into a fresh database:**
+```bash
+docker compose up -d postgres
+# Wait for healthy, then restore
+docker exec -i civitas_db pg_restore -U civitas -d civitas < backups/civitas_20260307.dump
+```
+
+Backups use PostgreSQL custom format (`-Fc`), which is compressed and supports selective restore. The backup includes all tables, indexes, views, seed data, and ingested records.
 
 ---
 

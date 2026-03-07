@@ -158,11 +158,15 @@ def _run_dataset(conn, batch_id: int, lien_type: str, url: str, token: Optional[
             val = (row.get(col, "") or "").strip().upper()
             return val in ("Y", "YES", "TRUE", "1") if val else None
 
+        # Synthetic source_id: PIN-YEAR-TYPE[-row_index]
+        year_val = _int("year")
+        source_id = f"{pin}-{year_val or 'X'}-{lien_type.upper()}"
+
         buf.append((
             parcel_sk,
             location_sk,
-            None,                    # source_id (no unique key in Socrata)
-            _int("year"),
+            source_id,
+            year_val,
             lien_type.upper(),
             _int("from"),
             _int("to"),

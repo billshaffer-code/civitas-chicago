@@ -46,3 +46,6 @@ nohup.out
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Database backups (too large for git)
+backups/*.dump

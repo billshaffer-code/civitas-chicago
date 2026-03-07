@@ -17,9 +17,11 @@ export default function SearchPage() {
   const [error, setError]       = useState<string | null>(null)
   const [history, setHistory]   = useState<ReportHistoryItem[]>([])
 
-  // Load report from URL param (from dashboard link)
+  // Load report or trigger search from URL params
   useEffect(() => {
     const reportId = searchParams.get('report')
+    const queryAddr = searchParams.get('q')
+
     if (reportId) {
       setSearchParams({}, { replace: true })
       setPhase('report-loading')
@@ -39,6 +41,9 @@ export default function SearchPage() {
           setError('Failed to load report')
           setPhase('search')
         })
+    } else if (queryAddr) {
+      setSearchParams({}, { replace: true })
+      handleLookup({ address: queryAddr })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

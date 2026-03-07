@@ -18,6 +18,7 @@ vi.mock('../../context/AuthContext', () => ({
 vi.mock('../../api/civitas', () => ({
   getMyReports: vi.fn(),
   getMyBatches: vi.fn(),
+  autocompleteAddress: vi.fn().mockResolvedValue([]),
 }))
 
 import { useAuth } from '../../context/AuthContext'
@@ -47,8 +48,8 @@ describe('DashboardPage', () => {
     vi.mocked(useAuth).mockReturnValue(makeAuthValue())
     vi.mocked(getMyReports).mockReturnValue(new Promise(() => {}))
     renderDashboard()
-    // Reports count shows '--' while loading
-    expect(screen.getByText('--')).toBeInTheDocument()
+    // Stats show '--' while loading
+    expect(screen.getAllByText('--').length).toBeGreaterThan(0)
   })
 
   it('displays report count after loading', async () => {
@@ -61,11 +62,12 @@ describe('DashboardPage', () => {
     renderDashboard()
 
     await waitFor(() => {
-      expect(screen.getByText('2')).toBeInTheDocument()
+      // Report count appears in stats row; '2' is the count of reports
+      expect(screen.getAllByText('2').length).toBeGreaterThan(0)
     })
   })
 
-  it('renders report history cards with address, score, tier', async () => {
+  it('renders report history cards with address, score, level', async () => {
     const reports = [
       makeReportHistoryItem({
         report_id: 'r1',
@@ -80,8 +82,8 @@ describe('DashboardPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('456 W OAK ST')).toBeInTheDocument()
-      expect(screen.getByText('Score: 72')).toBeInTheDocument()
-      expect(screen.getByText('ACTIVE')).toBeInTheDocument()
+      expect(screen.getAllByText('72').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('ACTIVE').length).toBeGreaterThan(0)
     })
   })
 
@@ -109,5 +111,54 @@ describe('DashboardPage', () => {
     await user.click(screen.getByText('123 N MAIN ST'))
 
     expect(mockNavigate).toHaveBeenCalledWith('/search?report=rpt-99')
+  })
+
+  it('shows quick search bar', () => {
+    vi.mocked(useAuth).mockReturnValue(makeAuthValue())
+    vi.mocked(getMyReports).mockResolvedValue([])
+    renderDashboard()
+    expect(screen.getByPlaceholderText(/search by address/i)).toBeInTheDocument()
+  })
+
+  it('navigates to search on quick search submit', async () => {
+    vi.mocked(useAuth).mockReturnValue(makeAuthValue())
+    vi.mocked(getMyReports).mockResolvedValue([])
+    renderDashboard()
+
+    const user = userEvent.setup()
+    const input = screen.getByPlaceholderText(/search by address/i)
+    await user.type(input, '123 MAIN ST')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/search?q=123%20MAIN%20ST')
+  })
+
+  it('shows activity level distribution when reports exist', async () => {
+    const reports = [
+      makeReportHistoryItem({ report_id: 'r1', activity_level: 'QUIET' }),
+      makeReportHistoryItem({ report_id: 'r2', activity_level: 'ACTIVE' }),
+    ]
+    vi.mocked(useAuth).mockReturnValue(makeAuthValue())
+    vi.mocked(getMyReports).mockResolvedValue(reports)
+    renderDashboard()
+
+    await waitFor(() => {
+      expect(screen.getByText('Activity Level Distribution')).toBeInTheDocument()
+    })
+  })
+
+  it('shows stats row with average score', async () => {
+    const reports = [
+      makeReportHistoryItem({ report_id: 'r1', activity_score: 40 }),
+      makeReportHistoryItem({ report_id: 'r2', activity_score: 60 }),
+    ]
+    vi.mocked(useAuth).mockReturnValue(makeAuthValue())
+    vi.mocked(getMyReports).mockResolvedValue(reports)
+    renderDashboard()
+
+    await waitFor(() => {
+      expect(screen.getByText('50')).toBeInTheDocument() // avg of 40 and 60
+      expect(screen.getByText('Avg Score')).toBeInTheDocument()
+    })
   })
 })

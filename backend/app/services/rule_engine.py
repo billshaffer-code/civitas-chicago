@@ -50,7 +50,7 @@ async def get_flags(location_sk: int) -> list[dict[str, Any]]:
             location_sk,
         )
 
-    return [dict(r) for r in rows]
+    return [_date_dict(r) for r in rows]
 
 
 async def get_summary(location_sk: int) -> dict[str, Any]:
@@ -160,7 +160,7 @@ async def get_tax_liens(location_sk: int) -> list[dict]:
             """,
             location_sk,
         )
-    return [dict(r) for r in rows]
+    return [_date_dict(r) for r in rows]
 
 
 async def get_data_freshness() -> dict[str, str | None]:
@@ -191,8 +191,11 @@ def _fmt(ts) -> str | None:
 
 
 def _date_dict(row) -> dict:
+    from decimal import Decimal
     d = dict(row)
     for k, v in d.items():
         if hasattr(v, "isoformat"):
             d[k] = v.isoformat()
+        elif isinstance(v, Decimal):
+            d[k] = float(v)
     return d

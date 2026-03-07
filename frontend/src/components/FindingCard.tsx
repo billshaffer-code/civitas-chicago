@@ -39,13 +39,13 @@ export default function FindingCard({ flag }: { flag: FlagResult }) {
   const c = ACTION_GROUP_CONFIG[group] ?? fallback
 
   return (
-    <div className={`border-l-2 ${c.border} ${c.bg} rounded-r-lg px-3 py-2 mb-2`}>
-      <div className="flex justify-between items-center">
-        <span className={`font-mono font-bold text-xs ${c.code}`}>
+    <div className={`border-l-2 ${c.border} ${c.bg} rounded-r-lg px-3 py-2 mb-2 min-w-0`}>
+      <div className="flex justify-between items-start gap-2">
+        <span className={`font-mono font-bold text-xs ${c.code} break-words min-w-0`}>
           <ActionIcon icon={c.icon} />
           {flag.flag_code}
         </span>
-        <span className="text-[11px] text-gray-400 ml-2 whitespace-nowrap">
+        <span className="text-[11px] text-gray-400 shrink-0">
           {flag.action_group}
         </span>
       </div>

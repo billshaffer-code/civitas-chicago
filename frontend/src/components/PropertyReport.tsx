@@ -1,12 +1,11 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ReportResponse, FlagResult } from '../api/civitas'
-import ActivityBar from './ActivityBar'
 import FindingCard from './FindingCard'
 import PropertyMap from './PropertyMap'
 import { downloadPdf } from '../api/civitas'
 import Markdown from 'react-markdown'
-import { ACTION_ORDER, type ActionGroup } from '../constants/terminology'
+import { LEVEL_CONFIG, ACTION_ORDER, type ActionGroup, type ActivityLevel } from '../constants/terminology'
 
 interface Props {
   report: ReportResponse
@@ -62,20 +61,36 @@ const FLAG_TO_TAB: Record<string, TabKey> = {
   HIGH_VALUE_LIEN: 'tax_liens',
 }
 
+// ── Section tabs ─────────────────────────────────────────────────────────────
+
+type SectionTab = 'findings' | 'summary' | 'records'
+
+const RECORD_STATS: { key: string; label: string }[] = [
+  { key: 'violations',       label: 'Violations' },
+  { key: 'inspections',      label: 'Inspections' },
+  { key: 'permits',          label: 'Permits' },
+  { key: 'service_311',      label: '311 Requests' },
+  { key: 'tax_liens',        label: 'Tax Liens' },
+  { key: 'vacant_buildings', label: 'Vacant Bldgs' },
+]
+
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export default function PropertyReport({ report, locationSk, address, lat, lon, onNewSearch }: Props) {
   const navigate = useNavigate()
-  const dataTabsRef = useRef<HTMLDivElement>(null)
-  const [activeTab, setActiveTab] = useState<TabKey>('violations')
+  const [sectionTab, setSectionTab] = useState<SectionTab>('findings')
+  const [activeRecordTab, setActiveRecordTab] = useState<TabKey>('violations')
+  const [summaryExpanded, setSummaryExpanded] = useState(false)
+  const [showMap, setShowMap] = useState(false)
+  const [freshnessOpen, setFreshnessOpen] = useState(false)
+
+  const cfg = LEVEL_CONFIG[report.activity_level as ActivityLevel] ?? LEVEL_CONFIG.QUIET
 
   const handleFindingClick = useCallback((flagCode: string) => {
     const tab = FLAG_TO_TAB[flagCode]
     if (tab) {
-      setActiveTab(tab)
-      setTimeout(() => {
-        dataTabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 50)
+      setActiveRecordTab(tab)
+      setSectionTab('records')
     }
   }, [])
 
@@ -89,8 +104,22 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
     URL.revokeObjectURL(url)
   }
 
+  // AI summary preview — first paragraph or first 250 chars
+  const summaryText = report.ai_summary || ''
+  const firstBreak = summaryText.indexOf('\n\n')
+  const preview = firstBreak > 0 && firstBreak < 300
+    ? summaryText.slice(0, firstBreak)
+    : summaryText.slice(0, 250) + (summaryText.length > 250 ? '...' : '')
+  const hasMoreSummary = summaryText.length > preview.length
+
+  const sectionTabs: { key: SectionTab; label: string; count?: number }[] = [
+    { key: 'findings', label: 'Findings', count: report.triggered_flags.length },
+    { key: 'summary',  label: 'Summary' },
+    { key: 'records',  label: 'Records' },
+  ]
+
   return (
-    <div className="animate-fade-in space-y-6">
+    <div className="animate-fade-in space-y-4">
 
       {/* ── Top Bar ──────────────────────────────────────────────── */}
       <div className="bg-white shadow-sm border border-gray-200 rounded-xl px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -102,6 +131,16 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
+          {lat != null && lon != null && (
+            <button
+              onClick={() => setShowMap(m => !m)}
+              className={`text-xs font-semibold px-4 py-2 rounded-lg transition-colors ${
+                showMap ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+            >
+              {showMap ? 'Hide Map' : 'Map'}
+            </button>
+          )}
           <button
             onClick={() => navigate(`/compare?a=${report.report_id}`)}
             className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
@@ -123,43 +162,128 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
         </div>
       </div>
 
-      {/* ── Two Column Layout ────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      {/* ── Map (toggleable) ─────────────────────────────────────── */}
+      {showMap && lat != null && lon != null && (
+        <PropertyMap lat={lat} lon={lon} address={report.property.address} />
+      )}
 
-        {/* ── Left Column (1/4) ──────────────────────────────────── */}
-        <div className="lg:col-span-1 space-y-4">
+      {/* ── Score + Stat Strip ───────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
 
-          {/* Score */}
-          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-            <ActivityBar score={report.activity_score} level={report.activity_level} />
+        {/* Score card */}
+        <div className="col-span-2 bg-white shadow-sm border border-gray-200 rounded-xl p-4 flex items-center gap-4">
+          <span className={`text-5xl font-black leading-none ${cfg.text}`}>
+            {report.activity_score}
+          </span>
+          <div>
+            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider ${cfg.pillBg} ${cfg.pillText}`}>
+              {cfg.label}
+            </span>
+            <p className="text-[11px] text-gray-400 mt-1">Activity Score</p>
           </div>
+        </div>
 
-          {/* Map */}
-          {lat != null && lon != null && (
-            <PropertyMap lat={lat} lon={lon} address={report.property.address} />
-          )}
+        {/* Record stat cards */}
+        {RECORD_STATS.map(s => {
+          const count = (report.supporting_records[s.key as keyof typeof report.supporting_records] ?? []).length
+          return (
+            <button
+              key={s.key}
+              onClick={() => { setActiveRecordTab(s.key as TabKey); setSectionTab('records') }}
+              className={`bg-white shadow-sm border border-gray-200 rounded-xl p-3 text-left hover:shadow-md transition-shadow ${count === 0 ? 'opacity-40' : ''}`}
+            >
+              <div className="text-2xl font-bold text-gray-900">{count}</div>
+              <div className="text-[11px] text-gray-500 leading-tight">{s.label}</div>
+            </button>
+          )
+        })}
+      </div>
 
-          {/* Findings grouped by action group */}
-          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-              Findings
-            </h3>
-            {report.triggered_flags.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No findings identified.
-              </p>
-            ) : (
-              <FindingList flags={report.triggered_flags} onFindingClick={handleFindingClick} />
+      {/* ── Section Tabs ─────────────────────────────────────────── */}
+      <nav className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+        {sectionTabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setSectionTab(t.key)}
+            className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${
+              sectionTab === t.key
+                ? 'bg-white shadow-sm text-gray-900'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t.label}
+            {t.count != null && (
+              <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                sectionTab === t.key ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-400'
+              }`}>
+                {t.count}
+              </span>
             )}
-          </div>
+          </button>
+        ))}
+      </nav>
 
-          {/* Data Freshness */}
-          {report.data_freshness && (
-            <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                Data Freshness
-              </h3>
-              <dl className="space-y-1.5">
+      {/* ── Tab Content ──────────────────────────────────────────── */}
+
+      {sectionTab === 'findings' && (
+        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-5">
+          {report.triggered_flags.length === 0 ? (
+            <p className="text-sm text-gray-400">No findings identified.</p>
+          ) : (
+            <FindingList flags={report.triggered_flags} onFindingClick={handleFindingClick} />
+          )}
+        </div>
+      )}
+
+      {sectionTab === 'summary' && (
+        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-5">
+          <div className="prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-strong:text-gray-900">
+            <Markdown>{summaryExpanded ? summaryText : preview}</Markdown>
+          </div>
+          {hasMoreSummary && (
+            <button
+              onClick={() => setSummaryExpanded(e => !e)}
+              className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+            >
+              {summaryExpanded ? (
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                  Show less
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  Read full summary
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      )}
+
+      {sectionTab === 'records' && (
+        <DataTabs records={report.supporting_records} activeTab={activeRecordTab} onTabChange={setActiveRecordTab} />
+      )}
+
+      {/* ── Data Freshness (collapsible) ─────────────────────────── */}
+      {report.data_freshness && (
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <button
+            onClick={() => setFreshnessOpen(o => !o)}
+            className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-gray-400 bg-white hover:bg-gray-50 transition-colors"
+          >
+            <span>Data Freshness</span>
+            <svg className={`w-3.5 h-3.5 transition-transform ${freshnessOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {freshnessOpen && (
+            <div className="px-4 py-3 bg-white border-t border-gray-100">
+              <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-1.5">
                 {Object.entries(report.data_freshness).map(([source, ts]) => (
                   <div key={source} className="flex justify-between text-xs">
                     <dt className="text-gray-400">{formatSourceName(source)}</dt>
@@ -172,26 +296,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
             </div>
           )}
         </div>
-
-        {/* ── Right Column (3/4) ─────────────────────────────────── */}
-        <div className="lg:col-span-3 space-y-4">
-
-          {/* AI Narrative */}
-          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-              Property Summary
-            </h3>
-            <div className="prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-strong:text-gray-900">
-              <Markdown>{report.ai_summary}</Markdown>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Full-Width Data Tables ──────────────────────────────── */}
-      <div ref={dataTabsRef}>
-        <DataTabs records={report.supporting_records} activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
+      )}
 
       {/* ── Disclaimer ───────────────────────────────────────────── */}
       <p className="text-[11px] text-gray-400 border-t border-gray-200 pt-3">
@@ -207,7 +312,7 @@ function FindingList({ flags, onFindingClick }: { flags: FlagResult[]; onFinding
   const grouped = groupBy(flags, f => f.action_group || 'Informational')
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {ACTION_ORDER.map(group => {
         const items = grouped[group]
         if (!items?.length) return null
@@ -216,9 +321,11 @@ function FindingList({ flags, onFindingClick }: { flags: FlagResult[]; onFinding
             <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
               {group}
             </h4>
-            {items.map(f => (
-              <FindingCard key={f.flag_code} flag={f} onClick={() => onFindingClick(f.flag_code)} />
-            ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {items.map(f => (
+                <FindingCard key={f.flag_code} flag={f} onClick={() => onFindingClick(f.flag_code)} />
+              ))}
+            </div>
           </div>
         )
       })}
@@ -277,7 +384,6 @@ function exportCsv(rows: Record<string, unknown>[], columns: ColDef[], filename:
   const body = rows.map(row =>
     columns.map(c => {
       const val = formatCellValue(row[c.key])
-      // Escape quotes and wrap in quotes if contains comma/quote/newline
       if (/[,"\n]/.test(val)) return `"${val.replace(/"/g, '""')}"`
       return val
     }).join(',')

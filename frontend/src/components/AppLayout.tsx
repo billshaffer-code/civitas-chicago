@@ -49,6 +49,16 @@ export default function AppLayout() {
                 Search
               </button>
               <button
+                onClick={() => navigate('/browse')}
+                className={`text-sm font-medium transition-colors ${
+                  location.pathname === '/browse'
+                    ? 'text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Browse
+              </button>
+              <button
                 onClick={() => navigate('/batch')}
                 className={`text-sm font-medium transition-colors ${
                   location.pathname === '/batch'

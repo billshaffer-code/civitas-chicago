@@ -286,3 +286,37 @@ export async function getMyBatches(limit = 20): Promise<BatchListItem[]> {
   })
   return data
 }
+
+// ── Data browse ──────────────────────────────────────────────────────────────
+
+export interface BrowseParams {
+  table: string
+  page?: number
+  page_size?: number
+  filter?: string
+  sort?: string
+  sort_dir?: 'asc' | 'desc'
+}
+
+export interface BrowseResponse {
+  rows: Record<string, unknown>[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface TableInfo {
+  key: string
+  label: string
+  count: number
+}
+
+export async function browseData(params: BrowseParams): Promise<BrowseResponse> {
+  const { data } = await api.get<BrowseResponse>('/api/v1/data/browse', { params })
+  return data
+}
+
+export async function getTableList(): Promise<TableInfo[]> {
+  const { data } = await api.get<{ tables: TableInfo[] }>('/api/v1/data/tables')
+  return data.tables
+}

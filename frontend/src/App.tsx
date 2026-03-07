@@ -7,6 +7,7 @@ import SignupPage from './pages/SignupPage'
 import DashboardPage from './pages/DashboardPage'
 import SearchPage from './pages/SearchPage'
 import BatchPage from './pages/BatchPage'
+import BrowsePage from './pages/BrowsePage'
 import ComparePage from './pages/ComparePage'
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/browse" element={<BrowsePage />} />
             <Route path="/batch" element={<BatchPage />} />
             <Route path="/compare" element={<ComparePage />} />
           </Route>

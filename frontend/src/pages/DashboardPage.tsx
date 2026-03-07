@@ -285,7 +285,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Action Cards ────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <button
           onClick={() => navigate('/search')}
           className="bg-white shadow-sm border border-gray-200 rounded-xl px-4 py-4
@@ -342,6 +342,26 @@ export default function DashboardPage() {
                 Compare Reports
               </h3>
               <p className="text-[11px] text-gray-400">Side-by-side view</p>
+            </div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => navigate('/browse')}
+          className="bg-white shadow-sm border border-gray-200 rounded-xl px-4 py-4
+                     text-left hover:border-blue-300 hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm text-gray-900 group-hover:text-blue-600 transition-colors">
+                Browse Data
+              </h3>
+              <p className="text-[11px] text-gray-400">Explore raw datasets</p>
             </div>
           </div>
         </button>

@@ -10,7 +10,7 @@ import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
 
 type Phase = 'upload' | 'processing' | 'results'
 
-export default function BatchPage() {
+export default function BatchPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [phase, setPhase] = useState<Phase>('upload')
@@ -169,8 +169,8 @@ export default function BatchPage() {
   const progressPct = totalCount > 0 ? Math.round((processed / totalCount) * 100) : 0
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Portfolio Analysis</h1>
+    <div className={embedded ? '' : 'mx-auto max-w-7xl px-4 py-8'}>
+      {!embedded && <h1 className="text-2xl font-bold text-gray-900 mb-6">Portfolio Analysis</h1>}
 
       {/* ── Upload Phase ─────────────────────────────────────── */}
       {phase === 'upload' && (
@@ -405,7 +405,7 @@ export default function BatchPage() {
           </button>
         </div>
       )}
-    </main>
+    </div>
   )
 }
 

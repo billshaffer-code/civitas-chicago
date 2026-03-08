@@ -8,7 +8,7 @@ import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
 
 type Phase = 'search' | 'lookup-loading' | 'lookup-done' | 'report-loading' | 'report-done'
 
-export default function SearchPage() {
+export default function SearchPage({ embedded = false }: { embedded?: boolean }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const [phase, setPhase]       = useState<Phase>('search')
   const [lookup, setLookup]     = useState<LookupResponse | null>(null)
@@ -125,7 +125,7 @@ export default function SearchPage() {
   const isReportView = phase === 'report-done' && report
 
   return (
-    <main className={`mx-auto px-4 py-8 ${isReportView ? 'max-w-7xl' : 'max-w-2xl'}`}>
+    <div className={embedded ? '' : `mx-auto px-4 py-8 ${isReportView ? 'max-w-7xl' : 'max-w-2xl'}`}>
       {/* Search — vertically centered when no report */}
       {!isReportView && (
         <div className={phase === 'search' ? 'min-h-[60vh] flex flex-col justify-center' : ''}>
@@ -248,6 +248,6 @@ export default function SearchPage() {
           onNewSearch={handleNewSearch}
         />
       )}
-    </main>
+    </div>
   )
 }

@@ -5,7 +5,7 @@ import type { ReportHistoryItem, ReportResponse } from '../api/civitas'
 import ReportComparison from '../components/ReportComparison'
 import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
 
-export default function ComparePage() {
+export default function ComparePage({ embedded = false }: { embedded?: boolean }) {
   const [searchParams] = useSearchParams()
   const [reports, setReports] = useState<ReportHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,8 +52,8 @@ export default function ComparePage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Compare Reports</h1>
+    <div className={embedded ? '' : 'mx-auto max-w-7xl px-4 py-8'}>
+      {!embedded && <h1 className="text-2xl font-bold text-gray-900 mb-6">Compare Reports</h1>}
 
       {/* Selection */}
       {!reportA || !reportB ? (
@@ -150,6 +150,6 @@ export default function ComparePage() {
           <ReportComparison reportA={reportA} reportB={reportB} />
         </>
       )}
-    </main>
+    </div>
   )
 }

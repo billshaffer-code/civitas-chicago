@@ -4,6 +4,10 @@ import { useAuth } from '../context/AuthContext'
 import { getMyReports, getMyBatches, autocompleteAddress } from '../api/civitas'
 import type { ReportHistoryItem, BatchListItem, AutocompleteItem } from '../api/civitas'
 import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
+import SearchPage from './SearchPage'
+import BatchPage from './BatchPage'
+import ComparePage from './ComparePage'
+import BrowsePage from './BrowsePage'
 
 // ── Utilities ────────────────────────────────────────────────────────────────
 
@@ -193,6 +197,7 @@ function LevelDistribution({ reports }: { reports: ReportHistoryItem[] }) {
 // ── Main Component ───────────────────────────────────────────────────────────
 
 type ActivityTab = 'reports' | 'batches'
+type ExpandedCard = 'search' | 'batch' | 'compare' | 'browse' | null
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -202,6 +207,7 @@ export default function DashboardPage() {
   const [batches, setBatches] = useState<BatchListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [activityTab, setActivityTab] = useState<ActivityTab>('reports')
+  const [expandedCard, setExpandedCard] = useState<ExpandedCard>(null)
 
   const fetchData = useCallback(() => {
     setLoading(true)
@@ -220,155 +226,79 @@ export default function DashboardPage() {
     fetchData()
   }, [location.key, fetchData])
 
-  // Derived stats
-  const avgScore = reports.length > 0
-    ? Math.round(reports.reduce((sum, r) => sum + r.activity_score, 0) / reports.length)
-    : 0
-  const mostRecent = reports.length > 0 ? relativeTime(reports[0].generated_at) : '--'
-  const highScore = reports.length > 0 ? Math.max(...reports.map(r => r.activity_score)) : 0
-  const lowScore = reports.length > 0 ? Math.min(...reports.map(r => r.activity_score)) : 0
-
   const reportGroups = groupReportsByDate(reports)
 
+  const cardDefs: { key: ExpandedCard & string; label: string; desc: string; icon: string }[] = [
+    { key: 'search',  label: 'Property Search',   desc: 'Address or PIN lookup',       icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
+    { key: 'batch',   label: 'Portfolio Analysis', desc: 'Upload CSV of addresses',     icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+    { key: 'compare', label: 'Compare Reports',   desc: 'Side-by-side view',           icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+    { key: 'browse',  label: 'Browse Data',        desc: 'Explore raw datasets',        icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
+  ]
+
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
+    <main className={`mx-auto px-4 py-8 ${expandedCard ? 'max-w-7xl' : 'max-w-5xl'} transition-all`}>
 
       {/* ── Welcome + Quick Search ──────────────────────────────── */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Welcome back, {user?.full_name?.split(' ')[0]}
-        </h1>
-        <p className="text-sm text-gray-500 mt-1 mb-5">
-          CIVITAS Municipal Intelligence
-        </p>
-        <QuickSearch />
-      </div>
-
-      {/* ── Stats Row ───────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-6">
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-gray-900">
-            {loading ? '--' : reports.length}
-          </div>
-          <div className="text-[11px] text-gray-500 mt-0.5">Reports</div>
+      {!expandedCard && (
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome back, {user?.full_name?.split(' ')[0]}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1 mb-5">
+            CIVITAS Municipal Intelligence
+          </p>
+          <QuickSearch />
         </div>
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-blue-600">
-            {loading ? '--' : avgScore}
-          </div>
-          <div className="text-[11px] text-gray-500 mt-0.5">Avg Score</div>
-        </div>
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-gray-900">
-            {loading ? '--' : highScore}
-          </div>
-          <div className="text-[11px] text-gray-500 mt-0.5">Highest</div>
-        </div>
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-gray-900">
-            {loading ? '--' : lowScore}
-          </div>
-          <div className="text-[11px] text-gray-500 mt-0.5">Lowest</div>
-        </div>
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-gray-900">
-            {loading ? '--' : batches.length}
-          </div>
-          <div className="text-[11px] text-gray-500 mt-0.5">Batches</div>
-        </div>
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-gray-900">
-            {loading ? '--' : mostRecent}
-          </div>
-          <div className="text-[11px] text-gray-500 mt-0.5">Last Report</div>
-        </div>
-      </div>
+      )}
 
       {/* ── Action Cards ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <button
-          onClick={() => navigate('/search')}
-          className="bg-white shadow-sm border border-gray-200 rounded-xl px-4 py-4
-                     text-left hover:border-blue-300 hover:shadow-md transition-all group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm text-gray-900 group-hover:text-blue-600 transition-colors">
-                Property Search
-              </h3>
-              <p className="text-[11px] text-gray-400">Address or PIN lookup</p>
-            </div>
-          </div>
-        </button>
-
-        <button
-          onClick={() => navigate('/batch')}
-          className="bg-white shadow-sm border border-gray-200 rounded-xl px-4 py-4
-                     text-left hover:border-blue-300 hover:shadow-md transition-all group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm text-gray-900 group-hover:text-blue-600 transition-colors">
-                Portfolio Analysis
-              </h3>
-              <p className="text-[11px] text-gray-400">Upload CSV of addresses</p>
-            </div>
-          </div>
-        </button>
-
-        <button
-          onClick={() => navigate('/compare')}
-          className="bg-white shadow-sm border border-gray-200 rounded-xl px-4 py-4
-                     text-left hover:border-blue-300 hover:shadow-md transition-all group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm text-gray-900 group-hover:text-blue-600 transition-colors">
-                Compare Reports
-              </h3>
-              <p className="text-[11px] text-gray-400">Side-by-side view</p>
-            </div>
-          </div>
-        </button>
-
-        <button
-          onClick={() => navigate('/browse')}
-          className="bg-white shadow-sm border border-gray-200 rounded-xl px-4 py-4
-                     text-left hover:border-blue-300 hover:shadow-md transition-all group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm text-gray-900 group-hover:text-blue-600 transition-colors">
-                Browse Data
-              </h3>
-              <p className="text-[11px] text-gray-400">Explore raw datasets</p>
-            </div>
-          </div>
-        </button>
+      <div className={`grid gap-3 mb-6 ${expandedCard ? 'grid-cols-4' : 'grid-cols-2 sm:grid-cols-4'}`}>
+        {cardDefs.map(c => {
+          const isActive = expandedCard === c.key
+          return (
+            <button
+              key={c.key}
+              onClick={() => setExpandedCard(isActive ? null : c.key as ExpandedCard)}
+              className={`rounded-xl px-4 py-4 text-left transition-all group ${
+                isActive
+                  ? 'bg-blue-600 shadow-md border border-blue-600'
+                  : expandedCard
+                    ? 'bg-white shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md opacity-60 hover:opacity-100'
+                    : 'bg-white shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  isActive ? 'bg-blue-500' : 'bg-blue-50'
+                }`}>
+                  <svg className={`w-4.5 h-4.5 ${isActive ? 'text-white' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={c.icon} />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className={`font-semibold text-sm transition-colors ${
+                    isActive ? 'text-white' : 'text-gray-900 group-hover:text-blue-600'
+                  }`}>
+                    {c.label}
+                  </h3>
+                  {!expandedCard && (
+                    <p className="text-[11px] text-gray-400">{c.desc}</p>
+                  )}
+                </div>
+              </div>
+            </button>
+          )
+        })}
       </div>
 
+      {/* ── Expanded Panel ──────────────────────────────────────── */}
+      {expandedCard === 'search' && <SearchPage embedded />}
+      {expandedCard === 'batch' && <BatchPage embedded />}
+      {expandedCard === 'compare' && <ComparePage embedded />}
+      {expandedCard === 'browse' && <BrowsePage embedded />}
+
       {/* ── Activity Level Distribution ─────────────────────────── */}
-      {!loading && reports.length > 0 && (
+      {!expandedCard && !loading && reports.length > 0 && (
         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 mb-6">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
             Activity Level Distribution
@@ -378,174 +308,166 @@ export default function DashboardPage() {
       )}
 
       {/* ── Recent Activity (tabbed: Reports / Batches) ─────────── */}
-      <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between border-b border-gray-200 px-5 pt-4 pb-0">
-          <div className="flex gap-1">
-            <button
-              onClick={() => setActivityTab('reports')}
-              className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 ${
-                activityTab === 'reports'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              Reports
-              {!loading && (
-                <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                  activityTab === 'reports' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'
-                }`}>
-                  {reports.length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActivityTab('batches')}
-              className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 ${
-                activityTab === 'batches'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              Batches
-              {!loading && batches.length > 0 && (
-                <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                  activityTab === 'batches' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'
-                }`}>
-                  {batches.length}
-                </span>
-              )}
-            </button>
+      {!expandedCard && (
+        <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between border-b border-gray-200 px-5 pt-4 pb-0">
+            <div className="flex gap-1">
+              <button
+                onClick={() => setActivityTab('reports')}
+                className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 ${
+                  activityTab === 'reports'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                Reports
+                {!loading && (
+                  <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                    activityTab === 'reports' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {reports.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActivityTab('batches')}
+                className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 ${
+                  activityTab === 'batches'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                Batches
+                {!loading && batches.length > 0 && (
+                  <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                    activityTab === 'batches' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {batches.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="p-5">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="skeleton h-16 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : activityTab === 'reports' ? (
+              reports.length === 0 ? (
+                <div className="text-center py-10">
+                  <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-sm text-gray-400">No reports yet.</p>
+                  <p className="text-xs text-gray-400 mt-1">Search for a property to generate your first report.</p>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {reportGroups.map(group => (
+                    <div key={group.label}>
+                      <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                        {group.label}
+                      </h4>
+                      <div className="space-y-1.5">
+                        {group.items.map(r => {
+                          const levelCfg = LEVEL_CONFIG[r.activity_level as ActivityLevel]
+                          return (
+                            <button
+                              key={r.report_id}
+                              onClick={() => navigate(`/search?report=${r.report_id}`)}
+                              className="w-full flex items-center gap-4 bg-gray-50 hover:bg-gray-100
+                                         border border-gray-200 rounded-lg px-4 py-3 text-left transition-colors"
+                            >
+                              <div className={`w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 ${levelCfg?.pillBg ?? 'bg-gray-100'}`}>
+                                <span className={`text-base font-bold ${levelCfg?.pillText ?? 'text-gray-500'}`}>
+                                  {r.activity_score}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{r.query_address}</p>
+                                <p className="text-[11px] text-gray-400 mt-0.5">{relativeTime(r.generated_at)}</p>
+                              </div>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${levelCfg?.bgAccent ?? 'bg-gray-100 text-gray-500'}`}>
+                                {r.activity_level}
+                              </span>
+                              <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : (
+              batches.length === 0 ? (
+                <div className="text-center py-10">
+                  <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  <p className="text-sm text-gray-400">No batch analyses yet.</p>
+                  <p className="text-xs text-gray-400 mt-1">Upload a CSV to analyze multiple properties at once.</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {batches.map(b => (
+                    <button
+                      key={b.batch_id}
+                      onClick={() => navigate(`/batch?id=${b.batch_id}`)}
+                      className="w-full flex items-center gap-4 bg-gray-50 hover:bg-gray-100
+                                 border border-gray-200 rounded-lg px-4 py-3 text-left transition-colors"
+                    >
+                      <div className={`w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        b.status === 'completed' ? 'bg-emerald-50' : b.status === 'failed' ? 'bg-red-50' : 'bg-gray-100'
+                      }`}>
+                        {b.status === 'completed' ? (
+                          <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : b.status === 'failed' ? (
+                          <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {b.batch_name ?? 'Unnamed Batch'}
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">{relativeTime(b.created_at)}</p>
+                      </div>
+                      <span className="text-xs text-gray-500 flex-shrink-0">
+                        {b.completed_count}/{b.total_count}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        b.status === 'completed' ? 'bg-emerald-50 text-emerald-600'
+                          : b.status === 'failed' ? 'bg-red-50 text-red-600'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {b.status}
+                      </span>
+                      <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              )
+            )}
           </div>
         </div>
-
-        <div className="p-5">
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="skeleton h-16 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : activityTab === 'reports' ? (
-            reports.length === 0 ? (
-              <div className="text-center py-10">
-                <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <p className="text-sm text-gray-400">No reports yet.</p>
-                <p className="text-xs text-gray-400 mt-1">Search for a property to generate your first report.</p>
-              </div>
-            ) : (
-              <div className="space-y-5">
-                {reportGroups.map(group => (
-                  <div key={group.label}>
-                    <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                      {group.label}
-                    </h4>
-                    <div className="space-y-1.5">
-                      {group.items.map(r => {
-                        const levelCfg = LEVEL_CONFIG[r.activity_level as ActivityLevel]
-                        return (
-                          <button
-                            key={r.report_id}
-                            onClick={() => navigate(`/search?report=${r.report_id}`)}
-                            className="w-full flex items-center gap-4 bg-gray-50 hover:bg-gray-100
-                                       border border-gray-200 rounded-lg px-4 py-3 text-left transition-colors"
-                          >
-                            {/* Score badge */}
-                            <div className={`w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 ${levelCfg?.pillBg ?? 'bg-gray-100'}`}>
-                              <span className={`text-base font-bold ${levelCfg?.pillText ?? 'text-gray-500'}`}>
-                                {r.activity_score}
-                              </span>
-                            </div>
-                            {/* Address + time */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">{r.query_address}</p>
-                              <p className="text-[11px] text-gray-400 mt-0.5">{relativeTime(r.generated_at)}</p>
-                            </div>
-                            {/* Level pill */}
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${levelCfg?.bgAccent ?? 'bg-gray-100 text-gray-500'}`}>
-                              {r.activity_level}
-                            </span>
-                            {/* Chevron */}
-                            <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          ) : (
-            /* Batches tab */
-            batches.length === 0 ? (
-              <div className="text-center py-10">
-                <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-                <p className="text-sm text-gray-400">No batch analyses yet.</p>
-                <p className="text-xs text-gray-400 mt-1">Upload a CSV to analyze multiple properties at once.</p>
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                {batches.map(b => (
-                  <button
-                    key={b.batch_id}
-                    onClick={() => navigate(`/batch?id=${b.batch_id}`)}
-                    className="w-full flex items-center gap-4 bg-gray-50 hover:bg-gray-100
-                               border border-gray-200 rounded-lg px-4 py-3 text-left transition-colors"
-                  >
-                    {/* Status icon */}
-                    <div className={`w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      b.status === 'completed' ? 'bg-emerald-50' : b.status === 'failed' ? 'bg-red-50' : 'bg-gray-100'
-                    }`}>
-                      {b.status === 'completed' ? (
-                        <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : b.status === 'failed' ? (
-                        <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      ) : (
-                        <svg className="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                      )}
-                    </div>
-                    {/* Name + time */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {b.batch_name ?? 'Unnamed Batch'}
-                      </p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">{relativeTime(b.created_at)}</p>
-                    </div>
-                    {/* Progress */}
-                    <span className="text-xs text-gray-500 flex-shrink-0">
-                      {b.completed_count}/{b.total_count}
-                    </span>
-                    {/* Status pill */}
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                      b.status === 'completed' ? 'bg-emerald-50 text-emerald-600'
-                        : b.status === 'failed' ? 'bg-red-50 text-red-600'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {b.status}
-                    </span>
-                    {/* Chevron */}
-                    <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                ))}
-              </div>
-            )
-          )}
-        </div>
-      </div>
+      )}
     </main>
   )
 }

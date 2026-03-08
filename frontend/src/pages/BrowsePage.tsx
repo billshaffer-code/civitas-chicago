@@ -97,7 +97,7 @@ const PAGE_SIZES = [25, 50, 100]
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function BrowsePage() {
+export default function BrowsePage({ embedded = false }: { embedded?: boolean }) {
   const [tables, setTables] = useState<TableInfo[]>([])
   const [activeTable, setActiveTable] = useState('violations')
   const [data, setData] = useState<BrowseResponse | null>(null)
@@ -184,15 +184,17 @@ export default function BrowsePage() {
   const rows = data?.rows ?? []
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <div className={embedded ? '' : 'mx-auto max-w-7xl px-4 py-8'}>
 
       {/* ── Header ───────────────────────────────────────────────── */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Browse Data</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Explore Chicago municipal datasets
-        </p>
-      </div>
+      {!embedded && (
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Browse Data</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Explore Chicago municipal datasets
+          </p>
+        </div>
+      )}
 
       {/* ── Table Card ───────────────────────────────────────────── */}
       <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
@@ -365,7 +367,7 @@ export default function BrowsePage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   )
 }
 

@@ -26,7 +26,7 @@ from backend.app.database import get_conn
 from backend.app.dependencies import get_current_user
 from backend.app.schemas.report import ReportHistoryItem, ReportRequest, ReportResponse
 from backend.app.services.pdf import generate_pdf
-from backend.app.services.report import generate_single_report, normalize_report
+from backend.app.services.report import generate_report_summary, generate_single_report, normalize_report
 
 router = APIRouter(prefix="/api/v1/report", tags=["report"])
 
@@ -37,11 +37,14 @@ async def generate_report(
     format: str = Query(default="json", pattern="^(json|pdf)$"),
     user: dict = Depends(get_current_user),
 ):
+    # PDF needs the full report including narrative
+    skip_narrative = format != "pdf"
     try:
         report = await generate_single_report(
             location_sk=body.location_sk,
             address=body.address,
             user_id=user.get("user_id"),
+            skip_narrative=skip_narrative,
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -56,6 +59,19 @@ async def generate_report(
         )
 
     return report
+
+
+@router.get("/{report_id}/summary")
+async def get_report_summary(
+    report_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Generate (or retrieve) the AI narrative for a report."""
+    try:
+        summary = await generate_report_summary(report_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return {"ai_summary": summary}
 
 
 def _normalize_tier(tier: str) -> str:

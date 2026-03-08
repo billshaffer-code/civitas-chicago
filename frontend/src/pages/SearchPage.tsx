@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import PropertySearch from '../components/PropertySearch'
 import PropertyReport from '../components/PropertyReport'
-import { lookupProperty, generateReport, getReportHistory, getReport } from '../api/civitas'
+import { lookupProperty, generateReport, getReportHistory, getReport, getReportSummary } from '../api/civitas'
 import type { LookupRequest, LookupResponse, ReportResponse, ReportHistoryItem } from '../api/civitas'
 import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
 
@@ -93,6 +93,15 @@ export default function SearchPage() {
       const r = await generateReport(lookup.location_sk, lastReq.address)
       setReport(r)
       setPhase('report-done')
+
+      // Load AI summary in the background
+      if (!r.ai_summary) {
+        getReportSummary(r.report_id)
+          .then(summary => {
+            setReport(prev => prev ? { ...prev, ai_summary: summary } : prev)
+          })
+          .catch(() => {})
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Report generation failed')
       setPhase('lookup-done')

@@ -17,6 +17,18 @@ class AutocompleteItem(BaseModel):
     full_address: str
 
 
+class NeighborProperty(BaseModel):
+    location_sk: int
+    full_address: str
+    lat: float
+    lon: float
+    activity_score: int = 0
+    activity_level: str = "QUIET"
+    flag_count: int = 0
+    top_finding: Optional[str] = None
+    distance_m: float = 0
+
+
 class PropertyLookupResponse(BaseModel):
     resolved: bool
     location_sk: Optional[int] = None

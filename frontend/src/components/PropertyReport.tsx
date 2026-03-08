@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { ReportResponse, FlagResult } from '../api/civitas'
 import FindingCard from './FindingCard'
 import PropertyMap from './PropertyMap'
+import RecordTimeline from './RecordTimeline'
 import { downloadPdf } from '../api/civitas'
 import Markdown from 'react-markdown'
 import { LEVEL_CONFIG, ACTION_ORDER, type ActionGroup, type ActivityLevel } from '../constants/terminology'
@@ -63,7 +64,7 @@ const FLAG_TO_TAB: Record<string, TabKey> = {
 
 // ── Section tabs ─────────────────────────────────────────────────────────────
 
-type SectionTab = 'findings' | 'summary' | 'records'
+type SectionTab = 'findings' | 'summary' | 'timeline' | 'records'
 
 const RECORD_STATS: { key: string; label: string }[] = [
   { key: 'violations',       label: 'Violations' },
@@ -115,6 +116,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
   const sectionTabs: { key: SectionTab; label: string; count?: number }[] = [
     { key: 'findings', label: 'Findings', count: report.triggered_flags.length },
     { key: 'summary',  label: 'Summary' },
+    { key: 'timeline', label: 'Timeline' },
     { key: 'records',  label: 'Records' },
   ]
 
@@ -164,7 +166,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
 
       {/* ── Map (toggleable) ─────────────────────────────────────── */}
       {showMap && lat != null && lon != null && (
-        <PropertyMap lat={lat} lon={lon} address={report.property.address} />
+        <PropertyMap lat={lat} lon={lon} address={report.property.address} locationSk={locationSk} />
       )}
 
       {/* ── Score + Stat Strip ───────────────────────────────────── */}
@@ -237,32 +239,45 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
 
       {sectionTab === 'summary' && (
         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-5">
-          <div className="prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-strong:text-gray-900">
-            <Markdown>{summaryExpanded ? summaryText : preview}</Markdown>
-          </div>
-          {hasMoreSummary && (
-            <button
-              onClick={() => setSummaryExpanded(e => !e)}
-              className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-500 transition-colors"
-            >
-              {summaryExpanded ? (
-                <>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                  </svg>
-                  Show less
-                </>
-              ) : (
-                <>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                  Read full summary
-                </>
+          {!summaryText ? (
+            <div className="flex items-center gap-3 py-4">
+              <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+              <span className="text-sm text-gray-400">Generating AI summary...</span>
+            </div>
+          ) : (
+            <>
+              <div className="prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-strong:text-gray-900">
+                <Markdown>{summaryExpanded ? summaryText : preview}</Markdown>
+              </div>
+              {hasMoreSummary && (
+                <button
+                  onClick={() => setSummaryExpanded(e => !e)}
+                  className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+                >
+                  {summaryExpanded ? (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                      Show less
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                      Read full summary
+                    </>
+                  )}
+                </button>
               )}
-            </button>
+            </>
           )}
         </div>
+      )}
+
+      {sectionTab === 'timeline' && (
+        <RecordTimeline records={report.supporting_records} />
       )}
 
       {sectionTab === 'records' && (

@@ -48,8 +48,8 @@ describe('DashboardPage', () => {
     vi.mocked(useAuth).mockReturnValue(makeAuthValue())
     vi.mocked(getMyReports).mockReturnValue(new Promise(() => {}))
     renderDashboard()
-    // Stats show '--' while loading
-    expect(screen.getAllByText('--').length).toBeGreaterThan(0)
+    // Loading skeletons are rendered
+    expect(document.querySelectorAll('.skeleton').length).toBeGreaterThan(0)
   })
 
   it('displays report count after loading', async () => {
@@ -147,18 +147,14 @@ describe('DashboardPage', () => {
     })
   })
 
-  it('shows stats row with average score', async () => {
-    const reports = [
-      makeReportHistoryItem({ report_id: 'r1', activity_score: 40 }),
-      makeReportHistoryItem({ report_id: 'r2', activity_score: 60 }),
-    ]
+  it('shows action cards for search, batch, compare, browse', async () => {
     vi.mocked(useAuth).mockReturnValue(makeAuthValue())
-    vi.mocked(getMyReports).mockResolvedValue(reports)
+    vi.mocked(getMyReports).mockResolvedValue([])
     renderDashboard()
 
-    await waitFor(() => {
-      expect(screen.getByText('50')).toBeInTheDocument() // avg of 40 and 60
-      expect(screen.getByText('Avg Score')).toBeInTheDocument()
-    })
+    expect(screen.getByText('Property Search')).toBeInTheDocument()
+    expect(screen.getByText('Portfolio Analysis')).toBeInTheDocument()
+    expect(screen.getByText('Compare Reports')).toBeInTheDocument()
+    expect(screen.getByText('Browse Data')).toBeInTheDocument()
   })
 })

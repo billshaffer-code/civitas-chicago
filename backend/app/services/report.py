@@ -41,9 +41,14 @@ def normalize_report(report: dict) -> dict:
     return report
 
 
-async def generate_single_report(location_sk: int, address: str, user_id) -> dict:
+async def generate_single_report(
+    location_sk: int, address: str, user_id, *, skip_narrative: bool = False
+) -> dict:
     """
     Generate a full report for a single property and store it in report_audit.
+
+    If skip_narrative=True, the ai_summary field is set to "" and the Claude
+    call is skipped.  Use generate_report_summary() to fill it in later.
 
     Returns the assembled report dict.
     """
@@ -73,19 +78,22 @@ async def generate_single_report(location_sk: int, address: str, user_id) -> dic
     # ── 4. Data freshness ─────────────────────────────────────────────────────
     freshness = await rule_engine.get_data_freshness()
 
-    # ── 5. Claude narrative ───────────────────────────────────────────────────
-    claude_payload = build_claude_payload(
-        location_row=location_row,
-        score=score,
-        flags=flags,
-        violations=violations,
-        inspections=inspections,
-        permits=permits,
-        tax_liens=tax_liens,
-        freshness=freshness,
-        match_confidence=address,
-    )
-    narrative = await generate_narrative(claude_payload)
+    # ── 5. Claude narrative (optional) ────────────────────────────────────────
+    if skip_narrative:
+        narrative = ""
+    else:
+        claude_payload = build_claude_payload(
+            location_row=location_row,
+            score=score,
+            flags=flags,
+            violations=violations,
+            inspections=inspections,
+            permits=permits,
+            tax_liens=tax_liens,
+            freshness=freshness,
+            match_confidence=address,
+        )
+        narrative = await generate_narrative(claude_payload)
 
     # ── 6. Assemble report dict ───────────────────────────────────────────────
     report_id = str(uuid.uuid4())
@@ -145,3 +153,71 @@ async def generate_single_report(location_sk: int, address: str, user_id) -> dic
         )
 
     return report
+
+
+async def generate_report_summary(report_id: str) -> str:
+    """
+    Generate the AI narrative for an existing report that was created with
+    skip_narrative=True.  Updates the stored report_audit row and returns
+    the narrative text.
+    """
+    # ── 1. Load the stored report ─────────────────────────────────────────────
+    async with get_conn() as conn:
+        row = await conn.fetchrow(
+            "SELECT report_json, location_sk FROM report_audit WHERE report_id = $1",
+            report_id,
+        )
+    if not row:
+        raise ValueError(f"report_id {report_id} not found")
+
+    raw = row["report_json"]
+    report = json.loads(raw) if isinstance(raw, str) else dict(raw)
+
+    # If summary already exists, return it
+    if report.get("ai_summary"):
+        return report["ai_summary"]
+
+    # ── 2. Load location row for Claude payload ──────────────────────────────
+    location_sk = row["location_sk"]
+    async with get_conn() as conn:
+        loc = await conn.fetchrow(
+            "SELECT * FROM dim_location WHERE location_sk = $1",
+            location_sk,
+        )
+    if not loc:
+        raise ValueError(f"location_sk {location_sk} not found")
+
+    location_row = dict(loc)
+
+    # ── 3. Build payload from stored report data ─────────────────────────────
+    score = {
+        "raw_score": report.get("activity_score", 0),
+        "activity_level": report.get("activity_level", "QUIET"),
+    }
+    flags = report.get("triggered_flags", [])
+    records = report.get("supporting_records", {})
+    freshness = report.get("data_freshness", {})
+
+    claude_payload = build_claude_payload(
+        location_row=location_row,
+        score=score,
+        flags=flags,
+        violations=records.get("violations", []),
+        inspections=records.get("inspections", []),
+        permits=records.get("permits", []),
+        tax_liens=records.get("tax_liens", []),
+        freshness=freshness,
+        match_confidence=report.get("match_confidence", ""),
+    )
+    narrative = await generate_narrative(claude_payload)
+
+    # ── 4. Update stored report ──────────────────────────────────────────────
+    report["ai_summary"] = narrative
+    async with get_conn() as conn:
+        await conn.execute(
+            "UPDATE report_audit SET report_json = $1::jsonb WHERE report_id = $2",
+            json.dumps(report),
+            report_id,
+        )
+
+    return narrative

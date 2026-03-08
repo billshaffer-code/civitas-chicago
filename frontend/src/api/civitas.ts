@@ -101,6 +101,25 @@ export interface ReportResponse {
   disclaimer: string
 }
 
+export interface NeighborProperty {
+  location_sk: number
+  full_address: string
+  lat: number
+  lon: number
+  activity_score: number
+  activity_level: 'QUIET' | 'TYPICAL' | 'ACTIVE' | 'COMPLEX'
+  flag_count: number
+  top_finding: string | null
+  distance_m: number
+}
+
+export async function getNeighbors(locationSk: number, radius = 500): Promise<NeighborProperty[]> {
+  const { data } = await api.get<NeighborProperty[]>('/api/v1/property/neighbors', {
+    params: { location_sk: locationSk, radius },
+  })
+  return data
+}
+
 export interface AutocompleteItem {
   location_sk: number
   full_address: string
@@ -245,6 +264,11 @@ export async function getReportHistory(location_sk: number): Promise<ReportHisto
 export async function getReport(report_id: string): Promise<ReportResponse> {
   const { data } = await api.get<ReportResponse>(`/api/v1/report/${report_id}`)
   return data
+}
+
+export async function getReportSummary(report_id: string): Promise<string> {
+  const { data } = await api.get<{ ai_summary: string }>(`/api/v1/report/${report_id}/summary`)
+  return data.ai_summary
 }
 
 export async function downloadPdf(location_sk: number, address: string): Promise<Blob> {

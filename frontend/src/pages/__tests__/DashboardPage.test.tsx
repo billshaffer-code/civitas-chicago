@@ -37,11 +37,11 @@ describe('DashboardPage', () => {
     vi.mocked(getMyBatches).mockResolvedValue([])
   })
 
-  it('displays welcome message with user first name', async () => {
-    vi.mocked(useAuth).mockReturnValue(makeAuthValue({ user: makeUser({ full_name: 'Jane Smith' }) }))
+  it('displays quick search bar', async () => {
+    vi.mocked(useAuth).mockReturnValue(makeAuthValue())
     vi.mocked(getMyReports).mockResolvedValue([])
     renderDashboard()
-    expect(screen.getByText(/welcome back, jane/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/search by address/i)).toBeInTheDocument()
   })
 
   it('shows loading state while fetching reports', () => {
@@ -147,12 +147,11 @@ describe('DashboardPage', () => {
     })
   })
 
-  it('shows action cards for search, batch, compare, browse', async () => {
+  it('shows action cards for batch, compare, browse', async () => {
     vi.mocked(useAuth).mockReturnValue(makeAuthValue())
     vi.mocked(getMyReports).mockResolvedValue([])
     renderDashboard()
 
-    expect(screen.getByText('Property Search')).toBeInTheDocument()
     expect(screen.getByText('Portfolio Analysis')).toBeInTheDocument()
     expect(screen.getByText('Compare Reports')).toBeInTheDocument()
     expect(screen.getByText('Browse Data')).toBeInTheDocument()

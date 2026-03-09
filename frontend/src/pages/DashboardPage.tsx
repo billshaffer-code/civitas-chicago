@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
 import { getMyReports, getMyBatches, autocompleteAddress } from '../api/civitas'
 import type { ReportHistoryItem, BatchListItem, AutocompleteItem } from '../api/civitas'
 import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
-import SearchPage from './SearchPage'
 import BatchPage from './BatchPage'
 import ComparePage from './ComparePage'
 import BrowsePage from './BrowsePage'
@@ -197,10 +195,9 @@ function LevelDistribution({ reports }: { reports: ReportHistoryItem[] }) {
 // ── Main Component ───────────────────────────────────────────────────────────
 
 type ActivityTab = 'reports' | 'batches'
-type ExpandedCard = 'search' | 'batch' | 'compare' | 'browse' | null
+type ExpandedCard = 'batch' | 'compare' | 'browse' | null
 
 export default function DashboardPage() {
-  const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [reports, setReports] = useState<ReportHistoryItem[]>([])
@@ -224,35 +221,27 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData()
+    setExpandedCard(null)
   }, [location.key, fetchData])
 
   const reportGroups = groupReportsByDate(reports)
 
   const cardDefs: { key: ExpandedCard & string; label: string; desc: string; icon: string }[] = [
-    { key: 'search',  label: 'Property Search',   desc: 'Address or PIN lookup',       icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
     { key: 'batch',   label: 'Portfolio Analysis', desc: 'Upload CSV of addresses',     icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
     { key: 'compare', label: 'Compare Reports',   desc: 'Side-by-side view',           icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
     { key: 'browse',  label: 'Browse Data',        desc: 'Explore raw datasets',        icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
   ]
 
   return (
-    <main className={`mx-auto px-4 py-8 ${expandedCard ? 'max-w-7xl' : 'max-w-5xl'} transition-all`}>
+    <main className="mx-auto px-4 py-8 max-w-7xl">
 
       {/* ── Welcome + Quick Search ──────────────────────────────── */}
-      {!expandedCard && (
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Welcome back, {user?.full_name?.split(' ')[0]}
-          </h1>
-          <p className="text-sm text-gray-500 mt-1 mb-5">
-            CIVITAS Municipal Intelligence
-          </p>
-          <QuickSearch />
-        </div>
-      )}
+      <div className="mb-8">
+        <QuickSearch />
+      </div>
 
       {/* ── Action Cards ────────────────────────────────────────── */}
-      <div className={`grid gap-3 mb-6 ${expandedCard ? 'grid-cols-4' : 'grid-cols-2 sm:grid-cols-4'}`}>
+      <div className={`grid gap-3 mb-6 ${expandedCard ? 'grid-cols-3' : 'grid-cols-3'}`}>
         {cardDefs.map(c => {
           const isActive = expandedCard === c.key
           return (
@@ -292,7 +281,6 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Expanded Panel ──────────────────────────────────────── */}
-      {expandedCard === 'search' && <SearchPage embedded />}
       {expandedCard === 'batch' && <BatchPage embedded />}
       {expandedCard === 'compare' && <ComparePage embedded />}
       {expandedCard === 'browse' && <BrowsePage embedded />}

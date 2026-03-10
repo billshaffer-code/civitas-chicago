@@ -281,7 +281,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
       )}
 
       {sectionTab === 'records' && (
-        <DataTabs records={report.supporting_records} activeTab={activeRecordTab} onTabChange={setActiveRecordTab} />
+        <DataTabs key={activeRecordTab} records={report.supporting_records} activeTab={activeRecordTab} />
       )}
 
       {/* ── Data Freshness (collapsible) ─────────────────────────── */}
@@ -415,10 +415,9 @@ function exportCsv(rows: Record<string, unknown>[], columns: ColDef[], filename:
 interface DataTabsProps {
   records: Record<string, Record<string, unknown>[]>
   activeTab: TabKey
-  onTabChange: (tab: TabKey) => void
 }
 
-function DataTabs({ records, activeTab, onTabChange }: DataTabsProps) {
+function DataTabs({ records, activeTab }: DataTabsProps) {
   const [filter, setFilter] = useState('')
   const [sortCol, setSortCol] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -427,15 +426,6 @@ function DataTabs({ records, activeTab, onTabChange }: DataTabsProps) {
 
   const current = tabMeta.find(t => t.key === activeTab)!
   const rawRows = records[activeTab] ?? []
-
-  function handleTabSwitch(tab: TabKey) {
-    onTabChange(tab)
-    setFilter('')
-    setSortCol(null)
-    setSortDir('asc')
-    setExpandedRow(null)
-    setPage(0)
-  }
 
   function handleSort(colKey: string) {
     if (sortCol !== colKey) {
@@ -479,31 +469,6 @@ function DataTabs({ records, activeTab, onTabChange }: DataTabsProps) {
 
   return (
     <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
-
-      {/* Tab bar */}
-      <div className="flex overflow-x-auto border-b border-gray-200">
-        {tabMeta.map(t => {
-          const count = (records[t.key] ?? []).length
-          const isActive = t.key === activeTab
-          return (
-            <button
-              key={t.key}
-              onClick={() => handleTabSwitch(t.key)}
-              className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold whitespace-nowrap transition-colors
-                ${isActive
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-400 hover:text-gray-600 border-b-2 border-transparent'
-                }`}
-            >
-              {t.label}
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono
-                ${isActive ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
-                {count}
-              </span>
-            </button>
-          )
-        })}
-      </div>
 
       {/* Toolbar: filter + record count + export */}
       <div className="px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">

@@ -40,7 +40,7 @@ python3 -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 
 # ── 4. Frontend dev server ──────────────────────────────────────────
-echo "Starting frontend on :5173..."
+echo "Starting frontend on :3000..."
 cd "$PROJECT_DIR/frontend" && npm run dev &
 FRONTEND_PID=$!
 cd "$PROJECT_DIR"
@@ -48,7 +48,7 @@ cd "$PROJECT_DIR"
 echo ""
 echo "CIVITAS is running:"
 echo "  Backend  → http://localhost:8000"
-echo "  Frontend → http://localhost:5173"
+echo "  Frontend → http://localhost:3000"
 echo ""
 echo "Press Ctrl+C to stop all services."
 

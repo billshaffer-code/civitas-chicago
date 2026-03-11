@@ -42,6 +42,10 @@ nohup.out
 *.swp
 *.swo
 
+# Claude Code
+.claude/
+claude-binary
+
 # pytest / coverage
 .pytest_cache/
 .coverage

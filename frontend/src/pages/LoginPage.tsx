@@ -227,6 +227,12 @@ export default function LoginPage() {
               </Link>
             </p>
           </div>
+
+          <p className="mt-4 text-center text-sm text-gray-400">
+            <Link to="/learn-more" className="hover:text-gray-600 font-medium transition-colors">
+              Learn more about CIVITAS &rarr;
+            </Link>
+          </p>
         </div>
       </div>
     </div>

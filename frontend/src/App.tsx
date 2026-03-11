@@ -9,6 +9,7 @@ import SearchPage from './pages/SearchPage'
 import BatchPage from './pages/BatchPage'
 import BrowsePage from './pages/BrowsePage'
 import ComparePage from './pages/ComparePage'
+import LearnMorePage from './pages/LearnMorePage'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/learn-more" element={<LearnMorePage />} />
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/search" element={<SearchPage />} />

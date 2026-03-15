@@ -20,6 +20,32 @@ interface TimelineEntry {
   title: string
   description: string
   sortKey: number
+  raw: Record<string, unknown>
+}
+
+// ── Column definitions for detail table (matches PropertyReport tabMeta) ────
+
+type ColDef = { key: string; label: string }
+
+const DETAIL_COLUMNS: Record<RecordType, ColDef[]> = {
+  violations: [
+    { key: 'violation_date', label: 'Date' }, { key: 'violation_code', label: 'Code' }, { key: 'violation_status', label: 'Status' }, { key: 'violation_description', label: 'Description' },
+  ],
+  inspections: [
+    { key: 'inspection_date', label: 'Date' }, { key: 'dba_name', label: 'Business' }, { key: 'facility_type', label: 'Facility' }, { key: 'results', label: 'Result' },
+  ],
+  permits: [
+    { key: 'permit_number', label: 'Permit #' }, { key: 'permit_type', label: 'Type' }, { key: 'permit_status', label: 'Status' }, { key: 'issue_date', label: 'Issued' },
+  ],
+  service_311: [
+    { key: 'sr_type', label: 'Type' }, { key: 'status', label: 'Status' }, { key: 'created_date', label: 'Created' }, { key: 'closed_date', label: 'Closed' },
+  ],
+  tax_liens: [
+    { key: 'tax_sale_year', label: 'Year' }, { key: 'lien_type', label: 'Type' }, { key: 'total_amount_offered', label: 'Amount' }, { key: 'buyer_name', label: 'Buyer' },
+  ],
+  vacant_buildings: [
+    { key: 'docket_number', label: 'Docket' }, { key: 'issued_date', label: 'Date' }, { key: 'violation_type', label: 'Violation' }, { key: 'disposition_description', label: 'Disposition' },
+  ],
 }
 
 const TYPE_CONFIG: Record<RecordType, { label: string; color: string; dotClass: string; iconPath: string }> = {
@@ -88,6 +114,7 @@ function normalizeRecords(records: Props['records']): TimelineEntry[] {
       title: str(r.violation_code) || 'Violation',
       description: str(r.violation_description) || str(r.violation_status),
       sortKey: new Date(date).getTime(),
+      raw: r,
     })
   }
 
@@ -102,6 +129,7 @@ function normalizeRecords(records: Props['records']): TimelineEntry[] {
       title: [str(r.facility_type), result].filter(Boolean).join(' \u2014 ') || 'Inspection',
       description: str(r.dba_name),
       sortKey: new Date(date).getTime(),
+      raw: r,
     })
   }
 
@@ -115,6 +143,7 @@ function normalizeRecords(records: Props['records']): TimelineEntry[] {
       title: str(r.permit_type) || 'Permit',
       description: [str(r.permit_status), str(r.permit_number)].filter(Boolean).join(' \u2022 '),
       sortKey: new Date(date).getTime(),
+      raw: r,
     })
   }
 
@@ -128,6 +157,7 @@ function normalizeRecords(records: Props['records']): TimelineEntry[] {
       title: str(r.sr_type) || '311 Request',
       description: str(r.status),
       sortKey: new Date(date).getTime(),
+      raw: r,
     })
   }
 
@@ -144,6 +174,7 @@ function normalizeRecords(records: Props['records']): TimelineEntry[] {
       title: `${str(r.lien_type) || 'Tax'} Lien`,
       description: [amount, str(r.buyer_name)].filter(Boolean).join(' \u2022 '),
       sortKey: new Date(`${year}-01-01`).getTime(),
+      raw: r,
     })
   }
 
@@ -157,6 +188,7 @@ function normalizeRecords(records: Props['records']): TimelineEntry[] {
       title: str(r.violation_type) || 'Vacant Building',
       description: str(r.disposition_description),
       sortKey: new Date(date).getTime(),
+      raw: r,
     })
   }
 
@@ -270,7 +302,7 @@ function buildBuckets(entries: TimelineEntry[]): ChartBucket[] {
 function VisualTimeline({ entries, activeTypes, onBucketClick }: {
   entries: TimelineEntry[]
   activeTypes: Set<RecordType>
-  onBucketClick: (entries: TimelineEntry[]) => void
+  onBucketClick: (label: string, entries: TimelineEntry[]) => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [tooltip, setTooltip] = useState<{ x: number; bucket: ChartBucket } | null>(null)
@@ -333,7 +365,7 @@ function VisualTimeline({ entries, activeTypes, onBucketClick }: {
               style={{ height: '100%' }}
               onMouseEnter={(e) => handleMouseEnter(bucket, e)}
               onMouseLeave={handleMouseLeave}
-              onClick={() => { if (bucket.entries.length > 0) onBucketClick(bucket.entries) }}
+              onClick={() => { if (bucket.entries.length > 0) onBucketClick(bucket.label, bucket.entries) }}
             >
               {barHeight > 0 ? (
                 <div
@@ -376,12 +408,126 @@ function VisualTimeline({ entries, activeTypes, onBucketClick }: {
   )
 }
 
+// ── Detail Table (BrowsePage style) ───────────────────────────────────
+
+function formatCell(v: unknown): string {
+  if (v == null) return '\u2014'
+  if (typeof v === 'number') return v.toLocaleString()
+  const s = String(v)
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const d = new Date(s)
+    if (!isNaN(d.getTime())) return d.toLocaleDateString()
+  }
+  return s
+}
+
+function BucketDetailTable({ label, entries, onClose }: {
+  label: string
+  entries: TimelineEntry[]
+  onClose: () => void
+}) {
+  const [expandedRow, setExpandedRow] = useState<number | null>(null)
+
+  // Group entries by record type
+  const grouped = useMemo(() => {
+    const map = new Map<RecordType, TimelineEntry[]>()
+    for (const e of entries) {
+      const list = map.get(e.type) ?? []
+      list.push(e)
+      map.set(e.type, list)
+    }
+    return map
+  }, [entries])
+
+  const types = ALL_TYPES.filter(t => grouped.has(t))
+
+  return (
+    <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden lg:sticky lg:top-4 lg:self-start">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div>
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Records</span>
+          <span className="text-[11px] text-gray-400 ml-2">{label}</span>
+          <span className="text-[10px] text-gray-300 ml-2">{entries.length} {entries.length === 1 ? 'record' : 'records'}</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Tables grouped by type */}
+      <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+        {types.map(type => {
+          const typeEntries = grouped.get(type)!
+          const columns = DETAIL_COLUMNS[type]
+          const cfg = TYPE_CONFIG[type]
+
+          return (
+            <div key={type}>
+              {/* Type subheader */}
+              <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cfg.color }} />
+                <span className="text-[11px] font-semibold text-gray-600">{cfg.label}</span>
+                <span className="text-[10px] text-gray-400 font-mono">{typeEntries.length}</span>
+              </div>
+
+              <table className="min-w-full text-xs">
+                <thead className="bg-white">
+                  <tr>
+                    {columns.map(col => (
+                      <th key={col.key} className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 whitespace-nowrap">
+                        {col.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {typeEntries.map((entry, i) => {
+                    const isExpanded = expandedRow === typeEntries[0].sortKey + i
+                    const rowKey = typeEntries[0].sortKey + i
+                    return (
+                      <tr
+                        key={i}
+                        onClick={() => setExpandedRow(isExpanded ? null : rowKey)}
+                        className={`cursor-pointer transition-colors ${
+                          isExpanded
+                            ? 'bg-blue-50/50'
+                            : i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/30 hover:bg-gray-100/50'
+                        }`}
+                      >
+                        {columns.map(col => (
+                          <td
+                            key={col.key}
+                            className={`px-3 py-2 text-gray-700 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'max-w-[150px] truncate'}`}
+                          >
+                            {formatCell(entry.raw[col.key])}
+                          </td>
+                        ))}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ────────────────────────────────────────────────────
 
 export default function RecordTimeline({ records }: Props) {
   const [activeTypes, setActiveTypes] = useState<Set<RecordType>>(new Set(ALL_TYPES))
   const [showCount, setShowCount] = useState(PAGE_SIZE)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const [selectedBucket, setSelectedBucket] = useState<{ label: string; entries: TimelineEntry[] } | null>(null)
   const entryRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const allEntries = useMemo(() => normalizeRecords(records), [records])
@@ -407,8 +553,11 @@ export default function RecordTimeline({ records }: Props) {
     setShowCount(PAGE_SIZE)
   }
 
-  function handleBucketClick(bucketEntries: TimelineEntry[]) {
+  function handleBucketClick(label: string, bucketEntries: TimelineEntry[]) {
     if (bucketEntries.length === 0) return
+
+    // Store selected bucket for the detail table
+    setSelectedBucket({ label, entries: bucketEntries })
 
     // Bucket entries are oldest-first; filtered is newest-first
     // Find the most recent entry in this bucket (appears first in filtered list)
@@ -475,122 +624,135 @@ export default function RecordTimeline({ records }: Props) {
         </div>
       </div>
 
-      {/* ── Feed ── */}
-      <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
-        {/* Filter chips */}
-        <div className="px-5 py-3 border-b border-gray-100 flex flex-wrap gap-2 items-center">
-          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mr-1">Filter</span>
-          {ALL_TYPES.map(type => {
-            const cfg = TYPE_CONFIG[type]
-            const count = allEntries.filter(e => e.type === type).length
-            if (count === 0) return null
-            const active = activeTypes.has(type)
-            return (
-              <button
-                key={type}
-                onClick={() => toggleType(type)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all ${
-                  active
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-gray-100 text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                {cfg.label}
-                <span className={`text-[10px] font-mono ${active ? 'text-gray-400' : 'text-gray-300'}`}>
-                  {count}
-                </span>
-              </button>
-            )
-          })}
-          <span className="ml-auto text-[11px] text-gray-400">
-            {filtered.length} {filtered.length === 1 ? 'event' : 'events'}
-          </span>
-        </div>
+      {/* ── Feed + Detail Table ── */}
+      <div className={`grid gap-3 ${selectedBucket ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
 
-        {/* Timeline feed */}
-        <div className="px-5 py-4">
-          {visible.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">No matching events.</p>
-          ) : (
-            <div className="relative">
-              {/* Vertical line */}
-              <div className="absolute left-[19px] top-3 bottom-3 w-px bg-gray-200" />
+        {/* Feed */}
+        <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
+          {/* Filter chips */}
+          <div className="px-5 py-3 border-b border-gray-100 flex flex-wrap gap-2 items-center">
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mr-1">Filter</span>
+            {ALL_TYPES.map(type => {
+              const cfg = TYPE_CONFIG[type]
+              const count = allEntries.filter(e => e.type === type).length
+              if (count === 0) return null
+              const active = activeTypes.has(type)
+              return (
+                <button
+                  key={type}
+                  onClick={() => toggleType(type)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all ${
+                    active
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-gray-100 text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  {cfg.label}
+                  <span className={`text-[10px] font-mono ${active ? 'text-gray-400' : 'text-gray-300'}`}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+            <span className="ml-auto text-[11px] text-gray-400">
+              {filtered.length} {filtered.length === 1 ? 'event' : 'events'}
+            </span>
+          </div>
 
-              <div className="space-y-0">
-                {visible.map((entry, i) => {
-                  const entryYear = entry.date.slice(0, 4)
-                  const showYearHeader = entryYear !== lastYear
-                  lastYear = entryYear
+          {/* Timeline feed */}
+          <div className="px-5 py-4">
+            {visible.length === 0 ? (
+              <p className="text-sm text-gray-400 py-4 text-center">No matching events.</p>
+            ) : (
+              <div className="relative">
+                {/* Vertical line */}
+                <div className="absolute left-[19px] top-3 bottom-3 w-px bg-gray-200" />
 
-                  const cfg = TYPE_CONFIG[entry.type]
-                  const entryId = `${entry.type}-${entry.sortKey}`
-                  const isHighlighted = highlightedId === entryId
+                <div className="space-y-0">
+                  {visible.map((entry, i) => {
+                    const entryYear = entry.date.slice(0, 4)
+                    const showYearHeader = entryYear !== lastYear
+                    lastYear = entryYear
 
-                  return (
-                    <div
-                      key={i}
-                      ref={(el) => { entryRefs.current[entryId] = el }}
-                    >
-                      {/* Year divider */}
-                      {showYearHeader && (
-                        <div className="flex items-center gap-3 py-2 relative">
-                          <div className="w-[39px] flex justify-center relative z-10">
-                            <span className="bg-white px-1 text-[11px] font-bold text-gray-300">
-                              {entryYear}
-                            </span>
+                    const cfg = TYPE_CONFIG[entry.type]
+                    const entryId = `${entry.type}-${entry.sortKey}`
+                    const isHighlighted = highlightedId === entryId
+
+                    return (
+                      <div
+                        key={i}
+                        ref={(el) => { entryRefs.current[entryId] = el }}
+                      >
+                        {/* Year divider */}
+                        {showYearHeader && (
+                          <div className="flex items-center gap-3 py-2 relative">
+                            <div className="w-[39px] flex justify-center relative z-10">
+                              <span className="bg-white px-1 text-[11px] font-bold text-gray-300">
+                                {entryYear}
+                              </span>
+                            </div>
+                            <div className="flex-1 h-px bg-gray-100" />
                           </div>
-                          <div className="flex-1 h-px bg-gray-100" />
-                        </div>
-                      )}
+                        )}
 
-                      {/* Timeline entry */}
-                      <div className={`flex gap-4 py-2 group rounded-lg transition-colors duration-500 ${
-                        isHighlighted ? 'bg-blue-50' : ''
-                      }`}>
-                        {/* Icon dot */}
-                        <div className="flex-shrink-0 relative z-10">
-                          <div className={`w-[39px] h-[39px] rounded-full flex items-center justify-center ${cfg.dotClass}`}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={cfg.iconPath} />
-                            </svg>
+                        {/* Timeline entry */}
+                        <div className={`flex gap-4 py-2 group rounded-lg transition-colors duration-500 ${
+                          isHighlighted ? 'bg-blue-50' : ''
+                        }`}>
+                          {/* Icon dot */}
+                          <div className="flex-shrink-0 relative z-10">
+                            <div className={`w-[39px] h-[39px] rounded-full flex items-center justify-center ${cfg.dotClass}`}>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={cfg.iconPath} />
+                              </svg>
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 pb-1">
-                          <div className="flex items-baseline gap-2 flex-wrap">
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                              {cfg.label}
-                            </span>
-                            <span className="text-[11px] text-gray-300">{entry.dateLabel}</span>
-                          </div>
-                          <p className="text-sm font-medium text-gray-900 mt-0.5 leading-snug">
-                            {entry.title}
-                          </p>
-                          {entry.description && (
-                            <p className="text-xs text-gray-500 mt-0.5 leading-relaxed truncate">
-                              {entry.description}
+                          {/* Content */}
+                          <div className="flex-1 min-w-0 pb-1">
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                                {cfg.label}
+                              </span>
+                              <span className="text-[11px] text-gray-300">{entry.dateLabel}</span>
+                            </div>
+                            <p className="text-sm font-medium text-gray-900 mt-0.5 leading-snug">
+                              {entry.title}
                             </p>
-                          )}
+                            {entry.description && (
+                              <p className="text-xs text-gray-500 mt-0.5 leading-relaxed truncate">
+                                {entry.description}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Load more */}
-          {hasMore && (
-            <button
-              onClick={() => setShowCount(c => c + PAGE_SIZE)}
-              className="mt-4 w-full py-2.5 text-xs font-semibold text-gray-500 hover:text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Show more ({filtered.length - showCount} remaining)
-            </button>
-          )}
+            {/* Load more */}
+            {hasMore && (
+              <button
+                onClick={() => setShowCount(c => c + PAGE_SIZE)}
+                className="mt-4 w-full py-2.5 text-xs font-semibold text-gray-500 hover:text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Show more ({filtered.length - showCount} remaining)
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Detail Table */}
+        {selectedBucket && (
+          <BucketDetailTable
+            label={selectedBucket.label}
+            entries={selectedBucket.entries}
+            onClose={() => setSelectedBucket(null)}
+          />
+        )}
       </div>
     </div>
   )

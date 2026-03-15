@@ -381,7 +381,8 @@ function VisualTimeline({ entries, activeTypes, onBucketClick }: {
 export default function RecordTimeline({ records }: Props) {
   const [activeTypes, setActiveTypes] = useState<Set<RecordType>>(new Set(ALL_TYPES))
   const [showCount, setShowCount] = useState(PAGE_SIZE)
-  const feedRef = useRef<HTMLDivElement>(null)
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const entryRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const allEntries = useMemo(() => normalizeRecords(records), [records])
 
@@ -407,20 +408,30 @@ export default function RecordTimeline({ records }: Props) {
   }
 
   function handleBucketClick(bucketEntries: TimelineEntry[]) {
-    // Find the first entry from this bucket in the visible feed and scroll to it
-    const earliest = bucketEntries[0]
-    if (!earliest) return
+    if (bucketEntries.length === 0) return
 
-    // Make sure enough entries are shown
-    const idx = filtered.findIndex(e => e.sortKey === earliest.sortKey && e.type === earliest.type)
+    // Bucket entries are oldest-first; filtered is newest-first
+    // Find the most recent entry in this bucket (appears first in filtered list)
+    const targetEntry = bucketEntries[bucketEntries.length - 1]
+    const targetId = `${targetEntry.type}-${targetEntry.sortKey}`
+
+    // Ensure enough entries are loaded to show the target
+    const idx = filtered.findIndex(e => `${e.type}-${e.sortKey}` === targetId)
     if (idx >= 0 && idx >= showCount) {
       setShowCount(idx + PAGE_SIZE)
     }
 
-    // Scroll to feed with a small delay to allow render
+    setHighlightedId(targetId)
+
+    // Scroll to the specific entry after render
     setTimeout(() => {
-      feedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 50)
+      const el = entryRefs.current[targetId]
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+      // Clear highlight after animation
+      setTimeout(() => setHighlightedId(null), 2000)
+    }, 100)
   }
 
   let lastYear = ''
@@ -465,7 +476,7 @@ export default function RecordTimeline({ records }: Props) {
       </div>
 
       {/* ── Feed ── */}
-      <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden" ref={feedRef}>
+      <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
         {/* Filter chips */}
         <div className="px-5 py-3 border-b border-gray-100 flex flex-wrap gap-2 items-center">
           <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mr-1">Filter</span>
@@ -512,9 +523,14 @@ export default function RecordTimeline({ records }: Props) {
                   lastYear = entryYear
 
                   const cfg = TYPE_CONFIG[entry.type]
+                  const entryId = `${entry.type}-${entry.sortKey}`
+                  const isHighlighted = highlightedId === entryId
 
                   return (
-                    <div key={i}>
+                    <div
+                      key={i}
+                      ref={(el) => { entryRefs.current[entryId] = el }}
+                    >
                       {/* Year divider */}
                       {showYearHeader && (
                         <div className="flex items-center gap-3 py-2 relative">
@@ -528,7 +544,9 @@ export default function RecordTimeline({ records }: Props) {
                       )}
 
                       {/* Timeline entry */}
-                      <div className="flex gap-4 py-2 group">
+                      <div className={`flex gap-4 py-2 group rounded-lg transition-colors duration-500 ${
+                        isHighlighted ? 'bg-blue-50' : ''
+                      }`}>
                         {/* Icon dot */}
                         <div className="flex-shrink-0 relative z-10">
                           <div className={`w-[39px] h-[39px] rounded-full flex items-center justify-center ${cfg.dotClass}`}>

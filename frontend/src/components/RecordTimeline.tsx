@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 
 interface Props {
   records: {
@@ -9,6 +9,7 @@ interface Props {
     tax_liens: Record<string, unknown>[]
     vacant_buildings: Record<string, unknown>[]
   }
+  stickyOffset?: number
 }
 
 type RecordType = 'violations' | 'inspections' | 'permits' | 'service_311' | 'tax_liens' | 'vacant_buildings'
@@ -421,10 +422,11 @@ function formatCell(v: unknown): string {
   return s
 }
 
-function BucketDetailTable({ label, entries, onClose }: {
+function BucketDetailTable({ label, entries, onClose, stickyTop }: {
   label: string
   entries: TimelineEntry[]
   onClose: () => void
+  stickyTop: number
 }) {
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
 
@@ -442,7 +444,10 @@ function BucketDetailTable({ label, entries, onClose }: {
   const types = ALL_TYPES.filter(t => grouped.has(t))
 
   return (
-    <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden lg:sticky lg:top-4 lg:self-start">
+    <div
+      className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden lg:sticky lg:self-start"
+      style={{ top: stickyTop }}
+    >
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
         <div>
@@ -523,12 +528,23 @@ function BucketDetailTable({ label, entries, onClose }: {
 
 // ── Main Component ────────────────────────────────────────────────────
 
-export default function RecordTimeline({ records }: Props) {
+export default function RecordTimeline({ records, stickyOffset = 0 }: Props) {
   const [activeTypes, setActiveTypes] = useState<Set<RecordType>>(new Set(ALL_TYPES))
   const [showCount, setShowCount] = useState(PAGE_SIZE)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [selectedBucket, setSelectedBucket] = useState<{ label: string; entries: TimelineEntry[] } | null>(null)
   const entryRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const chartRef = useRef<HTMLDivElement>(null)
+  const [chartHeight, setChartHeight] = useState(0)
+
+  useEffect(() => {
+    if (!chartRef.current) return
+    const observer = new ResizeObserver(([entry]) => {
+      setChartHeight(entry.contentRect.height)
+    })
+    observer.observe(chartRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   const allEntries = useMemo(() => normalizeRecords(records), [records])
 
@@ -595,7 +611,12 @@ export default function RecordTimeline({ records }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* ── Visual Chart ── */}
+      {/* ── Visual Chart (sticky below header) ── */}
+      <div
+        ref={chartRef}
+        className="sticky z-[15] pb-3 bg-[#f5f5f7]"
+        style={{ top: stickyOffset }}
+      >
       <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Activity Over Time</span>
@@ -623,6 +644,7 @@ export default function RecordTimeline({ records }: Props) {
           />
         </div>
       </div>
+      </div>{/* end sticky chart wrapper */}
 
       {/* ── Feed + Detail Table ── */}
       <div className={`grid gap-3 ${selectedBucket ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
@@ -751,6 +773,7 @@ export default function RecordTimeline({ records }: Props) {
             label={selectedBucket.label}
             entries={selectedBucket.entries}
             onClose={() => setSelectedBucket(null)}
+            stickyTop={stickyOffset + chartHeight}
           />
         )}
       </div>

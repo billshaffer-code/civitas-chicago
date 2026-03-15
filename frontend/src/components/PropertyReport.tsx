@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ReportResponse, FlagResult } from '../api/civitas'
 import FindingCard from './FindingCard'
@@ -84,6 +84,17 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
   const [summaryExpanded, setSummaryExpanded] = useState(false)
   const [showMap, setShowMap] = useState(false)
   const [freshnessOpen, setFreshnessOpen] = useState(false)
+  const stickyHeaderRef = useRef<HTMLDivElement>(null)
+  const [stickyHeight, setStickyHeight] = useState(0)
+
+  useEffect(() => {
+    if (!stickyHeaderRef.current) return
+    const observer = new ResizeObserver(([entry]) => {
+      setStickyHeight(entry.contentRect.height)
+    })
+    observer.observe(stickyHeaderRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   const cfg = LEVEL_CONFIG[report.activity_level as ActivityLevel] ?? LEVEL_CONFIG.QUIET
 
@@ -122,6 +133,9 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
 
   return (
     <div className="animate-fade-in space-y-4">
+
+      {/* ── Sticky Header Section ──────────────────────────────── */}
+      <div ref={stickyHeaderRef} className="sticky top-0 z-20 space-y-3 pb-1 -mx-4 px-4 pt-1 bg-[#f5f5f7]">
 
       {/* ── Top Bar ──────────────────────────────────────────────── */}
       <div className="bg-white shadow-sm border border-gray-200 rounded-xl px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -225,6 +239,8 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
         ))}
       </nav>
 
+      </div>{/* end sticky header */}
+
       {/* ── Tab Content ──────────────────────────────────────────── */}
 
       {sectionTab === 'findings' && (
@@ -277,7 +293,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
       )}
 
       {sectionTab === 'timeline' && (
-        <RecordTimeline records={report.supporting_records} />
+        <RecordTimeline records={report.supporting_records} stickyOffset={stickyHeight} />
       )}
 
       {sectionTab === 'records' && (

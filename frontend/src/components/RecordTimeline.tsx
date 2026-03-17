@@ -444,10 +444,7 @@ function BucketDetailTable({ label, entries, onClose, stickyTop }: {
   const types = ALL_TYPES.filter(t => grouped.has(t))
 
   return (
-    <div
-      className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden lg:sticky lg:self-start"
-      style={{ top: stickyTop }}
-    >
+    <div className="h-full flex flex-col">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
         <div>
@@ -466,7 +463,7 @@ function BucketDetailTable({ label, entries, onClose, stickyTop }: {
       </div>
 
       {/* Tables grouped by type */}
-      <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+      <div className="overflow-x-auto flex-1 overflow-y-auto">
         {types.map(type => {
           const typeEntries = grouped.get(type)!
           const columns = DETAIL_COLUMNS[type]
@@ -619,21 +616,28 @@ export default function RecordTimeline({ records, stickyOffset = 0 }: Props) {
       >
       <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Activity Over Time</span>
-          {/* Legend */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Activity Over Time</span>
+            <span className="text-[10px] text-gray-300 font-mono">{filtered.length} {filtered.length === 1 ? 'event' : 'events'}</span>
+          </div>
+          {/* Legend / filter toggles */}
           <div className="flex gap-3">
-            {ALL_TYPES.filter(t => allEntries.some(e => e.type === t)).map(t => (
-              <button
-                key={t}
-                onClick={() => toggleType(t)}
-                className={`flex items-center gap-1 text-[10px] font-medium transition-opacity ${
-                  activeTypes.has(t) ? 'opacity-100' : 'opacity-30'
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TYPE_CONFIG[t].color }} />
-                <span className="text-gray-600 hidden sm:inline">{TYPE_CONFIG[t].label}</span>
-              </button>
-            ))}
+            {ALL_TYPES.filter(t => allEntries.some(e => e.type === t)).map(t => {
+              const count = allEntries.filter(e => e.type === t).length
+              return (
+                <button
+                  key={t}
+                  onClick={() => toggleType(t)}
+                  className={`flex items-center gap-1 text-[10px] font-medium transition-opacity ${
+                    activeTypes.has(t) ? 'opacity-100' : 'opacity-30'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TYPE_CONFIG[t].color }} />
+                  <span className="text-gray-600 hidden sm:inline">{TYPE_CONFIG[t].label}</span>
+                  <span className="text-gray-400 font-mono hidden sm:inline">{count}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
         <div className="px-5 py-4">
@@ -646,41 +650,28 @@ export default function RecordTimeline({ records, stickyOffset = 0 }: Props) {
       </div>
       </div>{/* end sticky chart wrapper */}
 
-      {/* ── Feed + Detail Table ── */}
-      <div className={`grid gap-3 ${selectedBucket ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
-
-        {/* Feed */}
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
-          {/* Filter chips */}
-          <div className="px-5 py-3 border-b border-gray-100 flex flex-wrap gap-2 items-center">
-            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mr-1">Filter</span>
-            {ALL_TYPES.map(type => {
-              const cfg = TYPE_CONFIG[type]
-              const count = allEntries.filter(e => e.type === type).length
-              if (count === 0) return null
-              const active = activeTypes.has(type)
-              return (
-                <button
-                  key={type}
-                  onClick={() => toggleType(type)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all ${
-                    active
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-gray-100 text-gray-400 hover:text-gray-600'
-                  }`}
-                >
-                  {cfg.label}
-                  <span className={`text-[10px] font-mono ${active ? 'text-gray-400' : 'text-gray-300'}`}>
-                    {count}
-                  </span>
-                </button>
-              )
-            })}
-            <span className="ml-auto text-[11px] text-gray-400">
-              {filtered.length} {filtered.length === 1 ? 'event' : 'events'}
-            </span>
+      {/* ── Slide-over Detail Panel ── */}
+      {selectedBucket && (
+        <div className="fixed inset-0 z-30" onClick={() => setSelectedBucket(null)}>
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/20" />
+          {/* Panel */}
+          <div
+            className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl border-l border-gray-200 animate-slide-in-right overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <BucketDetailTable
+              label={selectedBucket.label}
+              entries={selectedBucket.entries}
+              onClose={() => setSelectedBucket(null)}
+              stickyTop={0}
+            />
           </div>
+        </div>
+      )}
 
+      {/* ── Feed ── */}
+      <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
           {/* Timeline feed */}
           <div className="px-5 py-4">
             {visible.length === 0 ? (
@@ -688,7 +679,7 @@ export default function RecordTimeline({ records, stickyOffset = 0 }: Props) {
             ) : (
               <div className="relative">
                 {/* Vertical line */}
-                <div className="absolute left-[19px] top-3 bottom-3 w-px bg-gray-200" />
+                <div className="absolute left-[12px] top-3 bottom-3 w-px bg-gray-200" />
 
                 <div className="space-y-0">
                   {visible.map((entry, i) => {
@@ -707,9 +698,9 @@ export default function RecordTimeline({ records, stickyOffset = 0 }: Props) {
                       >
                         {/* Year divider */}
                         {showYearHeader && (
-                          <div className="flex items-center gap-3 py-2 relative">
-                            <div className="w-[39px] flex justify-center relative z-10">
-                              <span className="bg-white px-1 text-[11px] font-bold text-gray-300">
+                          <div className="flex items-center gap-2 py-1.5 relative">
+                            <div className="w-[25px] flex justify-center relative z-10">
+                              <span className="bg-white px-0.5 text-[10px] font-bold text-gray-300">
                                 {entryYear}
                               </span>
                             </div>
@@ -717,36 +708,32 @@ export default function RecordTimeline({ records, stickyOffset = 0 }: Props) {
                           </div>
                         )}
 
-                        {/* Timeline entry */}
-                        <div className={`flex gap-4 py-2 group rounded-lg transition-colors duration-500 ${
-                          isHighlighted ? 'bg-blue-50' : ''
+                        {/* Timeline entry — compact single row */}
+                        <div className={`flex items-center gap-2.5 py-1.5 px-1 group rounded-md transition-colors duration-500 ${
+                          isHighlighted ? 'bg-blue-50' : 'hover:bg-gray-50'
                         }`}>
-                          {/* Icon dot */}
+                          {/* Small dot */}
                           <div className="flex-shrink-0 relative z-10">
-                            <div className={`w-[39px] h-[39px] rounded-full flex items-center justify-center ${cfg.dotClass}`}>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={cfg.iconPath} />
+                            <div className={`w-[25px] h-[25px] rounded-full flex items-center justify-center ${cfg.dotClass}`}>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={cfg.iconPath} />
                               </svg>
                             </div>
                           </div>
 
-                          {/* Content */}
-                          <div className="flex-1 min-w-0 pb-1">
-                            <div className="flex items-baseline gap-2 flex-wrap">
-                              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                                {cfg.label}
-                              </span>
-                              <span className="text-[11px] text-gray-300">{entry.dateLabel}</span>
-                            </div>
-                            <p className="text-sm font-medium text-gray-900 mt-0.5 leading-snug">
-                              {entry.title}
-                            </p>
-                            {entry.description && (
-                              <p className="text-xs text-gray-500 mt-0.5 leading-relaxed truncate">
-                                {entry.description}
-                              </p>
-                            )}
-                          </div>
+                          {/* Single-row content */}
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 w-16 flex-shrink-0">
+                            {cfg.label}
+                          </span>
+                          <span className="text-[11px] text-gray-400 w-20 flex-shrink-0">{entry.dateLabel}</span>
+                          <span className="text-xs font-medium text-gray-900 truncate flex-1 min-w-0">
+                            {entry.title}
+                          </span>
+                          {entry.description && (
+                            <span className="text-[11px] text-gray-400 truncate max-w-[200px] hidden md:inline">
+                              {entry.description}
+                            </span>
+                          )}
                         </div>
                       </div>
                     )
@@ -766,17 +753,6 @@ export default function RecordTimeline({ records, stickyOffset = 0 }: Props) {
             )}
           </div>
         </div>
-
-        {/* Detail Table */}
-        {selectedBucket && (
-          <BucketDetailTable
-            label={selectedBucket.label}
-            entries={selectedBucket.entries}
-            onClose={() => setSelectedBucket(null)}
-            stickyTop={stickyOffset + chartHeight}
-          />
-        )}
-      </div>
     </div>
   )
 }

@@ -183,19 +183,18 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
         <PropertyMap lat={lat} lon={lon} address={report.property.address} locationSk={locationSk} />
       )}
 
-      {/* ── Score + Stat Strip ───────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-
+      {/* ── Score + Stat Cards ─────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
         {/* Score card */}
-        <div className="col-span-2 bg-white shadow-sm border border-gray-200 rounded-xl p-4 flex items-center gap-4">
-          <span className={`text-5xl font-black leading-none ${cfg.text}`}>
+        <div className="col-span-2 bg-white shadow-sm border border-gray-200 rounded-xl px-3 py-2.5 flex items-center gap-3">
+          <span className={`text-3xl font-black leading-none ${cfg.text}`}>
             {report.activity_score}
           </span>
           <div>
-            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider ${cfg.pillBg} ${cfg.pillText}`}>
+            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider ${cfg.pillBg} ${cfg.pillText}`}>
               {cfg.label}
             </span>
-            <p className="text-[11px] text-gray-400 mt-1">Activity Score</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">Activity Score</p>
           </div>
         </div>
 
@@ -206,10 +205,10 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
             <button
               key={s.key}
               onClick={() => { setActiveRecordTab(s.key as TabKey); setSectionTab('records') }}
-              className={`bg-white shadow-sm border border-gray-200 rounded-xl p-3 text-left hover:shadow-md transition-shadow ${count === 0 ? 'opacity-40' : ''}`}
+              className={`bg-white shadow-sm border border-gray-200 rounded-xl px-3 py-2 text-left hover:shadow-md transition-shadow ${count === 0 ? 'opacity-40' : ''}`}
             >
-              <div className="text-2xl font-bold text-gray-900">{count}</div>
-              <div className="text-[11px] text-gray-500 leading-tight">{s.label}</div>
+              <div className="text-xl font-bold text-gray-900">{count}</div>
+              <div className="text-[10px] text-gray-500 leading-tight">{s.label}</div>
             </button>
           )
         })}

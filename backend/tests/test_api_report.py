@@ -85,6 +85,7 @@ async def test_report_history(client):
             "risk_score": 55,
             "risk_tier": "ACTIVE",
             "generated_at": datetime(2025, 1, 15, 12, 0, 0),
+            "flags_count": 3,
         }
     ]
     conn = FakeConnection(fetch_return=rows)

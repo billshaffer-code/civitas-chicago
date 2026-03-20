@@ -81,7 +81,7 @@ describe('DashboardPage', () => {
     renderDashboard()
 
     await waitFor(() => {
-      expect(screen.getByText('456 W OAK ST')).toBeInTheDocument()
+      expect(screen.getAllByText('456 W OAK ST').length).toBeGreaterThan(0)
       expect(screen.getAllByText('72').length).toBeGreaterThan(0)
       expect(screen.getAllByText('ACTIVE').length).toBeGreaterThan(0)
     })
@@ -104,11 +104,14 @@ describe('DashboardPage', () => {
     renderDashboard()
 
     await waitFor(() => {
-      expect(screen.getByText('123 N MAIN ST')).toBeInTheDocument()
+      expect(screen.getAllByText('123 N MAIN ST').length).toBeGreaterThan(0)
     })
 
     const user = userEvent.setup()
-    await user.click(screen.getByText('123 N MAIN ST'))
+    // Click the report card row (the one with text-[14px] font-medium)
+    const matches = screen.getAllByText('123 N MAIN ST')
+    const reportCard = matches.find(el => el.className.includes('text-[14px]')) ?? matches[0]
+    await user.click(reportCard)
 
     expect(mockNavigate).toHaveBeenCalledWith('/search?report=rpt-99')
   })
@@ -143,7 +146,7 @@ describe('DashboardPage', () => {
     renderDashboard()
 
     await waitFor(() => {
-      expect(screen.getByText('Activity Level Distribution')).toBeInTheDocument()
+      expect(screen.getByText('Portfolio at a Glance')).toBeInTheDocument()
     })
   })
 

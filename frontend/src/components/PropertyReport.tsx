@@ -9,7 +9,8 @@ import Markdown from 'react-markdown'
 import { LEVEL_CONFIG, ACTION_ORDER, type ActionGroup, type ActivityLevel } from '../constants/terminology'
 
 interface Props {
-  report: ReportResponse
+  report?: ReportResponse
+  loading?: boolean
   locationSk: number
   address: string
   lat?: number
@@ -77,7 +78,7 @@ const RECORD_STATS: { key: string; label: string }[] = [
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function PropertyReport({ report, locationSk, address, lat, lon, onNewSearch }: Props) {
+export default function PropertyReport({ report, loading = false, locationSk, address, lat, lon, onNewSearch }: Props) {
   const navigate = useNavigate()
   const [sectionTab, setSectionTab] = useState<SectionTab>('findings')
   const [activeRecordTab, setActiveRecordTab] = useState<TabKey>('violations')
@@ -96,7 +97,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
     return () => observer.disconnect()
   }, [])
 
-  const cfg = LEVEL_CONFIG[report.activity_level as ActivityLevel] ?? LEVEL_CONFIG.QUIET
+  const cfg = LEVEL_CONFIG[(report?.activity_level as ActivityLevel) ?? ''] ?? LEVEL_CONFIG.QUIET
 
   const handleFindingClick = useCallback((flagCode: string) => {
     const tab = FLAG_TO_TAB[flagCode]
@@ -107,6 +108,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
   }, [])
 
   async function handlePdf() {
+    if (!report) return
     const blob = await downloadPdf(locationSk, address)
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
@@ -117,7 +119,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
   }
 
   // AI summary preview — first paragraph or first 250 chars
-  const summaryText = report.ai_summary || ''
+  const summaryText = report?.ai_summary || ''
   const firstBreak = summaryText.indexOf('\n\n')
   const preview = firstBreak > 0 && firstBreak < 300
     ? summaryText.slice(0, firstBreak)
@@ -125,7 +127,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
   const hasMoreSummary = summaryText.length > preview.length
 
   const sectionTabs: { key: SectionTab; label: string; count?: number }[] = [
-    { key: 'findings', label: 'Findings', count: report.triggered_flags.length },
+    { key: 'findings', label: 'Findings', count: report?.triggered_flags.length },
     { key: 'summary',  label: 'Summary' },
     { key: 'timeline', label: 'Timeline' },
     { key: 'records',  label: 'Records' },
@@ -140,14 +142,18 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
       {/* ── Top Bar ────────────────────────────────────────────── */}
       <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg px-5 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-[17px] font-semibold text-ink-primary">{report.property.address}</h2>
-          <p className="text-[12px] text-ink-quaternary font-mono mt-0.5">
-            Report {report.report_id} &middot; {new Date(report.generated_at).toLocaleString()}
-            &middot; Match: {report.match_confidence}
-          </p>
+          <h2 className="text-[17px] font-semibold text-ink-primary">{report?.property.address ?? address}</h2>
+          {loading || !report ? (
+            <div className="skeleton skeleton-text w-48 mt-1" />
+          ) : (
+            <p className="text-[12px] text-ink-quaternary font-mono mt-0.5">
+              Report {report.report_id} &middot; {new Date(report.generated_at).toLocaleString()}
+              &middot; Match: {report.match_confidence}
+            </p>
+          )}
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          {lat != null && lon != null && (
+          {!loading && report && lat != null && lon != null && (
             <button
               onClick={() => setShowMap(m => !m)}
               className={`h-[32px] px-3.5 text-[12px] font-medium rounded-apple-sm border transition-all duration-150 ease-apple ${
@@ -159,18 +165,22 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
               {showMap ? 'Hide Map' : 'Map'}
             </button>
           )}
-          <button
-            onClick={() => navigate(`/compare?a=${report.report_id}`)}
-            className="h-[32px] px-3.5 bg-surface-raised hover:bg-surface-sunken text-ink-secondary hover:text-ink-primary text-[12px] font-medium rounded-apple-sm border border-separator transition-all duration-150 ease-apple"
-          >
-            Compare
-          </button>
-          <button
-            onClick={handlePdf}
-            className="h-[32px] px-3.5 bg-surface-raised hover:bg-surface-sunken text-ink-secondary hover:text-ink-primary text-[12px] font-medium rounded-apple-sm border border-separator transition-all duration-150 ease-apple"
-          >
-            Download PDF
-          </button>
+          {!loading && report && (
+            <button
+              onClick={() => navigate(`/compare?a=${report.report_id}`)}
+              className="h-[32px] px-3.5 bg-surface-raised hover:bg-surface-sunken text-ink-secondary hover:text-ink-primary text-[12px] font-medium rounded-apple-sm border border-separator transition-all duration-150 ease-apple"
+            >
+              Compare
+            </button>
+          )}
+          {!loading && report && (
+            <button
+              onClick={handlePdf}
+              className="h-[32px] px-3.5 bg-surface-raised hover:bg-surface-sunken text-ink-secondary hover:text-ink-primary text-[12px] font-medium rounded-apple-sm border border-separator transition-all duration-150 ease-apple"
+            >
+              Download PDF
+            </button>
+          )}
           <button
             onClick={onNewSearch}
             className="h-[32px] px-3.5 bg-accent hover:bg-accent-hover text-white text-[12px] font-semibold rounded-apple-sm shadow-[0_1px_2px_rgba(0,113,227,0.3)] transition-all duration-150 ease-apple"
@@ -181,39 +191,61 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
       </div>
 
       {/* ── Map (toggleable) ─────────────────────────────────────── */}
-      {showMap && lat != null && lon != null && (
+      {showMap && lat != null && lon != null && report && (
         <PropertyMap lat={lat} lon={lon} address={report.property.address} locationSk={locationSk} />
       )}
 
       {/* ── Score + Stat Cards ─────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-        {/* Score card */}
-        <div className="col-span-2 bg-white shadow-apple-xs border border-separator rounded-apple px-4 py-3 flex items-center gap-3.5">
-          <span className={`text-3xl font-black leading-none tabular-nums ${cfg.text}`}>
-            {report.activity_score}
-          </span>
-          <div>
-            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider ${cfg.pillBg} ${cfg.pillText}`}>
-              {cfg.label}
-            </span>
-            <p className="text-[10px] text-ink-quaternary mt-0.5">Activity Score</p>
-          </div>
-        </div>
+        {loading || !report ? (
+          <>
+            {/* Score card skeleton */}
+            <div className="col-span-2 bg-white shadow-apple-xs border border-separator rounded-apple px-4 py-3 flex items-center gap-3.5">
+              <div className="skeleton w-14 h-10 rounded-lg flex-shrink-0" />
+              <div className="space-y-1.5 flex-1">
+                <div className="skeleton skeleton-text w-16" />
+                <div className="skeleton skeleton-text w-24" />
+              </div>
+            </div>
+            {/* Stat card skeletons */}
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white shadow-apple-xs border border-separator rounded-apple px-3 py-2.5">
+                <div className="skeleton h-6 w-8 mb-1.5 rounded" />
+                <div className="skeleton skeleton-text w-14" />
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            {/* Score card */}
+            <div className="col-span-2 bg-white shadow-apple-xs border border-separator rounded-apple px-4 py-3 flex items-center gap-3.5">
+              <span className={`text-3xl font-black leading-none tabular-nums ${cfg.text}`}>
+                {report.activity_score}
+              </span>
+              <div>
+                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider ${cfg.pillBg} ${cfg.pillText}`}>
+                  {cfg.label}
+                </span>
+                <p className="text-[10px] text-ink-quaternary mt-0.5">Activity Score</p>
+              </div>
+            </div>
 
-        {/* Record stat cards */}
-        {RECORD_STATS.map(s => {
-          const count = (report.supporting_records[s.key as keyof typeof report.supporting_records] ?? []).length
-          return (
-            <button
-              key={s.key}
-              onClick={() => { setActiveRecordTab(s.key as TabKey); setSectionTab('records') }}
-              className={`bg-white shadow-apple-xs border border-separator rounded-apple px-3 py-2.5 text-left hover:shadow-apple-sm hover:border-accent-muted/60 transition-all duration-150 ease-apple active:scale-[0.98] ${count === 0 ? 'opacity-40' : ''}`}
-            >
-              <div className="text-[20px] font-bold text-ink-primary tabular-nums">{count}</div>
-              <div className="text-[10px] text-ink-tertiary leading-tight mt-0.5 font-medium">{s.label}</div>
-            </button>
-          )
-        })}
+            {/* Record stat cards */}
+            {RECORD_STATS.map(s => {
+              const count = (report.supporting_records[s.key as keyof typeof report.supporting_records] ?? []).length
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => { setActiveRecordTab(s.key as TabKey); setSectionTab('records') }}
+                  className={`bg-white shadow-apple-xs border border-separator rounded-apple px-3 py-2.5 text-left hover:shadow-apple-sm hover:border-accent-muted/60 transition-all duration-150 ease-apple active:scale-[0.98] ${count === 0 ? 'opacity-40' : ''}`}
+                >
+                  <div className="text-[20px] font-bold text-ink-primary tabular-nums">{count}</div>
+                  <div className="text-[10px] text-ink-tertiary leading-tight mt-0.5 font-medium">{s.label}</div>
+                </button>
+              )
+            })}
+          </>
+        )}
       </div>
 
       {/* ── Section Tabs ─────────────────────────────────────────── */}
@@ -246,7 +278,16 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
 
       {sectionTab === 'findings' && (
         <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 animate-apple-fade-in">
-          {report.triggered_flags.length === 0 ? (
+          {loading || !report ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="border-l-[3px] border-separator-opaque rounded-r-apple-sm px-3.5 py-3 shadow-apple-xs space-y-1.5">
+                  <div className="skeleton skeleton-text w-1/3" />
+                  <div className="skeleton skeleton-text w-2/3" />
+                </div>
+              ))}
+            </div>
+          ) : report.triggered_flags.length === 0 ? (
             <p className="text-[14px] text-ink-quaternary">No findings identified.</p>
           ) : (
             <FindingList flags={report.triggered_flags} onFindingClick={handleFindingClick} />
@@ -294,15 +335,48 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
       )}
 
       {sectionTab === 'timeline' && (
-        <RecordTimeline records={report.supporting_records} stickyOffset={stickyHeight} />
+        loading || !report ? (
+          <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 space-y-3 animate-apple-fade-in">
+            <div className="skeleton h-32 w-full rounded-apple" />
+            <div className="space-y-2 mt-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 py-1.5">
+                  <div className="skeleton w-6 h-6 rounded-full flex-shrink-0" />
+                  <div className="skeleton skeleton-text w-16 flex-shrink-0" />
+                  <div className="skeleton skeleton-text w-24 flex-shrink-0" />
+                  <div className="skeleton skeleton-text flex-1" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <RecordTimeline records={report.supporting_records} stickyOffset={stickyHeight} />
+        )
       )}
 
       {sectionTab === 'records' && (
-        <DataTabs key={activeRecordTab} records={report.supporting_records} activeTab={activeRecordTab} />
+        loading || !report ? (
+          <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg overflow-hidden animate-apple-fade-in">
+            <div className="px-4 py-3 border-b border-separator">
+              <div className="skeleton h-9 w-48 rounded-apple-sm" />
+            </div>
+            <div className="p-4 space-y-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex gap-4">
+                  <div className="skeleton skeleton-text w-24 flex-shrink-0" />
+                  <div className="skeleton skeleton-text w-32 flex-shrink-0" />
+                  <div className="skeleton skeleton-text flex-1" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <DataTabs key={activeRecordTab} records={report.supporting_records} activeTab={activeRecordTab} />
+        )
       )}
 
       {/* ── Data Freshness ─────────────────────────────────────── */}
-      {report.data_freshness && (
+      {!loading && report?.data_freshness && (
         <div>
           <button
             onClick={() => setFreshnessOpen(o => !o)}
@@ -331,9 +405,11 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
       )}
 
       {/* ── Disclaimer ───────────────────────────────────────────── */}
-      <p className="text-[11px] text-ink-quaternary border-t border-separator/60 pt-4 leading-relaxed">
-        {report.disclaimer}
-      </p>
+      {!loading && report && (
+        <p className="text-[11px] text-ink-quaternary border-t border-separator/60 pt-4 leading-relaxed">
+          {report.disclaimer}
+        </p>
+      )}
     </div>
   )
 }

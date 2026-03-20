@@ -132,16 +132,16 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
   ]
 
   return (
-    <div className="animate-fade-in space-y-4">
+    <div className="animate-apple-fade-in space-y-3">
 
       {/* ── Sticky Header Section ──────────────────────────────── */}
-      <div ref={stickyHeaderRef} className="sticky top-0 z-20 space-y-3 pb-1 -mx-4 px-4 pt-1 bg-[#f5f5f7]">
+      <div ref={stickyHeaderRef} className="sticky top-0 z-20 space-y-2.5 pb-2 -mx-6 px-6 pt-2 bg-surface-raised/90 backdrop-blur-xl backdrop-saturate-[180%]">
 
-      {/* ── Top Bar ──────────────────────────────────────────────── */}
-      <div className="bg-white shadow-sm border border-gray-200 rounded-xl px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {/* ── Top Bar ────────────────────────────────────────────── */}
+      <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg px-5 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-gray-900">{report.property.address}</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <h2 className="text-[17px] font-semibold text-ink-primary">{report.property.address}</h2>
+          <p className="text-[12px] text-ink-quaternary font-mono mt-0.5">
             Report {report.report_id} &middot; {new Date(report.generated_at).toLocaleString()}
             &middot; Match: {report.match_confidence}
           </p>
@@ -150,8 +150,10 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
           {lat != null && lon != null && (
             <button
               onClick={() => setShowMap(m => !m)}
-              className={`text-xs font-semibold px-4 py-2 rounded-lg transition-colors ${
-                showMap ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              className={`h-[32px] px-3.5 text-[12px] font-medium rounded-apple-sm border transition-all duration-150 ease-apple ${
+                showMap
+                  ? 'bg-accent-light text-accent border-accent-muted'
+                  : 'bg-surface-raised hover:bg-surface-sunken text-ink-secondary hover:text-ink-primary border-separator'
               }`}
             >
               {showMap ? 'Hide Map' : 'Map'}
@@ -159,19 +161,19 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
           )}
           <button
             onClick={() => navigate(`/compare?a=${report.report_id}`)}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="h-[32px] px-3.5 bg-surface-raised hover:bg-surface-sunken text-ink-secondary hover:text-ink-primary text-[12px] font-medium rounded-apple-sm border border-separator transition-all duration-150 ease-apple"
           >
             Compare
           </button>
           <button
             onClick={handlePdf}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="h-[32px] px-3.5 bg-surface-raised hover:bg-surface-sunken text-ink-secondary hover:text-ink-primary text-[12px] font-medium rounded-apple-sm border border-separator transition-all duration-150 ease-apple"
           >
             Download PDF
           </button>
           <button
             onClick={onNewSearch}
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="h-[32px] px-3.5 bg-accent hover:bg-accent-hover text-white text-[12px] font-semibold rounded-apple-sm shadow-[0_1px_2px_rgba(0,113,227,0.3)] transition-all duration-150 ease-apple"
           >
             New Search
           </button>
@@ -186,15 +188,15 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
       {/* ── Score + Stat Cards ─────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
         {/* Score card */}
-        <div className="col-span-2 bg-white shadow-sm border border-gray-200 rounded-xl px-3 py-2.5 flex items-center gap-3">
-          <span className={`text-3xl font-black leading-none ${cfg.text}`}>
+        <div className="col-span-2 bg-white shadow-apple-xs border border-separator rounded-apple px-4 py-3 flex items-center gap-3.5">
+          <span className={`text-3xl font-black leading-none tabular-nums ${cfg.text}`}>
             {report.activity_score}
           </span>
           <div>
             <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider ${cfg.pillBg} ${cfg.pillText}`}>
               {cfg.label}
             </span>
-            <p className="text-[10px] text-gray-400 mt-0.5">Activity Score</p>
+            <p className="text-[10px] text-ink-quaternary mt-0.5">Activity Score</p>
           </div>
         </div>
 
@@ -205,31 +207,31 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
             <button
               key={s.key}
               onClick={() => { setActiveRecordTab(s.key as TabKey); setSectionTab('records') }}
-              className={`bg-white shadow-sm border border-gray-200 rounded-xl px-3 py-2 text-left hover:shadow-md transition-shadow ${count === 0 ? 'opacity-40' : ''}`}
+              className={`bg-white shadow-apple-xs border border-separator rounded-apple px-3 py-2.5 text-left hover:shadow-apple-sm hover:border-accent-muted/60 transition-all duration-150 ease-apple active:scale-[0.98] ${count === 0 ? 'opacity-40' : ''}`}
             >
-              <div className="text-xl font-bold text-gray-900">{count}</div>
-              <div className="text-[10px] text-gray-500 leading-tight">{s.label}</div>
+              <div className="text-[20px] font-bold text-ink-primary tabular-nums">{count}</div>
+              <div className="text-[10px] text-ink-tertiary leading-tight mt-0.5 font-medium">{s.label}</div>
             </button>
           )
         })}
       </div>
 
       {/* ── Section Tabs ─────────────────────────────────────────── */}
-      <nav className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+      <nav className="flex gap-0.5 bg-surface-raised p-1 rounded-apple">
         {sectionTabs.map(t => (
           <button
             key={t.key}
             onClick={() => setSectionTab(t.key)}
-            className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${
+            className={`flex-1 py-2 px-3 rounded-[9px] text-[13px] font-medium transition-all duration-200 ease-apple ${
               sectionTab === t.key
-                ? 'bg-white shadow-sm text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-white shadow-apple-xs text-ink-primary font-semibold'
+                : 'text-ink-tertiary hover:text-ink-secondary'
             }`}
           >
             {t.label}
             {t.count != null && (
               <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                sectionTab === t.key ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-400'
+                sectionTab === t.key ? 'bg-accent-light text-accent' : 'bg-surface-sunken text-ink-quaternary'
               }`}>
                 {t.count}
               </span>
@@ -243,9 +245,9 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
       {/* ── Tab Content ──────────────────────────────────────────── */}
 
       {sectionTab === 'findings' && (
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-5">
+        <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 animate-apple-fade-in">
           {report.triggered_flags.length === 0 ? (
-            <p className="text-sm text-gray-400">No findings identified.</p>
+            <p className="text-[14px] text-ink-quaternary">No findings identified.</p>
           ) : (
             <FindingList flags={report.triggered_flags} onFindingClick={handleFindingClick} />
           )}
@@ -253,21 +255,21 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
       )}
 
       {sectionTab === 'summary' && (
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-5">
+        <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 animate-apple-fade-in">
           {!summaryText ? (
             <div className="flex items-center gap-3 py-4">
-              <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-              <span className="text-sm text-gray-400">Generating AI summary...</span>
+              <div className="w-5 h-5 rounded-full border-[2.5px] border-separator border-t-accent animate-spin" />
+              <span className="text-[14px] text-ink-secondary">Generating AI summary…</span>
             </div>
           ) : (
             <>
-              <div className="prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-strong:text-gray-900">
+              <div className="prose prose-sm max-w-none text-ink-secondary prose-headings:text-ink-primary prose-strong:text-ink-primary">
                 <Markdown>{summaryExpanded ? summaryText : preview}</Markdown>
               </div>
               {hasMoreSummary && (
                 <button
                   onClick={() => setSummaryExpanded(e => !e)}
-                  className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+                  className="mt-4 inline-flex items-center gap-1 text-[12px] font-semibold text-accent hover:text-accent-hover transition-colors"
                 >
                   {summaryExpanded ? (
                     <>
@@ -299,25 +301,25 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
         <DataTabs key={activeRecordTab} records={report.supporting_records} activeTab={activeRecordTab} />
       )}
 
-      {/* ── Data Freshness (collapsible) ─────────────────────────── */}
+      {/* ── Data Freshness ─────────────────────────────────────── */}
       {report.data_freshness && (
-        <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div>
           <button
             onClick={() => setFreshnessOpen(o => !o)}
-            className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-gray-400 bg-white hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-between py-2 text-[12px] font-medium text-ink-quaternary hover:text-ink-tertiary transition-colors"
           >
             <span>Data Freshness</span>
-            <svg className={`w-3.5 h-3.5 transition-transform ${freshnessOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-3.5 h-3.5 transition-transform duration-200 ${freshnessOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
           {freshnessOpen && (
-            <div className="px-4 py-3 bg-white border-t border-gray-100">
+            <div className="pt-1 pb-3">
               <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-1.5">
                 {Object.entries(report.data_freshness).map(([source, ts]) => (
-                  <div key={source} className="flex justify-between text-xs">
-                    <dt className="text-gray-400">{formatSourceName(source)}</dt>
-                    <dd className="text-gray-600 font-mono">
+                  <div key={source} className="flex justify-between text-[11px]">
+                    <dt className="text-ink-quaternary">{formatSourceName(source)}</dt>
+                    <dd className="text-ink-secondary font-mono">
                       {ts ? new Date(ts).toLocaleDateString() : '\u2014'}
                     </dd>
                   </div>
@@ -329,7 +331,7 @@ export default function PropertyReport({ report, locationSk, address, lat, lon, 
       )}
 
       {/* ── Disclaimer ───────────────────────────────────────────── */}
-      <p className="text-[11px] text-gray-400 border-t border-gray-200 pt-3">
+      <p className="text-[11px] text-ink-quaternary border-t border-separator/60 pt-4 leading-relaxed">
         {report.disclaimer}
       </p>
     </div>
@@ -348,7 +350,7 @@ function FindingList({ flags, onFindingClick }: { flags: FlagResult[]; onFinding
         if (!items?.length) return null
         return (
           <div key={group}>
-            <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+            <h4 className="text-[11px] font-semibold text-ink-quaternary uppercase tracking-[0.08em] mb-2">
               {group}
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -483,30 +485,30 @@ function DataTabs({ records, activeTab }: DataTabsProps) {
   const rows = sortedRows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   return (
-    <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
+    <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg overflow-hidden animate-apple-fade-in">
 
-      {/* Toolbar: filter + record count + export */}
-      <div className="px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+      {/* Toolbar */}
+      <div className="px-4 py-3 border-b border-separator flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
         <div className="flex-1 max-w-md">
           <input
             type="text"
             value={filter}
             onChange={e => handleFilterChange(e.target.value)}
-            placeholder="Filter records..."
-            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-300"
+            placeholder="Filter records…"
+            className="w-full h-[36px] bg-surface-raised border border-separator rounded-apple-sm px-3
+                       text-[13px] text-ink-primary placeholder:text-ink-placeholder
+                       focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50
+                       transition-all duration-150 ease-apple"
           />
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[11px] text-gray-400">
-            {filter
-              ? `${sortedRows.length} of ${rawRows.length} records`
-              : `${rawRows.length} records`
-            }
+          <span className="text-[11px] text-ink-quaternary font-mono">
+            {filter ? `${sortedRows.length} of ${rawRows.length}` : `${rawRows.length}`} records
           </span>
           {rawRows.length > 0 && (
             <button
               onClick={() => exportCsv(sortedRows, current.columns, `civitas_${activeTab}.csv`)}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-blue-600 transition-colors"
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-tertiary hover:text-accent transition-colors duration-150"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -520,21 +522,21 @@ function DataTabs({ records, activeTab }: DataTabsProps) {
       {/* Table */}
       <div className="overflow-x-auto">
         {sortedRows.length === 0 ? (
-          <p className="text-sm text-gray-400 italic p-6">
+          <p className="text-[13px] text-ink-quaternary italic p-6">
             {rawRows.length > 0 && filter ? 'No matching records.' : 'No records found.'}
           </p>
         ) : (
           <table className="min-w-full text-xs">
-            <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#e5e7eb]">
+            <thead className="sticky top-0 z-10">
               <tr>
                 {current.columns.map(col => {
                   const isSorted = sortCol === col.key
                   const arrow = isSorted ? (sortDir === 'asc' ? ' \u25B2' : ' \u25BC') : ' \u21C5'
                   return (
-                    <th key={col.key} className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap bg-white">
+                    <th key={col.key} className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] whitespace-nowrap bg-surface-raised text-ink-quaternary border-b border-separator">
                       <button
                         onClick={() => handleSort(col.key)}
-                        className={`inline-flex items-center gap-0.5 transition-colors ${isSorted ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                        className={`inline-flex items-center gap-0.5 transition-colors ${isSorted ? 'text-accent' : 'text-ink-quaternary hover:text-ink-secondary'}`}
                       >
                         {col.label ?? formatSourceName(col.key)}
                         <span className="text-[9px]">{arrow}</span>
@@ -552,16 +554,16 @@ function DataTabs({ records, activeTab }: DataTabsProps) {
                   <tr
                     key={globalIdx}
                     onClick={() => setExpandedRow(isExpanded ? null : globalIdx)}
-                    className={`cursor-pointer transition-colors ${
+                    className={`cursor-pointer transition-colors duration-100 ${
                       isExpanded
-                        ? 'bg-blue-50/50'
-                        : i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/30 hover:bg-gray-100/50'
+                        ? 'bg-accent-light/40'
+                        : i % 2 === 0 ? 'bg-white hover:bg-surface-raised/50' : 'bg-surface-raised/30 hover:bg-surface-raised/60'
                     }`}
                   >
                     {current.columns.map(col => (
                       <td
                         key={col.key}
-                        className={`px-3 py-2 text-gray-700 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'max-w-xs truncate'}`}
+                        className={`px-3 py-2.5 text-[12px] text-ink-primary ${isExpanded ? 'whitespace-pre-wrap break-words' : 'max-w-xs truncate'}`}
                       >
                         {formatCellValue(row[col.key])}
                       </td>
@@ -576,11 +578,11 @@ function DataTabs({ records, activeTab }: DataTabsProps) {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-separator">
           <button
             onClick={() => setPage(p => Math.max(0, p - 1))}
             disabled={page === 0}
-            className="text-xs font-semibold text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="text-[12px] font-medium text-accent hover:text-accent-hover disabled:text-ink-quaternary disabled:cursor-not-allowed transition-colors"
           >
             Previous
           </button>
@@ -594,15 +596,15 @@ function DataTabs({ records, activeTab }: DataTabsProps) {
               }, [])
               .map((item, idx) =>
                 item === 'ellipsis' ? (
-                  <span key={`e${idx}`} className="text-xs text-gray-300 px-1">&hellip;</span>
+                  <span key={`e${idx}`} className="text-[12px] text-ink-quaternary px-1">&hellip;</span>
                 ) : (
                   <button
                     key={item}
                     onClick={() => setPage(item)}
-                    className={`min-w-[28px] h-7 rounded text-xs font-semibold transition-colors ${
+                    className={`min-w-[28px] h-7 rounded-[6px] text-[12px] font-semibold transition-colors ${
                       page === item
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-500 hover:bg-gray-100'
+                        ? 'bg-accent text-white'
+                        : 'text-ink-secondary hover:bg-surface-raised'
                     }`}
                   >
                     {item + 1}
@@ -613,7 +615,7 @@ function DataTabs({ records, activeTab }: DataTabsProps) {
           <button
             onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
             disabled={page === totalPages - 1}
-            className="text-xs font-semibold text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="text-[12px] font-medium text-accent hover:text-accent-hover disabled:text-ink-quaternary disabled:cursor-not-allowed transition-colors"
           >
             Next
           </button>

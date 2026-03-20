@@ -33,10 +33,10 @@ describe('AppLayout', () => {
     expect(screen.getByText('Search')).toBeInTheDocument()
   })
 
-  it('displays user full_name', () => {
+  it('displays user initial avatar', () => {
     vi.mocked(useAuth).mockReturnValue(makeAuthValue({ user: makeUser({ full_name: 'Bob Jones' }) }))
     renderLayout()
-    expect(screen.getByText('Bob Jones')).toBeInTheDocument()
+    expect(screen.getByText('B')).toBeInTheDocument()
   })
 
   it('highlights active nav link based on path', () => {
@@ -44,8 +44,8 @@ describe('AppLayout', () => {
     renderLayout('/dashboard')
     const dashBtn = screen.getByText('Dashboard')
     const searchBtn = screen.getByText('Search')
-    expect(dashBtn.className).toContain('text-blue-600')
-    expect(searchBtn.className).not.toContain('text-blue-600')
+    expect(dashBtn.className).toContain('text-accent')
+    expect(searchBtn.className).not.toContain('text-accent bg-accent-light')
   })
 
   it('calls logout on Sign Out click', async () => {

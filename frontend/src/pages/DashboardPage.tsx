@@ -7,7 +7,7 @@ import BatchPage from './BatchPage'
 import ComparePage from './ComparePage'
 import BrowsePage from './BrowsePage'
 
-// ── Utilities ────────────────────────────────────────────────────────────────
+// ── Utilities ─────────────────────────────────────────────────────────────────
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -25,18 +25,15 @@ function groupReportsByDate(reports: ReportHistoryItem[]): { label: string; item
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const weekStart = todayStart - 6 * 86_400_000
-
   const today: ReportHistoryItem[] = []
   const thisWeek: ReportHistoryItem[] = []
   const older: ReportHistoryItem[] = []
-
   for (const r of reports) {
     const t = new Date(r.generated_at).getTime()
     if (t >= todayStart) today.push(r)
     else if (t >= weekStart) thisWeek.push(r)
     else older.push(r)
   }
-
   const groups: { label: string; items: ReportHistoryItem[] }[] = []
   if (today.length) groups.push({ label: 'Today', items: today })
   if (thisWeek.length) groups.push({ label: 'This Week', items: thisWeek })
@@ -44,7 +41,7 @@ function groupReportsByDate(reports: ReportHistoryItem[]): { label: string; item
   return groups
 }
 
-// ── Quick Search ─────────────────────────────────────────────────────────────
+// ── Quick Search ──────────────────────────────────────────────────────────────
 
 function QuickSearch() {
   const navigate = useNavigate()
@@ -103,34 +100,41 @@ function QuickSearch() {
 
   return (
     <div className="relative">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onFocus={() => suggestions.length > 0 && setShowDrop(true)}
-            onKeyDown={handleKey}
-            placeholder="Search by address or PIN..."
-            className="w-full pl-9 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 shadow-sm transition-shadow"
-            autoComplete="off"
-          />
-        </div>
+      {/* Unified search bar */}
+      <div className="relative">
+        <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-quaternary pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onFocus={() => suggestions.length > 0 && setShowDrop(true)}
+          onKeyDown={handleKey}
+          placeholder="Search by address or PIN…"
+          className="w-full h-[52px] pl-12 pr-[100px] bg-white rounded-apple-lg text-[15px]
+                     text-ink-primary placeholder:text-ink-placeholder
+                     shadow-apple focus:shadow-apple-md focus:outline-none
+                     border border-separator focus:border-accent/40
+                     transition-all duration-200 ease-apple-decel"
+          autoComplete="off"
+        />
         <button
           onClick={submit}
           disabled={!query.trim()}
-          className="px-5 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold rounded-xl transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2
+                     h-9 px-4 bg-accent hover:bg-accent-hover disabled:bg-surface-sunken disabled:text-ink-quaternary
+                     text-white text-[13px] font-semibold rounded-apple
+                     transition-all duration-150 ease-apple disabled:cursor-not-allowed"
         >
           Search
         </button>
       </div>
 
+      {/* Autocomplete dropdown */}
       {showDrop && suggestions.length > 0 && (
-        <div ref={dropRef} className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <div ref={dropRef} className="absolute z-50 left-0 right-0 mt-2 bg-white/95 backdrop-blur-xl rounded-apple-lg shadow-apple-md border border-separator max-h-72 overflow-y-auto animate-apple-scale-in">
           {suggestions.map((item, i) => (
             <button
               key={item.location_sk}
@@ -140,9 +144,9 @@ function QuickSearch() {
                 setShowDrop(false)
                 navigate(`/search?q=${encodeURIComponent(item.full_address)}`)
               }}
-              className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                i === activeIdx ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'
-              } ${i < suggestions.length - 1 ? 'border-b border-gray-100' : ''}`}
+              className={`w-full text-left px-4 py-3 text-[14px] transition-colors ${
+                i === activeIdx ? 'bg-accent-light text-accent' : 'text-ink-primary hover:bg-surface-raised'
+              } ${i < suggestions.length - 1 ? 'border-b border-separator' : ''}`}
             >
               {item.full_address}
             </button>
@@ -153,7 +157,7 @@ function QuickSearch() {
   )
 }
 
-// ── Level Distribution Bar ───────────────────────────────────────────────────
+// ── Level Distribution ────────────────────────────────────────────────────────
 
 const LEVELS: ActivityLevel[] = ['QUIET', 'TYPICAL', 'ACTIVE', 'COMPLEX']
 
@@ -164,7 +168,7 @@ function LevelDistribution({ reports }: { reports: ReportHistoryItem[] }) {
 
   return (
     <div>
-      <div className="flex gap-0.5 h-3 rounded-full overflow-hidden mb-2">
+      <div className="flex gap-[3px] h-1.5 rounded-full overflow-hidden mb-3">
         {LEVELS.map(level => {
           const pct = (counts[level] / total) * 100
           if (pct === 0) return null
@@ -177,14 +181,14 @@ function LevelDistribution({ reports }: { reports: ReportHistoryItem[] }) {
             />
           )
         })}
-        {reports.length === 0 && <div className="flex-1 bg-gray-200" />}
+        {reports.length === 0 && <div className="flex-1 bg-separator-opaque" />}
       </div>
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-4 flex-wrap">
         {LEVELS.map(level => (
           <div key={level} className="flex items-center gap-1.5">
-            <div className={`w-2.5 h-2.5 rounded-full ${LEVEL_CONFIG[level].bar}`} />
-            <span className="text-[11px] text-gray-500">{LEVEL_CONFIG[level].label}</span>
-            <span className="text-[11px] font-bold text-gray-700">{counts[level]}</span>
+            <div className={`w-2 h-2 rounded-full ${LEVEL_CONFIG[level].bar}`} />
+            <span className="text-[11px] text-ink-secondary">{LEVEL_CONFIG[level].label}</span>
+            <span className="text-[11px] font-bold text-ink-primary tabular-nums">{counts[level]}</span>
           </div>
         ))}
       </div>
@@ -192,7 +196,7 @@ function LevelDistribution({ reports }: { reports: ReportHistoryItem[] }) {
   )
 }
 
-// ── Main Component ───────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 
 type ActivityTab = 'reports' | 'batches'
 type ExpandedCard = 'batch' | 'compare' | 'browse' | null
@@ -212,10 +216,7 @@ export default function DashboardPage() {
       getMyReports().catch(() => [] as ReportHistoryItem[]),
       getMyBatches(5).catch(() => [] as BatchListItem[]),
     ])
-      .then(([r, b]) => {
-        setReports(r)
-        setBatches(b)
-      })
+      .then(([r, b]) => { setReports(r); setBatches(b) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -227,51 +228,53 @@ export default function DashboardPage() {
   const reportGroups = groupReportsByDate(reports)
 
   const cardDefs: { key: ExpandedCard & string; label: string; desc: string; icon: string }[] = [
-    { key: 'batch',   label: 'Portfolio Analysis', desc: 'Upload CSV of addresses',     icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-    { key: 'compare', label: 'Compare Reports',   desc: 'Side-by-side view',           icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-    { key: 'browse',  label: 'Browse Data',        desc: 'Explore raw datasets',        icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
+    { key: 'batch',   label: 'Portfolio Analysis', desc: 'Upload CSV of addresses',  icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+    { key: 'compare', label: 'Compare Reports',    desc: 'Side-by-side view',        icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+    { key: 'browse',  label: 'Browse Data',        desc: 'Explore raw datasets',     icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
   ]
 
   return (
-    <main className="mx-auto px-4 py-8 max-w-7xl">
+    <main className="mx-auto px-6 py-8 max-w-7xl">
 
-      {/* ── Welcome + Quick Search ──────────────────────────────── */}
-      <div className="mb-8">
+      {/* ── Search ── */}
+      <div className="mb-6">
         <QuickSearch />
       </div>
 
-      {/* ── Action Cards ────────────────────────────────────────── */}
-      <div className={`grid gap-3 mb-6 ${expandedCard ? 'grid-cols-3' : 'grid-cols-3'}`}>
+      {/* ── Action Cards ── */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
         {cardDefs.map(c => {
           const isActive = expandedCard === c.key
           return (
             <button
               key={c.key}
               onClick={() => setExpandedCard(isActive ? null : c.key as ExpandedCard)}
-              className={`rounded-xl px-4 py-4 text-left transition-all group ${
+              className={`group rounded-apple-lg px-5 py-4 text-left transition-all duration-200 ease-apple ${
                 isActive
-                  ? 'bg-blue-600 shadow-md border border-blue-600'
+                  ? 'bg-accent shadow-apple-sm border border-accent/20'
                   : expandedCard
-                    ? 'bg-white shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md opacity-60 hover:opacity-100'
-                    : 'bg-white shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md'
+                    ? 'bg-white shadow-apple-xs border border-separator hover:border-accent-muted hover:shadow-apple-sm opacity-60 hover:opacity-100'
+                    : 'bg-white shadow-apple-xs border border-separator hover:border-accent-muted hover:shadow-apple-sm'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  isActive ? 'bg-blue-500' : 'bg-blue-50'
+                <div className={`w-9 h-9 rounded-apple-sm flex items-center justify-center flex-shrink-0 ${
+                  isActive ? 'bg-white/20' : 'bg-accent-light'
                 }`}>
-                  <svg className={`w-4.5 h-4.5 ${isActive ? 'text-white' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-4 h-4 ${isActive ? 'text-white' : 'text-accent'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={c.icon} />
                   </svg>
                 </div>
                 <div>
-                  <h3 className={`font-semibold text-sm transition-colors ${
-                    isActive ? 'text-white' : 'text-gray-900 group-hover:text-blue-600'
+                  <h3 className={`font-semibold text-[14px] transition-colors ${
+                    isActive ? 'text-white' : 'text-ink-primary group-hover:text-accent'
                   }`}>
                     {c.label}
                   </h3>
                   {!expandedCard && (
-                    <p className="text-[11px] text-gray-400">{c.desc}</p>
+                    <p className={`text-[11px] mt-0.5 ${isActive ? 'text-white/70' : 'text-ink-quaternary'}`}>
+                      {c.desc}
+                    </p>
                   )}
                 </div>
               </div>
@@ -280,38 +283,40 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* ── Expanded Panel ──────────────────────────────────────── */}
-      {expandedCard === 'batch' && <BatchPage embedded />}
+      {/* ── Expanded Panel ── */}
+      {expandedCard === 'batch'   && <BatchPage embedded />}
       {expandedCard === 'compare' && <ComparePage embedded />}
-      {expandedCard === 'browse' && <BrowsePage embedded />}
+      {expandedCard === 'browse'  && <BrowsePage embedded />}
 
-      {/* ── Activity Level Distribution ─────────────────────────── */}
+      {/* ── Activity Level Distribution ── */}
       {!expandedCard && !loading && reports.length > 0 && (
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 mb-6">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+        <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 mb-5">
+          <h3 className="text-[11px] font-semibold text-ink-quaternary uppercase tracking-[0.1em] mb-4">
             Activity Level Distribution
           </h3>
           <LevelDistribution reports={reports} />
         </div>
       )}
 
-      {/* ── Recent Activity (tabbed: Reports / Batches) ─────────── */}
+      {/* ── Recent Activity ── */}
       {!expandedCard && (
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between border-b border-gray-200 px-5 pt-4 pb-0">
-            <div className="flex gap-1">
+        <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg overflow-hidden">
+
+          {/* Segment control tabs */}
+          <div className="px-5 pt-4 pb-0 border-b border-separator flex items-center justify-between">
+            <div className="flex gap-0 bg-surface-raised p-1 rounded-apple mb-3">
               <button
                 onClick={() => setActivityTab('reports')}
-                className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 ${
+                className={`px-4 py-1.5 rounded-[9px] text-[13px] font-medium transition-all duration-200 ease-apple ${
                   activityTab === 'reports'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                    ? 'bg-white shadow-apple-xs text-ink-primary font-semibold'
+                    : 'text-ink-secondary hover:text-ink-primary'
                 }`}
               >
                 Reports
                 {!loading && (
                   <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                    activityTab === 'reports' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'
+                    activityTab === 'reports' ? 'bg-accent-light text-accent' : 'bg-surface-sunken text-ink-quaternary'
                   }`}>
                     {reports.length}
                   </span>
@@ -319,16 +324,16 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={() => setActivityTab('batches')}
-                className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 ${
+                className={`px-4 py-1.5 rounded-[9px] text-[13px] font-medium transition-all duration-200 ease-apple ${
                   activityTab === 'batches'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                    ? 'bg-white shadow-apple-xs text-ink-primary font-semibold'
+                    : 'text-ink-secondary hover:text-ink-primary'
                 }`}
               >
                 Batches
                 {!loading && batches.length > 0 && (
                   <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                    activityTab === 'batches' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'
+                    activityTab === 'batches' ? 'bg-accent-light text-accent' : 'bg-surface-sunken text-ink-quaternary'
                   }`}>
                     {batches.length}
                   </span>
@@ -339,50 +344,57 @@ export default function DashboardPage() {
 
           <div className="p-5">
             {loading ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="skeleton h-16 w-full rounded-lg" />
+                  <div key={i} className="flex items-center gap-4">
+                    <div className="skeleton w-11 h-11 rounded-apple-sm flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="skeleton skeleton-text w-48" />
+                      <div className="skeleton skeleton-text w-24" />
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : activityTab === 'reports' ? (
               reports.length === 0 ? (
                 <div className="text-center py-10">
-                  <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-10 h-10 text-ink-quaternary mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <p className="text-sm text-gray-400">No reports yet.</p>
-                  <p className="text-xs text-gray-400 mt-1">Search for a property to generate your first report.</p>
+                  <p className="text-[14px] text-ink-secondary">No reports yet.</p>
+                  <p className="text-[12px] text-ink-quaternary mt-1">Search for a property to generate your first report.</p>
                 </div>
               ) : (
                 <div className="space-y-5">
                   {reportGroups.map(group => (
                     <div key={group.label}>
-                      <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                      <h4 className="text-[11px] font-semibold text-ink-quaternary uppercase tracking-[0.08em] mb-2">
                         {group.label}
                       </h4>
-                      <div className="space-y-1.5">
-                        {group.items.map(r => {
+                      <div className="rounded-apple-sm overflow-hidden border border-separator">
+                        {group.items.map((r, idx) => {
                           const levelCfg = LEVEL_CONFIG[r.activity_level as ActivityLevel]
                           return (
                             <button
                               key={r.report_id}
                               onClick={() => navigate(`/search?report=${r.report_id}`)}
-                              className="w-full flex items-center gap-4 bg-gray-50 hover:bg-gray-100
-                                         border border-gray-200 rounded-lg px-4 py-3 text-left transition-colors"
+                              className={`group w-full flex items-center gap-4 bg-white hover:bg-surface-raised
+                                         px-4 py-3 text-left transition-colors duration-150 ease-apple
+                                         ${idx < group.items.length - 1 ? 'border-b border-separator' : ''}`}
                             >
-                              <div className={`w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 ${levelCfg?.pillBg ?? 'bg-gray-100'}`}>
-                                <span className={`text-base font-bold ${levelCfg?.pillText ?? 'text-gray-500'}`}>
+                              <div className={`w-11 h-11 rounded-apple-sm flex items-center justify-center flex-shrink-0 ${levelCfg?.pillBg ?? 'bg-surface-sunken'}`}>
+                                <span className={`text-[15px] font-bold tabular-nums ${levelCfg?.pillText ?? 'text-ink-secondary'}`}>
                                   {r.activity_score}
                                 </span>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">{r.query_address}</p>
-                                <p className="text-[11px] text-gray-400 mt-0.5">{relativeTime(r.generated_at)}</p>
+                                <p className="text-[14px] font-medium text-ink-primary truncate">{r.query_address}</p>
+                                <p className="text-[11px] text-ink-quaternary mt-0.5 tabular-nums">{relativeTime(r.generated_at)}</p>
                               </div>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${levelCfg?.bgAccent ?? 'bg-gray-100 text-gray-500'}`}>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${levelCfg?.bgAccent ?? 'bg-surface-raised text-ink-secondary'}`}>
                                 {r.activity_level}
                               </span>
-                              <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 text-ink-quaternary flex-shrink-0 group-hover:text-ink-secondary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>
                             </button>
@@ -396,23 +408,24 @@ export default function DashboardPage() {
             ) : (
               batches.length === 0 ? (
                 <div className="text-center py-10">
-                  <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-10 h-10 text-ink-quaternary mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
-                  <p className="text-sm text-gray-400">No batch analyses yet.</p>
-                  <p className="text-xs text-gray-400 mt-1">Upload a CSV to analyze multiple properties at once.</p>
+                  <p className="text-[14px] text-ink-secondary">No batch analyses yet.</p>
+                  <p className="text-[12px] text-ink-quaternary mt-1">Upload a CSV to analyze multiple properties at once.</p>
                 </div>
               ) : (
-                <div className="space-y-1.5">
-                  {batches.map(b => (
+                <div className="rounded-apple-sm overflow-hidden border border-separator">
+                  {batches.map((b, idx) => (
                     <button
                       key={b.batch_id}
                       onClick={() => navigate(`/batch?id=${b.batch_id}`)}
-                      className="w-full flex items-center gap-4 bg-gray-50 hover:bg-gray-100
-                                 border border-gray-200 rounded-lg px-4 py-3 text-left transition-colors"
+                      className={`group w-full flex items-center gap-4 bg-white hover:bg-surface-raised
+                                 px-4 py-3 text-left transition-colors duration-150 ease-apple
+                                 ${idx < batches.length - 1 ? 'border-b border-separator' : ''}`}
                     >
-                      <div className={`w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        b.status === 'completed' ? 'bg-emerald-50' : b.status === 'failed' ? 'bg-red-50' : 'bg-gray-100'
+                      <div className={`w-11 h-11 rounded-apple-sm flex items-center justify-center flex-shrink-0 ${
+                        b.status === 'completed' ? 'bg-emerald-50' : b.status === 'failed' ? 'bg-red-50' : 'bg-surface-sunken'
                       }`}>
                         {b.status === 'completed' ? (
                           <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -423,29 +436,29 @@ export default function DashboardPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         ) : (
-                          <svg className="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 text-ink-quaternary animate-spin" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                           </svg>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-[14px] font-medium text-ink-primary truncate">
                           {b.batch_name ?? 'Unnamed Batch'}
                         </p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">{relativeTime(b.created_at)}</p>
+                        <p className="text-[11px] text-ink-quaternary mt-0.5 tabular-nums">{relativeTime(b.created_at)}</p>
                       </div>
-                      <span className="text-xs text-gray-500 flex-shrink-0">
+                      <span className="text-[12px] text-ink-secondary flex-shrink-0 tabular-nums">
                         {b.completed_count}/{b.total_count}
                       </span>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
                         b.status === 'completed' ? 'bg-emerald-50 text-emerald-600'
                           : b.status === 'failed' ? 'bg-red-50 text-red-600'
-                          : 'bg-gray-100 text-gray-500'
+                          : 'bg-surface-sunken text-ink-quaternary'
                       }`}>
                         {b.status}
                       </span>
-                      <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-ink-quaternary flex-shrink-0 group-hover:text-ink-secondary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>

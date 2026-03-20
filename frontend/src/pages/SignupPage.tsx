@@ -2,42 +2,6 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-/* ── Animated noise gradient background ───────────────────────────── */
-function NoiseGradient() {
-  return (
-    <>
-      <style>{`
-        @keyframes gradientShift {
-          0%   { background-position: 0% 50%; }
-          25%  { background-position: 100% 25%; }
-          50%  { background-position: 50% 100%; }
-          75%  { background-position: 0% 75%; }
-          100% { background-position: 0% 50%; }
-        }
-      `}</style>
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `
-            radial-gradient(ellipse at 20% 50%, rgba(226,232,240,0.6) 0%, transparent 60%),
-            radial-gradient(ellipse at 80% 20%, rgba(203,213,225,0.5) 0%, transparent 50%),
-            radial-gradient(ellipse at 60% 80%, rgba(226,232,240,0.4) 0%, transparent 55%),
-            radial-gradient(ellipse at 40% 30%, rgba(241,245,249,0.8) 0%, transparent 45%)
-          `,
-          backgroundSize: '200% 200%',
-          animation: 'gradientShift 25s ease-in-out infinite',
-        }}
-      />
-      <svg className="absolute inset-0 w-full h-full opacity-[0.03]">
-        <filter id="grain-signup">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch" />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#grain-signup)" />
-      </svg>
-    </>
-  )
-}
-
 export default function SignupPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
@@ -52,18 +16,9 @@ export default function SignupPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters')
-      return
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
+    if (password.length < 8) { setError('Password must be at least 8 characters'); return }
+    if (password !== confirmPassword) { setError('Passwords do not match'); return }
     setLoading(true)
-
     try {
       await register(email, password, fullName, companyName || undefined)
       navigate('/dashboard')
@@ -72,11 +27,7 @@ export default function SignupPage() {
         setError(err.message)
       } else if (err && typeof err === 'object' && 'response' in err) {
         const resp = (err as { response: { status: number } }).response
-        if (resp.status === 409) {
-          setError('An account with this email already exists')
-        } else {
-          setError('Registration failed. Please try again.')
-        }
+        setError(resp.status === 409 ? 'An account with this email already exists' : 'Registration failed. Please try again.')
       } else {
         setError('Registration failed. Please try again.')
       }
@@ -85,138 +36,116 @@ export default function SignupPage() {
     }
   }
 
+  const inputClass = `w-full h-[44px] bg-surface-raised border border-separator rounded-apple px-4
+    text-[15px] text-ink-primary placeholder:text-ink-placeholder
+    focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50
+    transition-all duration-200 ease-apple`
+
   return (
     <div className="min-h-screen flex">
+
       {/* ── Left panel: branding ── */}
-      <div className="hidden lg:flex lg:w-[52%] relative bg-white border-r border-gray-200 overflow-hidden
-                      flex-col justify-between p-12">
-        <NoiseGradient />
+      <div className="hidden lg:flex lg:w-[52%] relative bg-white border-r border-separator overflow-hidden flex-col justify-between p-12">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `
+              radial-gradient(ellipse at 20% 50%, rgba(0,113,227,0.04) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 20%, rgba(0,113,227,0.03) 0%, transparent 50%)
+            `,
+          }}
+        />
 
         <div className="relative z-10">
-          <h1 className="font-brand text-3xl font-bold tracking-[0.25em] text-gray-900">
+          <h1 className="font-brand text-[28px] font-black tracking-[0.3em] text-ink-primary">
             CIVITAS
           </h1>
-          <p className="text-gray-400 text-sm mt-2 tracking-wide">Municipal Intelligence</p>
+          <p className="text-ink-quaternary text-[12px] mt-1 tracking-wide">Municipal Intelligence</p>
         </div>
 
         <div className="relative z-10 space-y-5">
-          <h2 className="text-2xl font-semibold text-gray-900 leading-relaxed max-w-md">
+          <h2 className="text-[26px] font-semibold text-ink-primary leading-[1.2] max-w-md tracking-tight">
             Property intelligence<br />
-            <span className="text-gray-500">built for due diligence.</span>
+            <span className="text-ink-tertiary">built for due diligence.</span>
           </h2>
-          <p className="text-gray-500 text-sm max-w-md leading-relaxed">
+          <p className="text-ink-secondary text-[14px] max-w-md leading-[1.65]">
             Join firms that use CIVITAS to surface municipal findings before closing.
             Transparent scoring, structured data, legally cautious narratives.
           </p>
         </div>
 
-        <p className="relative z-10 text-[11px] text-gray-400 tracking-wide">
+        <p className="relative z-10 text-[11px] text-ink-quaternary tracking-wide">
           Built for real estate law firms and title companies.
         </p>
       </div>
 
       {/* ── Right panel: signup form ── */}
-      <div className="flex-1 flex items-center justify-center bg-[#f5f5f7] px-6 py-12">
+      <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
         <div className="w-full max-w-sm">
+
           {/* Mobile-only branding */}
           <div className="text-center mb-8 lg:hidden">
-            <h1 className="font-brand text-3xl font-bold tracking-widest text-gray-900">
-              CIVITAS
-            </h1>
-            <p className="text-gray-400 text-sm mt-1">Municipal Intelligence</p>
+            <h1 className="font-brand text-[24px] font-black tracking-[0.3em] text-ink-primary">CIVITAS</h1>
+            <p className="text-ink-quaternary text-[12px] mt-1">Municipal Intelligence</p>
           </div>
 
-          <div className="lg:mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900">Create your account</h2>
-            <p className="text-gray-500 text-sm mt-1">Get started with CIVITAS in seconds.</p>
+          <div className="mb-7">
+            <h2 className="text-[22px] font-semibold text-ink-primary tracking-tight">Create your account</h2>
+            <p className="text-ink-secondary text-[14px] mt-1">Get started with CIVITAS in seconds.</p>
           </div>
 
-          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 mt-6 lg:mt-0">
-            {error && (
-              <div className="mb-4 bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-2.5 text-sm">
-                {error}
-              </div>
-            )}
+          {error && (
+            <div className="mb-5 bg-red-50/80 border border-red-200/70 text-red-700 rounded-apple px-4 py-3 text-[13px]">
+              {error}
+            </div>
+          )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Jane Smith"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="you@company.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="At least 8 characters"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-                <input
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Repeat your password"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Company <span className="text-gray-400 font-normal">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Your firm or company"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-300
-                           text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
-              >
-                {loading ? 'Creating account...' : 'Create Account'}
-              </button>
-            </form>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[13px] font-medium text-ink-secondary mb-1.5">Full Name</label>
+              <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)}
+                className={inputClass} placeholder="Jane Smith" />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-ink-secondary mb-1.5">Email</label>
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                className={inputClass} placeholder="you@company.com" />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-ink-secondary mb-1.5">Password</label>
+              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+                className={inputClass} placeholder="At least 8 characters" />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-ink-secondary mb-1.5">Confirm Password</label>
+              <input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                className={inputClass} placeholder="Repeat your password" />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-ink-secondary mb-1.5">
+                Company <span className="text-ink-quaternary font-normal">(optional)</span>
+              </label>
+              <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)}
+                className={inputClass} placeholder="Your firm or company" />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-[44px] bg-accent hover:bg-accent-hover disabled:bg-ink-quaternary
+                         text-white text-[15px] font-semibold rounded-apple
+                         shadow-[0_1px_3px_rgba(0,113,227,0.4)] disabled:shadow-none
+                         transition-all duration-150 ease-apple active:scale-[0.99]"
+            >
+              {loading ? 'Creating account…' : 'Create Account'}
+            </button>
+          </form>
 
-            <p className="mt-5 text-center text-sm text-gray-500">
-              Already have an account?{' '}
-              <Link to="/login" className="text-blue-600 hover:text-blue-500 font-medium">
-                Sign in
-              </Link>
-            </p>
-          </div>
+          <p className="mt-6 text-center text-[13px] text-ink-secondary">
+            Already have an account?{' '}
+            <Link to="/login" className="text-accent hover:text-accent-hover font-medium transition-colors">
+              Sign in
+            </Link>
+          </p>
         </div>
       </div>
     </div>

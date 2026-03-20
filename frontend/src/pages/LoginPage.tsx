@@ -2,53 +2,16 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-/* ── Animated noise gradient background ───────────────────────────── */
-function NoiseGradient() {
-  return (
-    <>
-      <style>{`
-        @keyframes gradientShift {
-          0%   { background-position: 0% 50%; }
-          25%  { background-position: 100% 25%; }
-          50%  { background-position: 50% 100%; }
-          75%  { background-position: 0% 75%; }
-          100% { background-position: 0% 50%; }
-        }
-      `}</style>
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `
-            radial-gradient(ellipse at 20% 50%, rgba(226,232,240,0.6) 0%, transparent 60%),
-            radial-gradient(ellipse at 80% 20%, rgba(203,213,225,0.5) 0%, transparent 50%),
-            radial-gradient(ellipse at 60% 80%, rgba(226,232,240,0.4) 0%, transparent 55%),
-            radial-gradient(ellipse at 40% 30%, rgba(241,245,249,0.8) 0%, transparent 45%)
-          `,
-          backgroundSize: '200% 200%',
-          animation: 'gradientShift 25s ease-in-out infinite',
-        }}
-      />
-      <svg className="absolute inset-0 w-full h-full opacity-[0.03]">
-        <filter id="grain">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch" />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#grain)" />
-      </svg>
-    </>
-  )
-}
-
 /* ── Feature item ────────────────────────────────────────────────── */
 function Feature({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
   return (
     <div className="flex gap-3">
-      <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gray-100
-                      flex items-center justify-center text-gray-500">
+      <div className="flex-shrink-0 w-9 h-9 rounded-apple-sm bg-accent-light flex items-center justify-center text-accent">
         {icon}
       </div>
       <div>
-        <p className="text-sm font-semibold text-gray-800">{title}</p>
-        <p className="text-xs text-gray-400 leading-relaxed mt-0.5">{desc}</p>
+        <p className="text-[13px] font-semibold text-ink-primary">{title}</p>
+        <p className="text-[12px] text-ink-tertiary leading-[1.6] mt-0.5">{desc}</p>
       </div>
     </div>
   )
@@ -67,7 +30,6 @@ export default function LoginPage() {
     e.preventDefault()
     setError(null)
     setLoading(true)
-
     try {
       await login(email, password)
       navigate('/dashboard')
@@ -76,11 +38,7 @@ export default function LoginPage() {
         setError(err.message)
       } else if (err && typeof err === 'object' && 'response' in err) {
         const resp = (err as { response: { status: number } }).response
-        if (resp.status === 401) {
-          setError('Invalid email or password')
-        } else {
-          setError('Login failed. Please try again.')
-        }
+        setError(resp.status === 401 ? 'Invalid email or password' : 'Login failed. Please try again.')
       } else {
         setError('An unexpected error occurred.')
       }
@@ -91,26 +49,36 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* ── Left panel: branding + marketing ── */}
-      <div className="hidden lg:flex lg:w-[52%] relative bg-white border-r border-gray-200 overflow-hidden
-                      flex-col justify-between p-12">
-        <NoiseGradient />
+
+      {/* ── Left panel: branding ── */}
+      <div className="hidden lg:flex lg:w-[52%] relative bg-white border-r border-separator overflow-hidden flex-col justify-between p-12">
+        {/* Subtle radial gradient background */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `
+              radial-gradient(ellipse at 20% 50%, rgba(0,113,227,0.04) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 20%, rgba(0,113,227,0.03) 0%, transparent 50%),
+              radial-gradient(ellipse at 60% 80%, rgba(0,113,227,0.02) 0%, transparent 55%)
+            `,
+          }}
+        />
 
         {/* Top: brand */}
         <div className="relative z-10">
-          <h1 className="font-brand text-3xl font-bold tracking-[0.25em] text-gray-900">
+          <h1 className="font-brand text-[28px] font-black tracking-[0.3em] text-ink-primary">
             CIVITAS
           </h1>
-          <p className="text-gray-400 text-sm mt-1 tracking-wide">Municipal Intelligence</p>
+          <p className="text-ink-quaternary text-[12px] mt-1 tracking-wide">Municipal Intelligence</p>
         </div>
 
         {/* Center: headline + features */}
         <div className="relative z-10">
-          <h2 className="text-2xl font-semibold text-gray-900 leading-snug max-w-md">
+          <h2 className="text-[26px] font-semibold text-ink-primary leading-[1.2] max-w-md tracking-tight">
             Property intelligence<br />
-            <span className="text-gray-500">built for due diligence.</span>
+            <span className="text-ink-tertiary">built for due diligence.</span>
           </h2>
-          <p className="text-gray-500 text-sm mt-4 max-w-md leading-relaxed">
+          <p className="text-ink-secondary text-[14px] mt-4 max-w-md leading-[1.65]">
             CIVITAS aggregates municipal records, code violations, permits, inspections,
             and tax liens into structured, explainable property reports — so you can
             close with confidence.
@@ -156,80 +124,85 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Bottom: tagline */}
-        <p className="relative z-10 text-[11px] text-gray-400 tracking-wide">
+        {/* Bottom */}
+        <p className="relative z-10 text-[11px] text-ink-quaternary tracking-wide">
           Built for real estate law firms and title companies.
         </p>
       </div>
 
       {/* ── Right panel: login form ── */}
-      <div className="flex-1 flex items-center justify-center bg-[#f5f5f7] px-6 py-12">
+      <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
         <div className="w-full max-w-sm">
+
           {/* Mobile-only branding */}
           <div className="text-center mb-8 lg:hidden">
-            <h1 className="font-brand text-3xl font-bold tracking-widest text-gray-900">
+            <h1 className="font-brand text-[24px] font-black tracking-[0.3em] text-ink-primary">
               CIVITAS
             </h1>
-            <p className="text-gray-400 text-sm mt-1">Municipal Intelligence</p>
+            <p className="text-ink-quaternary text-[12px] mt-1">Municipal Intelligence</p>
           </div>
 
-          <div className="lg:mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900">Welcome back</h2>
-            <p className="text-gray-500 text-sm mt-1">Sign in to your account to continue.</p>
+          <div className="mb-7">
+            <h2 className="text-[22px] font-semibold text-ink-primary tracking-tight">Welcome back</h2>
+            <p className="text-ink-secondary text-[14px] mt-1">Sign in to your account to continue.</p>
           </div>
 
-          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 mt-6 lg:mt-0">
-            {error && (
-              <div className="mb-4 bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-2.5 text-sm">
-                {error}
-              </div>
-            )}
+          {error && (
+            <div className="mb-5 bg-red-50/80 border border-red-200/70 text-red-700 rounded-apple px-4 py-3 text-[13px]">
+              {error}
+            </div>
+          )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="you@company.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter your password"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-300
-                           text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
-              >
-                {loading ? 'Signing in...' : 'Sign In'}
-              </button>
-            </form>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[13px] font-medium text-ink-secondary mb-1.5">Email</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-[44px] bg-surface-raised border border-separator rounded-apple px-4
+                           text-[15px] text-ink-primary placeholder:text-ink-placeholder
+                           focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50
+                           transition-all duration-200 ease-apple"
+                placeholder="you@company.com"
+              />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-ink-secondary mb-1.5">Password</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full h-[44px] bg-surface-raised border border-separator rounded-apple px-4
+                           text-[15px] text-ink-primary placeholder:text-ink-placeholder
+                           focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50
+                           transition-all duration-200 ease-apple"
+                placeholder="Enter your password"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-[44px] bg-accent hover:bg-accent-hover disabled:bg-ink-quaternary
+                         text-white text-[15px] font-semibold rounded-apple
+                         shadow-[0_1px_3px_rgba(0,113,227,0.4)] disabled:shadow-none
+                         transition-all duration-150 ease-apple active:scale-[0.99]"
+            >
+              {loading ? 'Signing in…' : 'Sign In'}
+            </button>
+          </form>
 
-            <p className="mt-5 text-center text-sm text-gray-500">
-              Don&apos;t have an account?{' '}
-              <Link to="/signup" className="text-blue-600 hover:text-blue-500 font-medium">
-                Create one
-              </Link>
-            </p>
-          </div>
+          <p className="mt-6 text-center text-[13px] text-ink-secondary">
+            Don&apos;t have an account?{' '}
+            <Link to="/signup" className="text-accent hover:text-accent-hover font-medium transition-colors">
+              Create one
+            </Link>
+          </p>
 
-          <p className="mt-4 text-center text-sm text-gray-400">
-            <Link to="/learn-more" className="hover:text-gray-600 font-medium transition-colors">
+          <p className="mt-3 text-center text-[13px] text-ink-tertiary">
+            <Link to="/learn-more" className="hover:text-ink-secondary transition-colors">
               Learn more about CIVITAS &rarr;
             </Link>
           </p>

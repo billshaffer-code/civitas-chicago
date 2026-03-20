@@ -73,6 +73,7 @@ export function makeReportHistoryItem(
     activity_score: 45,
     activity_level: 'TYPICAL',
     generated_at: '2025-06-01T12:00:00Z',
+    flags_count: 0,
     ...overrides,
   }
 }

@@ -131,6 +131,7 @@ export interface ReportHistoryItem {
   activity_score: number
   activity_level: string
   generated_at: string
+  flags_count: number
 }
 
 export interface TokenResponse {

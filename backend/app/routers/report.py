@@ -88,7 +88,8 @@ async def report_history(
     async with get_conn() as conn:
         rows = await conn.fetch(
             """
-            SELECT report_id, query_address, risk_score, risk_tier, generated_at
+            SELECT report_id, query_address, risk_score, risk_tier, generated_at,
+                   coalesce(jsonb_array_length(report_json->'triggered_flags'), 0) AS flags_count
             FROM report_audit
             WHERE location_sk = $1 AND user_id = $2
             ORDER BY generated_at DESC
@@ -104,6 +105,7 @@ async def report_history(
             activity_score=r["risk_score"],
             activity_level=_normalize_tier(r["risk_tier"]),
             generated_at=r["generated_at"].isoformat() if hasattr(r["generated_at"], "isoformat") else str(r["generated_at"]),
+            flags_count=r["flags_count"],
         )
         for r in rows
     ]
@@ -118,7 +120,8 @@ async def my_reports(
     async with get_conn() as conn:
         rows = await conn.fetch(
             """
-            SELECT report_id, query_address, risk_score, risk_tier, generated_at
+            SELECT report_id, query_address, risk_score, risk_tier, generated_at,
+                   coalesce(jsonb_array_length(report_json->'triggered_flags'), 0) AS flags_count
             FROM report_audit
             WHERE user_id = $1
             ORDER BY generated_at DESC
@@ -134,6 +137,7 @@ async def my_reports(
             activity_score=r["risk_score"],
             activity_level=_normalize_tier(r["risk_tier"]),
             generated_at=r["generated_at"].isoformat() if hasattr(r["generated_at"], "isoformat") else str(r["generated_at"]),
+            flags_count=r["flags_count"],
         )
         for r in rows
     ]

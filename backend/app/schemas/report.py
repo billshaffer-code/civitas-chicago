@@ -70,6 +70,7 @@ class ReportHistoryItem(BaseModel):
     activity_score: int
     activity_level: str
     generated_at: str
+    flags_count: int = 0
 
 
 class ReportResponse(BaseModel):

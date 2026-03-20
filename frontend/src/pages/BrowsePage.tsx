@@ -102,6 +102,8 @@ export default function BrowsePage({ embedded = false }: { embedded?: boolean })
   const [activeTable, setActiveTable] = useState('violations')
   const [data, setData] = useState<BrowseResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [addressFilter, setAddressFilter] = useState('')
+  const [debouncedAddress, setDebouncedAddress] = useState('')
   const [filter, setFilter] = useState('')
   const [debouncedFilter, setDebouncedFilter] = useState('')
   const [page, setPage] = useState(1)
@@ -115,7 +117,13 @@ export default function BrowsePage({ embedded = false }: { embedded?: boolean })
     getTableList().then(setTables).catch(() => {})
   }, [])
 
-  // Debounce filter
+  // Debounce address filter
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedAddress(addressFilter), 400)
+    return () => clearTimeout(timer)
+  }, [addressFilter])
+
+  // Debounce column filter
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedFilter(filter), 400)
     return () => clearTimeout(timer)
@@ -125,7 +133,7 @@ export default function BrowsePage({ embedded = false }: { embedded?: boolean })
   useEffect(() => {
     setPage(1)
     setExpandedRow(null)
-  }, [debouncedFilter, activeTable])
+  }, [debouncedAddress, debouncedFilter, activeTable])
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -136,6 +144,7 @@ export default function BrowsePage({ embedded = false }: { embedded?: boolean })
         table: activeTable,
         page,
         page_size: pageSize,
+        address: debouncedAddress || undefined,
         filter: debouncedFilter || undefined,
         sort: sortCol || undefined,
         sort_dir: sortDir,
@@ -146,7 +155,7 @@ export default function BrowsePage({ embedded = false }: { embedded?: boolean })
     } finally {
       setLoading(false)
     }
-  }, [activeTable, page, pageSize, debouncedFilter, sortCol, sortDir])
+  }, [activeTable, page, pageSize, debouncedAddress, debouncedFilter, sortCol, sortDir])
 
   useEffect(() => {
     fetchData()
@@ -196,6 +205,33 @@ export default function BrowsePage({ embedded = false }: { embedded?: boolean })
         </div>
       )}
 
+      {/* ── Address Filter ──────────────────────────────────────── */}
+      <div className="mb-4">
+        <div className="relative max-w-md">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <input
+            type="text"
+            value={addressFilter}
+            onChange={e => setAddressFilter(e.target.value)}
+            placeholder="Filter all tables by address..."
+            className="w-full pl-10 pr-9 bg-white border border-gray-200 rounded-lg py-2.5 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-300 shadow-sm"
+          />
+          {addressFilter && (
+            <button
+              onClick={() => setAddressFilter('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* ── Table Card ───────────────────────────────────────────── */}
       <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
 
@@ -234,7 +270,7 @@ export default function BrowsePage({ embedded = false }: { embedded?: boolean })
                 type="text"
                 value={filter}
                 onChange={e => setFilter(e.target.value)}
-                placeholder="Filter by address or any column..."
+                placeholder="Filter columns..."
                 className="w-full pl-9 pr-4 bg-gray-50 border border-gray-200 rounded-lg py-2 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-300"
               />
             </div>
@@ -276,7 +312,7 @@ export default function BrowsePage({ embedded = false }: { embedded?: boolean })
             </div>
           ) : rows.length === 0 ? (
             <p className="text-sm text-gray-400 italic p-6">
-              {debouncedFilter ? 'No matching records.' : 'No records found.'}
+              {(debouncedAddress || debouncedFilter) ? 'No matching records.' : 'No records found.'}
             </p>
           ) : (
             <table className="min-w-full text-xs">

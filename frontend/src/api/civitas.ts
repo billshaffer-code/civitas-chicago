@@ -318,6 +318,7 @@ export interface BrowseParams {
   table: string
   page?: number
   page_size?: number
+  address?: string
   filter?: string
   sort?: string
   sort_dir?: 'asc' | 'desc'

@@ -74,7 +74,8 @@ async def browse_data(
     table: str = Query(..., description="Table name"),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
-    filter: Optional[str] = Query(None, description="Text filter across all columns"),
+    address: Optional[str] = Query(None, description="Address filter (persists across tabs)"),
+    filter: Optional[str] = Query(None, description="Column text filter"),
     sort: Optional[str] = Query(None, description="Column to sort by"),
     sort_dir: str = Query("desc", pattern="^(asc|desc)$"),
     user: dict = Depends(get_current_user),
@@ -99,10 +100,13 @@ async def browse_data(
     params = []
     param_idx = 1
 
-    if filter and filter.strip():
-        filter_conditions = [f"d.full_address_standardized ILIKE ${param_idx}"]
-        params.append(f"%{filter.strip()}%")
+    if address and address.strip():
+        where_parts.append(f"d.full_address_standardized ILIKE ${param_idx}")
+        params.append(f"%{address.strip()}%")
         param_idx += 1
+
+    if filter and filter.strip():
+        filter_conditions = []
         for col in columns:
             filter_conditions.append(f"CAST(f.{col} AS TEXT) ILIKE ${param_idx}")
             params.append(f"%{filter.strip()}%")

@@ -53,38 +53,38 @@ const DETAIL_COLUMNS: Record<RecordType, ColDef[]> = {
 const TYPE_CONFIG: Record<RecordType, { label: string; color: string; dotClass: string; iconPath: string }> = {
   violations: {
     label: 'Violation',
-    color: '#dc2626',
-    dotClass: 'bg-red-100 text-red-600',
+    color: '#1e3a8a',
+    dotClass: 'bg-blue-100 text-blue-900',
     iconPath: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z',
   },
   inspections: {
     label: 'Inspection',
     color: '#2563eb',
-    dotClass: 'bg-blue-100 text-blue-600',
+    dotClass: 'bg-blue-50 text-blue-600',
     iconPath: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
   },
   permits: {
     label: 'Permit',
-    color: '#16a34a',
-    dotClass: 'bg-green-100 text-green-600',
+    color: '#60a5fa',
+    dotClass: 'bg-blue-50 text-blue-400',
     iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
   },
   service_311: {
     label: '311',
-    color: '#9333ea',
-    dotClass: 'bg-purple-100 text-purple-600',
+    color: '#64748b',
+    dotClass: 'bg-slate-100 text-slate-600',
     iconPath: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z',
   },
   tax_liens: {
     label: 'Tax Lien',
     color: '#b45309',
-    dotClass: 'bg-amber-100 text-amber-700',
+    dotClass: 'bg-amber-50 text-amber-700',
     iconPath: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
   },
   vacant_buildings: {
     label: 'Vacant Bldg',
-    color: '#4b5563',
-    dotClass: 'bg-gray-200 text-gray-600',
+    color: '#94a3b8',
+    dotClass: 'bg-slate-100 text-slate-500',
     iconPath: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
   },
 }

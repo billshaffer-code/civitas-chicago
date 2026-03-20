@@ -25,29 +25,27 @@ interface TimelineEntry {
   raw: Record<string, unknown>
 }
 
-// ── Column definitions for detail table (matches PropertyReport tabMeta) ────
+// ── Column definitions for detail table ──────────────────────────────
 
 type ColDef = { key: string; label: string }
 
-const DETAIL_COLUMNS: Record<RecordType, ColDef[]> = {
-  violations: [
-    { key: 'violation_date', label: 'Date' }, { key: 'violation_code', label: 'Code' }, { key: 'violation_status', label: 'Status' }, { key: 'violation_description', label: 'Description' },
-  ],
-  inspections: [
-    { key: 'inspection_date', label: 'Date' }, { key: 'dba_name', label: 'Business' }, { key: 'facility_type', label: 'Facility' }, { key: 'results', label: 'Result' },
-  ],
-  permits: [
-    { key: 'permit_number', label: 'Permit #' }, { key: 'permit_type', label: 'Type' }, { key: 'permit_status', label: 'Status' }, { key: 'issue_date', label: 'Issued' },
-  ],
-  service_311: [
-    { key: 'sr_type', label: 'Type' }, { key: 'status', label: 'Status' }, { key: 'created_date', label: 'Created' }, { key: 'closed_date', label: 'Closed' },
-  ],
-  tax_liens: [
-    { key: 'tax_sale_year', label: 'Year' }, { key: 'lien_type', label: 'Type' }, { key: 'total_amount_offered', label: 'Amount' }, { key: 'buyer_name', label: 'Buyer' },
-  ],
-  vacant_buildings: [
-    { key: 'docket_number', label: 'Docket' }, { key: 'issued_date', label: 'Date' }, { key: 'violation_type', label: 'Violation' }, { key: 'disposition_description', label: 'Disposition' },
-  ],
+function colLabel(key: string): string {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+/** Derive all non-empty columns from the actual record data. */
+function deriveColumns(entries: TimelineEntry[]): ColDef[] {
+  const keys: string[] = []
+  const seen = new Set<string>()
+  for (const e of entries) {
+    for (const k of Object.keys(e.raw)) {
+      if (!seen.has(k)) { seen.add(k); keys.push(k) }
+    }
+  }
+  // Drop columns where every row is null/empty
+  return keys
+    .filter(k => entries.some(e => e.raw[k] != null && e.raw[k] !== ''))
+    .map(k => ({ key: k, label: colLabel(k) }))
 }
 
 const TYPE_CONFIG: Record<RecordType, { label: string; color: string; dotClass: string; iconPath: string }> = {
@@ -467,13 +465,13 @@ function BucketDetailTable({ label, entries, onClose, stickyTop }: {
       <div className="overflow-x-auto flex-1 overflow-y-auto">
         {types.map(type => {
           const typeEntries = grouped.get(type)!
-          const columns = DETAIL_COLUMNS[type]
+          const columns = deriveColumns(typeEntries)
           const cfg = TYPE_CONFIG[type]
 
           return (
             <div key={type}>
               {/* Type subheader */}
-              <div className="px-4 py-2 bg-surface-raised border-b border-separator flex items-center gap-2">
+              <div className="px-4 py-2 bg-surface-raised border-b border-separator flex items-center gap-2 sticky top-0 z-10">
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.color }} />
                 <span className="text-[11px] font-semibold text-ink-secondary">{cfg.label}</span>
                 <span className="text-[10px] text-ink-quaternary font-mono">{typeEntries.length}</span>
@@ -506,7 +504,7 @@ function BucketDetailTable({ label, entries, onClose, stickyTop }: {
                         {columns.map(col => (
                           <td
                             key={col.key}
-                            className={`px-3 py-2.5 text-[12px] text-ink-primary ${isExpanded ? 'whitespace-pre-wrap break-words' : 'max-w-[150px] truncate'}`}
+                            className={`px-3 py-2.5 text-[12px] text-ink-primary ${isExpanded ? 'whitespace-pre-wrap break-words' : 'max-w-[180px] truncate'}`}
                           >
                             {formatCell(entry.raw[col.key])}
                           </td>
@@ -658,7 +656,7 @@ export default function RecordTimeline({ records, stickyOffset = 0 }: Props) {
           <div className="absolute inset-0 bg-ink-primary/10 backdrop-blur-[2px]" />
           {/* Panel */}
           <div
-            className="absolute right-0 top-0 h-full w-full max-w-[420px] bg-white shadow-apple-sheet border-l border-separator animate-slide-in-right flex flex-col"
+            className="absolute right-0 top-0 h-full w-[90vw] bg-white shadow-apple-sheet border-l border-separator animate-slide-in-right flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <BucketDetailTable

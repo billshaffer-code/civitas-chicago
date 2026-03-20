@@ -126,9 +126,23 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
 
   return (
     <div className={embedded ? '' : `mx-auto px-4 py-8 ${isReportView ? 'max-w-7xl' : 'max-w-2xl'}`}>
-      {/* Search — vertically centered when no report */}
+      {/* Search — vertically centered before report */}
       {!isReportView && (
-        <div className={phase === 'search' ? 'min-h-[60vh] flex flex-col justify-center' : ''}>
+        <div className={phase === 'search' ? 'min-h-[65vh] flex flex-col justify-center' : ''}>
+
+          {/* Hero heading — only on initial search phase */}
+          {phase === 'search' && (
+            <div className="text-center mb-8 animate-apple-fade-in">
+              <p className="font-brand text-[12px] font-black tracking-[0.3em] text-accent mb-4">CIVITAS</p>
+              <h2 className="text-[32px] font-bold text-ink-primary tracking-tight leading-[1.1] mb-2">
+                Search a Property
+              </h2>
+              <p className="text-[15px] text-ink-secondary">
+                Chicago municipal intelligence — violations, permits, 311, tax liens.
+              </p>
+            </div>
+          )}
+
           <PropertySearch
             onSubmit={handleLookup}
             loading={phase === 'lookup-loading'}
@@ -136,77 +150,136 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
 
           {/* Error banner */}
           {error && (
-            <div className="mt-4 bg-red-50 border border-red-200 text-red-600
-                            rounded-lg px-5 py-3 text-sm font-medium animate-fade-in">
+            <div className="mt-4 flex items-start gap-3 bg-red-50/80 border border-red-200/70 text-red-700 rounded-apple px-4 py-3 text-[13px] animate-apple-fade-in">
+              <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               {error}
             </div>
           )}
 
           {/* Lookup loading skeleton */}
           {phase === 'lookup-loading' && (
-            <div className="mt-6 space-y-3 animate-fade-in">
-              <div className="skeleton h-5 w-48" />
-              <div className="skeleton h-4 w-64" />
-              <div className="skeleton h-10 w-44 mt-2" />
+            <div className="mt-5 bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 space-y-3 animate-apple-fade-in">
+              <div className="flex items-center gap-3">
+                <div className="skeleton w-9 h-9 rounded-apple-sm flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="skeleton skeleton-text w-3/4" />
+                  <div className="skeleton skeleton-text w-1/3" />
+                </div>
+              </div>
+              <div className="skeleton h-[44px] w-full rounded-apple" />
             </div>
           )}
 
           {/* Lookup result */}
           {(phase === 'lookup-done' || phase === 'report-loading') && lookup && (
-            <div className="mt-6 bg-white shadow-sm border border-gray-200 rounded-xl p-5 animate-fade-in">
+            <>
               {lookup.resolved ? (
-                <>
+                <div className="mt-5 bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 animate-apple-fade-in">
+                  {/* Warning if present */}
                   {lookup.warning && (
-                    <div className="mb-3 bg-yellow-50 border border-yellow-200 text-yellow-700
-                                    rounded-lg px-4 py-2 text-sm">
+                    <div className="mb-4 flex items-start gap-2.5 bg-amber-50 border border-amber-200/70 rounded-apple px-3.5 py-2.5 text-[12px] text-amber-700">
+                      <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
                       {lookup.warning}
                     </div>
                   )}
-                  <p className="text-xs text-gray-400 mb-1">
-                    Match: <strong className="text-gray-600">{lookup.match_confidence}</strong>
-                    {lookup.parcel_id && <> &middot; PIN: <strong className="text-gray-600">{lookup.parcel_id}</strong></>}
-                  </p>
-                  <p className="text-lg font-bold text-gray-900">{lookup.full_address}</p>
+
+                  {/* Address row */}
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-9 h-9 rounded-apple-sm bg-accent-light flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[17px] font-semibold text-ink-primary leading-tight">{lookup.full_address}</p>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          lookup.match_confidence === 'EXACT' ? 'bg-accent-light text-accent'
+                          : lookup.match_confidence === 'HIGH' ? 'bg-blue-50 text-blue-600'
+                          : 'bg-amber-50 text-amber-700'
+                        }`}>
+                          {lookup.match_confidence} MATCH
+                        </span>
+                        {lookup.parcel_id && (
+                          <span className="text-[11px] text-ink-quaternary font-mono">PIN: {lookup.parcel_id}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Generate button */}
                   <button
                     onClick={handleGenerateReport}
                     disabled={phase === 'report-loading'}
-                    className="mt-4 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-200 disabled:text-gray-400
-                               text-white font-semibold px-6 py-2 rounded-lg transition-colors text-sm"
+                    className="mt-4 w-full h-[44px] bg-accent hover:bg-accent-hover disabled:bg-ink-quaternary
+                               text-white text-[14px] font-semibold rounded-apple
+                               shadow-[0_1px_3px_rgba(0,113,227,0.4)] disabled:shadow-none
+                               transition-all duration-150 ease-apple active:scale-[0.99]
+                               flex items-center justify-center gap-2"
                   >
-                    {phase === 'report-loading' ? 'Generating report...' : 'Generate Report'}
+                    {phase === 'report-loading' ? (
+                      <>
+                        <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                        Generating municipal profile…
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Generate Report
+                      </>
+                    )}
                   </button>
 
-                  {/* Report History */}
+                  {/* Report history */}
                   {history.length > 0 && (
-                    <div className="mt-5 border-t border-gray-200 pt-4">
-                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                        Previous Reports
-                        <span className="ml-2 text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-mono">
+                    <div className="mt-5 pt-4 border-t border-separator">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-[11px] font-semibold text-ink-quaternary uppercase tracking-[0.08em]">Previous Reports</h4>
+                        <span className="text-[10px] bg-surface-raised text-ink-quaternary px-1.5 py-0.5 rounded-full font-mono border border-separator">
                           {history.length}
                         </span>
-                      </h4>
-                      <div className="space-y-2">
+                      </div>
+                      <div className="space-y-1.5">
                         {history.map(h => {
                           const levelCfg = LEVEL_CONFIG[h.activity_level as ActivityLevel]
+                          const daysAgo = Math.floor((Date.now() - new Date(h.generated_at).getTime()) / (1000 * 60 * 60 * 24))
+                          const timeLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`
                           return (
                             <button
                               key={h.report_id}
                               onClick={() => handleLoadHistorical(h.report_id)}
                               disabled={phase === 'report-loading'}
-                              className="w-full flex items-center justify-between bg-gray-50 hover:bg-gray-100
-                                         border border-gray-200 rounded-lg px-4 py-2.5 text-left transition-colors
-                                         disabled:opacity-50"
+                              className="group w-full flex items-center gap-3 bg-surface-raised hover:bg-surface-sunken
+                                         border border-separator rounded-apple px-4 py-3 text-left
+                                         transition-all duration-150 ease-apple
+                                         hover:shadow-apple-xs active:scale-[0.99] disabled:opacity-50"
                             >
-                              <span className="text-xs text-gray-500">
-                                {new Date(h.generated_at).toLocaleString()}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-mono text-gray-700">
-                                  Score: {h.activity_score}
-                                </span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${levelCfg?.bgAccent ?? 'bg-gray-100 text-gray-500'}`}>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[12px] font-medium text-ink-primary">{timeLabel}</p>
+                                <p className="text-[11px] text-ink-quaternary font-mono mt-0.5">
+                                  {new Date(h.generated_at).toLocaleString()}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className="text-[12px] font-bold text-ink-secondary tabular-nums">{h.activity_score}</span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${levelCfg?.bgAccent ?? 'bg-surface-sunken text-ink-quaternary'}`}>
                                   {h.activity_level}
                                 </span>
+                                <svg className="w-3.5 h-3.5 text-ink-quaternary group-hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
                               </div>
                             </button>
                           )
@@ -214,24 +287,65 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
                       </div>
                     </div>
                   )}
-                </>
+                </div>
               ) : (
-                <div className="text-red-600 font-medium">
-                  {lookup.warning ?? 'Address match uncertain \u2013 manual verification recommended.'}
+                <div className="mt-5 bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 animate-apple-fade-in">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-9 h-9 rounded-apple-sm bg-amber-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-[14px] font-semibold text-ink-primary">Address not found</p>
+                      <p className="text-[13px] text-ink-secondary mt-0.5">
+                        {lookup.warning ?? 'Address match uncertain — manual verification recommended.'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
-            </div>
+            </>
           )}
 
           {/* Report loading skeleton */}
           {phase === 'report-loading' && (
-            <div className="mt-6 space-y-4 animate-fade-in">
-              <div className="skeleton h-24 w-full" />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="skeleton h-48" />
-                <div className="skeleton h-48" />
+            <div className="mt-5 space-y-3 animate-apple-fade-in">
+              <div className="flex items-center gap-3 px-1">
+                <div className="w-4 h-4 rounded-full border-2 border-separator border-t-accent animate-spin flex-shrink-0" />
+                <span className="text-[13px] text-ink-secondary">Generating municipal profile…</span>
               </div>
-              <div className="skeleton h-32 w-full" />
+              <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2 flex-1 mr-4">
+                    <div className="skeleton skeleton-text w-1/2" />
+                    <div className="skeleton skeleton-text w-1/4" />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="skeleton h-8 w-20 rounded-apple-sm" />
+                    <div className="skeleton h-8 w-24 rounded-apple-sm" />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="skeleton h-20 rounded-apple" />
+                ))}
+              </div>
+              <div className="skeleton h-12 w-full rounded-apple" />
+              <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex gap-3">
+                    <div className="skeleton w-1 rounded-full h-16" />
+                    <div className="flex-1 space-y-2 pt-1">
+                      <div className="skeleton skeleton-text w-1/3" />
+                      <div className="skeleton skeleton-text w-2/3" />
+                      <div className="skeleton skeleton-text w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

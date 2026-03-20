@@ -33,9 +33,20 @@ function formatSourceName(s: string): string {
   return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
-function formatCellValue(v: unknown): string {
+const YEAR_COLUMNS = new Set(['tax_sale_year', 'from_year', 'to_year', 'year'])
+const CURRENCY_COLUMNS = new Set([
+  'tax_amount_offered', 'penalty_amount_offered',
+  'total_amount_offered', 'total_amount_forfeited',
+])
+
+function formatCellValue(v: unknown, columnKey?: string): string {
   if (v == null) return '\u2014'
-  if (typeof v === 'number') return v.toLocaleString()
+  if (typeof v === 'number') {
+    if (columnKey && YEAR_COLUMNS.has(columnKey)) return String(v)
+    if (columnKey && CURRENCY_COLUMNS.has(columnKey))
+      return '$' + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return v.toLocaleString()
+  }
   const s = String(v)
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
     const d = new Date(s)
@@ -468,8 +479,8 @@ function SummaryPanel({
     return (
       <div className="space-y-3 animate-apple-fade-in">
         {/* Metrics skeleton */}
-        <div className="grid grid-cols-3 gap-3">
-          {[1, 2, 3].map(i => (
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2].map(i => (
             <div key={i} className="bg-white shadow-apple-xs border border-separator rounded-apple px-4 py-3">
               <div className="skeleton h-6 w-10 mb-1.5 rounded" />
               <div className="skeleton skeleton-text w-20" />
@@ -573,17 +584,8 @@ function SummaryMetrics({ report, actionRequiredCount, reviewCount }: {
   actionRequiredCount: number
   reviewCount: number
 }) {
-  const cfg = LEVEL_CONFIG[(report.activity_level as ActivityLevel)] ?? LEVEL_CONFIG.QUIET
-
   return (
-    <div className="grid grid-cols-3 gap-3">
-      <div className="bg-white shadow-apple-xs border border-separator rounded-apple px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className={`text-[22px] font-bold tabular-nums ${cfg.text}`}>{report.activity_score}</span>
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${cfg.bgAccent}`}>{cfg.label}</span>
-        </div>
-        <p className="text-[10px] text-ink-quaternary mt-0.5 font-medium">Activity Score</p>
-      </div>
+    <div className="grid grid-cols-2 gap-3">
       <div className="bg-white shadow-apple-xs border border-separator rounded-apple px-4 py-3">
         <div className="text-[22px] font-bold text-ink-primary tabular-nums">{report.triggered_flags.length}</div>
         <p className="text-[10px] text-ink-quaternary mt-0.5 font-medium">Total Findings</p>
@@ -708,7 +710,7 @@ function exportCsv(rows: Record<string, unknown>[], columns: ColDef[], filename:
   const header = columns.map(c => c.label ?? formatSourceName(c.key)).join(',')
   const body = rows.map(row =>
     columns.map(c => {
-      const val = formatCellValue(row[c.key])
+      const val = formatCellValue(row[c.key], c.key)
       if (/[,"\n]/.test(val)) return `"${val.replace(/"/g, '""')}"`
       return val
     }).join(',')
@@ -760,7 +762,7 @@ function DataTabs({ records, activeTab }: DataTabsProps) {
   const lowerFilter = filter.toLowerCase()
   const filteredRows = lowerFilter
     ? rawRows.filter(row =>
-        current.columns.some(col => formatCellValue(row[col.key]).toLowerCase().includes(lowerFilter))
+        current.columns.some(col => formatCellValue(row[col.key], col.key).toLowerCase().includes(lowerFilter))
       )
     : rawRows
 
@@ -858,7 +860,7 @@ function DataTabs({ records, activeTab }: DataTabsProps) {
                         key={col.key}
                         className={`px-3 py-2.5 text-[12px] text-ink-primary ${isExpanded ? 'whitespace-pre-wrap break-words' : 'max-w-xs truncate'}`}
                       >
-                        {formatCellValue(row[col.key])}
+                        {formatCellValue(row[col.key], col.key)}
                       </td>
                     ))}
                   </tr>

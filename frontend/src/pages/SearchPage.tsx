@@ -122,7 +122,7 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
     }
   }
 
-  const isReportView = phase === 'report-done' && report
+  const isReportView = (phase === 'report-loading' || phase === 'report-done') && !!lookup?.resolved
 
   return (
     <div className={embedded ? '' : `mx-auto px-4 py-8 ${isReportView ? 'max-w-7xl' : 'max-w-2xl'}`}>
@@ -309,52 +309,14 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
             </>
           )}
 
-          {/* Report loading skeleton */}
-          {phase === 'report-loading' && (
-            <div className="mt-5 space-y-3 animate-apple-fade-in">
-              <div className="flex items-center gap-3 px-1">
-                <div className="w-4 h-4 rounded-full border-2 border-separator border-t-accent animate-spin flex-shrink-0" />
-                <span className="text-[13px] text-ink-secondary">Generating municipal profile…</span>
-              </div>
-              <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-2 flex-1 mr-4">
-                    <div className="skeleton skeleton-text w-1/2" />
-                    <div className="skeleton skeleton-text w-1/4" />
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="skeleton h-8 w-20 rounded-apple-sm" />
-                    <div className="skeleton h-8 w-24 rounded-apple-sm" />
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="skeleton h-20 rounded-apple" />
-                ))}
-              </div>
-              <div className="skeleton h-12 w-full rounded-apple" />
-              <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 space-y-4">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex gap-3">
-                    <div className="skeleton w-1 rounded-full h-16" />
-                    <div className="flex-1 space-y-2 pt-1">
-                      <div className="skeleton skeleton-text w-1/3" />
-                      <div className="skeleton skeleton-text w-2/3" />
-                      <div className="skeleton skeleton-text w-1/2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {/* Full report */}
-      {isReportView && report && (
+      {isReportView && (
         <PropertyReport
-          report={report}
+          report={report ?? undefined}
+          loading={phase === 'report-loading'}
           locationSk={lookup?.location_sk ?? 0}
           address={lastReq.address}
           lat={lookup?.lat}

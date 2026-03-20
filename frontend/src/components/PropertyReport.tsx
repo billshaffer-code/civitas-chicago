@@ -82,7 +82,7 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
   const navigate = useNavigate()
   const [sectionTab, setSectionTab] = useState<SectionTab>('findings')
   const [activeRecordTab, setActiveRecordTab] = useState<TabKey>('violations')
-  const [summaryExpanded, setSummaryExpanded] = useState(false)
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
   const [showMap, setShowMap] = useState(false)
   const [freshnessOpen, setFreshnessOpen] = useState(false)
   const stickyHeaderRef = useRef<HTMLDivElement>(null)
@@ -118,13 +118,11 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
     URL.revokeObjectURL(url)
   }
 
-  // AI summary preview — first paragraph or first 250 chars
   const summaryText = report?.ai_summary || ''
-  const firstBreak = summaryText.indexOf('\n\n')
-  const preview = firstBreak > 0 && firstBreak < 300
-    ? summaryText.slice(0, firstBreak)
-    : summaryText.slice(0, 250) + (summaryText.length > 250 ? '...' : '')
-  const hasMoreSummary = summaryText.length > preview.length
+
+  function toggleSection(key: string) {
+    setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }))
+  }
 
   const sectionTabs: { key: SectionTab; label: string; count?: number }[] = [
     { key: 'findings', label: 'Findings', count: report?.triggered_flags.length },
@@ -296,42 +294,13 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
       )}
 
       {sectionTab === 'summary' && (
-        <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 animate-apple-fade-in">
-          {!summaryText ? (
-            <div className="flex items-center gap-3 py-4">
-              <div className="w-5 h-5 rounded-full border-[2.5px] border-separator border-t-accent animate-spin" />
-              <span className="text-[14px] text-ink-secondary">Generating AI summary…</span>
-            </div>
-          ) : (
-            <>
-              <div className="prose prose-sm max-w-none text-ink-secondary prose-headings:text-ink-primary prose-strong:text-ink-primary">
-                <Markdown>{summaryExpanded ? summaryText : preview}</Markdown>
-              </div>
-              {hasMoreSummary && (
-                <button
-                  onClick={() => setSummaryExpanded(e => !e)}
-                  className="mt-4 inline-flex items-center gap-1 text-[12px] font-semibold text-accent hover:text-accent-hover transition-colors"
-                >
-                  {summaryExpanded ? (
-                    <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                      </svg>
-                      Show less
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                      Read full summary
-                    </>
-                  )}
-                </button>
-              )}
-            </>
-          )}
-        </div>
+        <SummaryPanel
+          summaryText={summaryText}
+          report={report}
+          loading={loading}
+          collapsedSections={collapsedSections}
+          onToggleSection={toggleSection}
+        />
       )}
 
       {sectionTab === 'timeline' && (
@@ -409,6 +378,254 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
         <p className="text-[11px] text-ink-quaternary border-t border-separator/60 pt-4 leading-relaxed">
           {report.disclaimer}
         </p>
+      )}
+    </div>
+  )
+}
+
+// ── Summary Panel ───────────────────────────────────────────────────────────
+
+interface SummarySection {
+  key: string
+  title: string
+  body: string
+}
+
+const SUMMARY_SECTION_META: Record<string, {
+  icon: string
+  borderColor: string
+  iconBg: string
+  iconColor: string
+}> = {
+  'Overview':               { icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',                          borderColor: 'border-l-accent',    iconBg: 'bg-accent-light',  iconColor: 'text-accent' },
+  'Review Items':           { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4', borderColor: 'border-l-blue-500', iconBg: 'bg-blue-50',       iconColor: 'text-blue-600' },
+  'Informational Context':  { icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', borderColor: 'border-l-slate-400', iconBg: 'bg-slate-100',     iconColor: 'text-slate-500' },
+  'Action Items':           { icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z', borderColor: 'border-l-amber-400', iconBg: 'bg-amber-50',      iconColor: 'text-amber-600' },
+  'Data Scope':             { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',                                        borderColor: 'border-l-slate-300', iconBg: 'bg-surface-raised', iconColor: 'text-ink-quaternary' },
+}
+
+function parseSummarySections(text: string): SummarySection[] {
+  // Split on ## headers
+  const headerRegex = /^## (.+)$/gm
+  const sections: SummarySection[] = []
+  let lastIndex = 0
+  let lastTitle = ''
+  let match: RegExpExecArray | null
+
+  // Collect any text before the first header as "Overview"
+  const firstHeaderMatch = text.match(/^## /m)
+  if (firstHeaderMatch && firstHeaderMatch.index && firstHeaderMatch.index > 0) {
+    const preamble = text.slice(0, firstHeaderMatch.index).trim()
+    if (preamble) {
+      sections.push({ key: 'preamble', title: 'Overview', body: preamble })
+    }
+  }
+
+  while ((match = headerRegex.exec(text)) !== null) {
+    if (lastTitle) {
+      const body = text.slice(lastIndex, match.index).trim()
+      if (body) sections.push({ key: lastTitle, title: lastTitle, body })
+    }
+    lastTitle = match[1].trim()
+    lastIndex = match.index + match[0].length
+  }
+
+  // Last section
+  if (lastTitle) {
+    const body = text.slice(lastIndex).trim()
+    if (body) sections.push({ key: lastTitle, title: lastTitle, body })
+  }
+
+  // Fallback: if no headers found, treat entire text as one Overview section
+  if (sections.length === 0 && text.trim()) {
+    sections.push({ key: 'Overview', title: 'Overview', body: text.trim() })
+  }
+
+  return sections
+}
+
+function SummaryPanel({
+  summaryText,
+  report,
+  loading,
+  collapsedSections,
+  onToggleSection,
+}: {
+  summaryText: string
+  report?: ReportResponse
+  loading: boolean
+  collapsedSections: Record<string, boolean>
+  onToggleSection: (key: string) => void
+}) {
+  const noFindings = report && report.triggered_flags.length === 0
+
+  // Key metrics
+  const actionRequiredCount = report?.triggered_flags.filter(f => f.action_group === 'Action Required').length ?? 0
+  const reviewCount = report?.triggered_flags.filter(f => f.action_group === 'Review Recommended' || f.action_group === 'Worth Noting').length ?? 0
+
+  // Loading skeleton
+  if (!summaryText && (loading || !report)) {
+    return (
+      <div className="space-y-3 animate-apple-fade-in">
+        {/* Metrics skeleton */}
+        <div className="grid grid-cols-3 gap-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="bg-white shadow-apple-xs border border-separator rounded-apple px-4 py-3">
+              <div className="skeleton h-6 w-10 mb-1.5 rounded" />
+              <div className="skeleton skeleton-text w-20" />
+            </div>
+          ))}
+        </div>
+        {/* Section card skeletons */}
+        {['accent', 'blue-500', 'slate-400', 'amber-400'].map((color, i) => (
+          <div key={i} className={`bg-white shadow-apple-xs border border-separator border-l-[3px] border-l-${color} rounded-apple-lg p-4 space-y-2`}>
+            <div className="flex items-center gap-2.5">
+              <div className="skeleton w-7 h-7 rounded-apple-sm" />
+              <div className="skeleton skeleton-text w-32" />
+            </div>
+            <div className="skeleton skeleton-text w-full" />
+            <div className="skeleton skeleton-text w-4/5" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // Generating state
+  if (!summaryText) {
+    return (
+      <div className="space-y-3 animate-apple-fade-in">
+        {/* Metrics row (real data, since report exists) */}
+        {report && <SummaryMetrics report={report} actionRequiredCount={actionRequiredCount} reviewCount={reviewCount} />}
+        {/* Generating indicator */}
+        <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5">
+          <div className="flex items-center gap-3 py-2">
+            <div className="w-5 h-5 rounded-full border-[2.5px] border-separator border-t-accent animate-spin" />
+            <span className="text-[14px] text-ink-secondary">Generating AI summary…</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const sections = parseSummarySections(summaryText)
+
+  // No-findings shortcut
+  if (noFindings && sections.length > 0) {
+    const overview = sections.find(s => s.title === 'Overview')
+    return (
+      <div className="space-y-3 animate-apple-fade-in">
+        {report && <SummaryMetrics report={report} actionRequiredCount={0} reviewCount={0} />}
+        <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-6 text-center">
+          <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-3">
+            <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-[15px] font-semibold text-ink-primary mb-1">No findings identified</h3>
+          {overview && (
+            <div className="prose prose-sm max-w-lg mx-auto text-ink-secondary mt-3">
+              <Markdown>{overview.body}</Markdown>
+            </div>
+          )}
+        </div>
+        {/* Still show Data Scope if present */}
+        {sections.filter(s => s.title === 'Data Scope').map(section => {
+          const meta = SUMMARY_SECTION_META[section.title] ?? SUMMARY_SECTION_META['Data Scope']
+          return (
+            <SummarySectionCard
+              key={section.key}
+              section={section}
+              meta={meta}
+              collapsed={collapsedSections[section.key] ?? false}
+              onToggle={() => onToggleSection(section.key)}
+            />
+          )
+        })}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3 animate-apple-fade-in">
+      {/* Key metrics row */}
+      {report && <SummaryMetrics report={report} actionRequiredCount={actionRequiredCount} reviewCount={reviewCount} />}
+
+      {/* Section cards */}
+      {sections.map(section => {
+        const meta = SUMMARY_SECTION_META[section.title] ?? SUMMARY_SECTION_META['Overview']
+        return (
+          <SummarySectionCard
+            key={section.key}
+            section={section}
+            meta={meta}
+            collapsed={collapsedSections[section.key] ?? false}
+            onToggle={() => onToggleSection(section.key)}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+function SummaryMetrics({ report, actionRequiredCount, reviewCount }: {
+  report: ReportResponse
+  actionRequiredCount: number
+  reviewCount: number
+}) {
+  const cfg = LEVEL_CONFIG[(report.activity_level as ActivityLevel)] ?? LEVEL_CONFIG.QUIET
+
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <div className="bg-white shadow-apple-xs border border-separator rounded-apple px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className={`text-[22px] font-bold tabular-nums ${cfg.text}`}>{report.activity_score}</span>
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${cfg.bgAccent}`}>{cfg.label}</span>
+        </div>
+        <p className="text-[10px] text-ink-quaternary mt-0.5 font-medium">Activity Score</p>
+      </div>
+      <div className="bg-white shadow-apple-xs border border-separator rounded-apple px-4 py-3">
+        <div className="text-[22px] font-bold text-ink-primary tabular-nums">{report.triggered_flags.length}</div>
+        <p className="text-[10px] text-ink-quaternary mt-0.5 font-medium">Total Findings</p>
+      </div>
+      <div className="bg-white shadow-apple-xs border border-separator rounded-apple px-4 py-3">
+        <div className={`text-[22px] font-bold tabular-nums ${actionRequiredCount > 0 ? 'text-amber-600' : 'text-ink-primary'}`}>
+          {actionRequiredCount}
+        </div>
+        <p className="text-[10px] text-ink-quaternary mt-0.5 font-medium">Action Required</p>
+      </div>
+    </div>
+  )
+}
+
+function SummarySectionCard({ section, meta, collapsed, onToggle }: {
+  section: SummarySection
+  meta: { icon: string; borderColor: string; iconBg: string; iconColor: string }
+  collapsed: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className={`bg-white shadow-apple-xs border border-separator border-l-[3px] ${meta.borderColor} rounded-apple-lg overflow-hidden`}>
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-surface-raised/50 transition-colors duration-150"
+      >
+        <div className={`w-7 h-7 rounded-apple-sm flex items-center justify-center flex-shrink-0 ${meta.iconBg}`}>
+          <svg className={`w-3.5 h-3.5 ${meta.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={meta.icon} />
+          </svg>
+        </div>
+        <h4 className="flex-1 text-[13px] font-semibold text-ink-primary">{section.title}</h4>
+        <svg className={`w-3.5 h-3.5 text-ink-quaternary transition-transform duration-200 ${collapsed ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {!collapsed && (
+        <div className="px-4 pb-4 pt-0">
+          <div className="prose prose-sm max-w-none text-ink-secondary prose-headings:text-ink-primary prose-strong:text-ink-primary text-[13px] leading-relaxed">
+            <Markdown>{section.body}</Markdown>
+          </div>
+        </div>
       )}
     </div>
   )

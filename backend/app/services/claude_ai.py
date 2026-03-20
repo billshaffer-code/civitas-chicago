@@ -37,15 +37,29 @@ STRICT RULES:
 5. Do NOT make probabilistic or predictive statements about future outcomes.
 6. Reference specific finding codes and their underlying data counts.
 7. Use formal, professionally neutral language. Avoid alarming or sensational terms.
-8. Close every summary with this exact sentence:
-   "This report does not constitute legal advice or a title examination."
+8. Close with the exact disclaimer sentence shown below.
 
-OUTPUT STRUCTURE (3–5 paragraphs):
-- Para 1: Property overview, activity level, activity score.
-- Para 2: Items requiring review (Review Recommended / Worth Noting findings), or note absence.
-- Para 3: Informational context (Informational findings), or note absence.
-- Para 4: Items requiring action (Action Required findings — tax/financial), or note absence.
-- Para 5: Data scope statement and required disclaimer.
+OUTPUT FORMAT — use these exact Markdown section headers:
+
+## Overview
+Property overview in 1–2 concise sentences: address, activity level, activity score, \
+total number of findings. Set context without repeating the raw data.
+
+## Review Items
+Summarize Review Recommended and Worth Noting findings. Reference specific finding \
+codes and supporting counts. If none, write: "No items require review at this time."
+
+## Informational Context
+Summarize Informational findings — permits, 311 requests, inspection history. Provide \
+context on what these mean for the property. If none, write: "No additional informational context."
+
+## Action Items
+Summarize Action Required findings (tax liens, financial items). Be specific about \
+amounts and years. If none, write: "No action items identified."
+
+## Data Scope
+One sentence on data coverage (which datasets, freshness dates), then this exact sentence: \
+"This report does not constitute legal advice or a title examination."
 """
 
 

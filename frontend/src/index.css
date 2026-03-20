@@ -25,7 +25,7 @@ body {
 
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: none; }
 }
 .animate-fade-in {
   animation: fade-in 0.35s ease-out both;
@@ -33,7 +33,7 @@ body {
 
 @keyframes apple-fade-in {
   from { opacity: 0; transform: translateY(6px) scale(0.99); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 1; transform: none; }
 }
 .animate-apple-fade-in {
   animation: apple-fade-in 0.35s cubic-bezier(0, 0, 0.2, 1) both;

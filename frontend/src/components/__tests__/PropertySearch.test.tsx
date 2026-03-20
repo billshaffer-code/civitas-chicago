@@ -18,12 +18,12 @@ describe('PropertySearch', () => {
   it('renders address input and submit button', () => {
     renderSearch()
     expect(screen.getByPlaceholderText(/123 N MAIN/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /look up property/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /look up/i })).toBeInTheDocument()
   })
 
   it('disables submit when address is empty', () => {
     renderSearch()
-    expect(screen.getByRole('button', { name: /look up property/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /look up/i })).toBeDisabled()
   })
 
   it('calls onSubmit with address on form submit', async () => {
@@ -31,7 +31,7 @@ describe('PropertySearch', () => {
     renderSearch({ onSubmit })
     const user = userEvent.setup()
     await user.type(screen.getByPlaceholderText(/123 N MAIN/i), '456 W OAK ST')
-    await user.click(screen.getByRole('button', { name: /look up property/i }))
+    await user.click(screen.getByRole('button', { name: /look up/i }))
     expect(onSubmit).toHaveBeenCalledWith({ address: '456 W OAK ST', pin: undefined })
   })
 
@@ -87,9 +87,9 @@ describe('PropertySearch', () => {
     }, { timeout: 2000 })
 
     await user.keyboard('{ArrowDown}')
-    expect(screen.getByText('100 N STATE ST').className).toContain('bg-blue-50')
+    expect(screen.getByText('100 N STATE ST').className).toContain('bg-accent-light')
 
     await user.keyboard('{ArrowDown}')
-    expect(screen.getByText('100 N CLARK ST').className).toContain('bg-blue-50')
+    expect(screen.getByText('100 N CLARK ST').className).toContain('bg-accent-light')
   })
 })

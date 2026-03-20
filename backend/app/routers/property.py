@@ -98,10 +98,18 @@ async def autocomplete_address(
     async with get_conn() as conn:
         rows = await conn.fetch(
             """
-            SELECT location_sk, full_address_standardized
-            FROM dim_location
-            WHERE full_address_standardized ILIKE $1
-            ORDER BY full_address_standardized
+            SELECT DISTINCT ON (norm_addr)
+                   location_sk, full_address_standardized
+            FROM (
+                SELECT location_sk, full_address_standardized,
+                       REPLACE(
+                           REGEXP_REPLACE(full_address_standardized, ',\\s*CHICAGO.*$', ''),
+                           ' PKY', ' PKWY'
+                       ) AS norm_addr
+                FROM dim_location
+                WHERE full_address_standardized ILIKE $1
+            ) sub
+            ORDER BY norm_addr, LENGTH(full_address_standardized)
             LIMIT $2
             """,
             q + "%",

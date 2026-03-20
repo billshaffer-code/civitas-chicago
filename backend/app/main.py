@@ -61,3 +61,21 @@ async def health():
         "db_connected": db_ok,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
+
+@app.post("/api/v1/admin/refresh-matviews")
+async def refresh_materialized_views():
+    """Refresh the materialized summary view and clear the report cache."""
+    from backend.app.database import get_conn
+    from backend.app.services.report import clear_report_cache
+    import time
+
+    start = time.monotonic()
+    async with get_conn() as conn:
+        await conn.execute(
+            "REFRESH MATERIALIZED VIEW CONCURRENTLY view_property_summary"
+        )
+    elapsed = round(time.monotonic() - start, 2)
+    clear_report_cache()
+
+    return {"status": "ok", "elapsed_seconds": elapsed}

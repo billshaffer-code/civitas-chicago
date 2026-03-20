@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 interface Props {
   records: {
@@ -650,14 +651,14 @@ export default function RecordTimeline({ records, stickyOffset = 0 }: Props) {
       </div>
       </div>{/* end sticky chart wrapper */}
 
-      {/* ── Slide-over Detail Panel ── */}
-      {selectedBucket && (
-        <div className="fixed inset-0 z-30" onClick={() => setSelectedBucket(null)}>
+      {/* ── Slide-over Detail Panel (portaled to body to escape ancestor transforms) ── */}
+      {selectedBucket && createPortal(
+        <div className="fixed inset-0 z-[200]" onClick={() => setSelectedBucket(null)}>
           {/* Backdrop */}
           <div className="absolute inset-0 bg-ink-primary/10 backdrop-blur-[2px]" />
           {/* Panel */}
           <div
-            className="absolute right-0 top-0 h-full w-full max-w-[420px] bg-white/95 backdrop-blur-xl shadow-apple-sheet border-l border-separator animate-slide-in-right overflow-y-auto"
+            className="absolute right-0 top-0 h-full w-full max-w-[420px] bg-white shadow-apple-sheet border-l border-separator animate-slide-in-right flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <BucketDetailTable
@@ -667,7 +668,8 @@ export default function RecordTimeline({ records, stickyOffset = 0 }: Props) {
               stickyTop={0}
             />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Feed ── */}

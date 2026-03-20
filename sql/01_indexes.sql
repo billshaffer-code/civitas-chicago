@@ -46,6 +46,26 @@ CREATE INDEX IF NOT EXISTS idx_fact_vacant_building_loc
 CREATE INDEX IF NOT EXISTS idx_fact_vacant_building_src
     ON fact_vacant_building(source_id);
 
+-- Parcel → location lookup (used by tax lien subquery)
+CREATE INDEX IF NOT EXISTS idx_dim_parcel_loc
+    ON dim_parcel(location_sk);
+
+-- Composite indexes for rule engine filters
+CREATE INDEX IF NOT EXISTS idx_fact_violation_loc_status_date
+    ON fact_violation(location_sk, violation_status, violation_date);
+
+CREATE INDEX IF NOT EXISTS idx_fact_inspection_loc_date
+    ON fact_inspection(location_sk, inspection_date);
+
+CREATE INDEX IF NOT EXISTS idx_fact_permit_loc_date
+    ON fact_permit(location_sk, application_start_date);
+
+CREATE INDEX IF NOT EXISTS idx_fact_311_loc_date
+    ON fact_311(location_sk, created_date);
+
+CREATE INDEX IF NOT EXISTS idx_fact_tax_lien_loc_year
+    ON fact_tax_lien(location_sk, tax_sale_year);
+
 -- Trigram index for address autocomplete
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE INDEX IF NOT EXISTS idx_dim_location_address_trgm

@@ -7,9 +7,24 @@ No scoring logic lives in Python – all computation is in the SQL views.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from backend.app.database import get_conn
+
+
+async def get_score_and_flags(location_sk: int) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """
+    Fetch score and flags in parallel using separate connections.
+
+    Both views read from the materialized view_property_summary, so running
+    them concurrently is safe and avoids sequential latency.
+    """
+    score_task, flags_task = await asyncio.gather(
+        get_score(location_sk),
+        get_flags(location_sk),
+    )
+    return score_task, flags_task
 
 
 async def get_score(location_sk: int) -> dict[str, Any]:
@@ -61,6 +76,29 @@ async def get_summary(location_sk: int) -> dict[str, Any]:
             location_sk,
         )
     return dict(row) if row else {}
+
+
+async def get_all_supporting_records(location_sk: int, limit: int = 50) -> dict[str, list[dict]]:
+    """
+    Fetch all 6 supporting record types in parallel using asyncio.gather().
+    Returns a dict keyed by record type name.
+    """
+    results = await asyncio.gather(
+        get_violations(location_sk, limit),
+        get_inspections(location_sk, limit),
+        get_permits(location_sk, limit),
+        get_tax_liens(location_sk),
+        get_311_requests(location_sk, limit),
+        get_vacant_buildings(location_sk, limit),
+    )
+    return {
+        "violations": results[0],
+        "inspections": results[1],
+        "permits": results[2],
+        "tax_liens": results[3],
+        "service_311": results[4],
+        "vacant_buildings": results[5],
+    }
 
 
 async def get_violations(location_sk: int, limit: int = 50) -> list[dict]:

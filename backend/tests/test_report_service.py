@@ -36,6 +36,15 @@ FLAGS = [
     }
 ]
 
+RECORDS = {
+    "violations": [],
+    "inspections": [],
+    "permits": [],
+    "tax_liens": [],
+    "service_311": [],
+    "vacant_buildings": [],
+}
+
 
 def _make_conn(fetchrow_return=None, fetch_return=None, fetchval_return=None):
     conn = AsyncMock()
@@ -62,6 +71,8 @@ def mock_deps():
     ]
     mocks = [p.start() for p in patches]
     rule_eng = mocks[1]
+    rule_eng.get_score_and_flags = AsyncMock(return_value=(SCORE, FLAGS))
+    rule_eng.get_all_supporting_records = AsyncMock(return_value=RECORDS)
     rule_eng.get_score = AsyncMock(return_value=SCORE)
     rule_eng.get_flags = AsyncMock(return_value=FLAGS)
     rule_eng.get_violations = AsyncMock(return_value=[])
@@ -73,6 +84,11 @@ def mock_deps():
     rule_eng.get_data_freshness = AsyncMock(return_value={"violations_as_of": "2025-01-10"})
 
     yield conn, rule_eng
+
+    # Clear report cache between tests
+    from backend.app.services.report import clear_report_cache
+    clear_report_cache()
+
     for p in patches:
         p.stop()
 
@@ -125,3 +141,49 @@ async def test_generate_single_report_stores_audit(mock_deps):
     assert conn.execute.await_count >= 1
     call_args = conn.execute.call_args_list[-1]
     assert "report_audit" in call_args[0][0]
+
+
+async def test_generate_single_report_uses_parallel_queries(mock_deps):
+    """Verify that get_score_and_flags and get_all_supporting_records are called."""
+    _, rule_eng = mock_deps
+
+    from backend.app.services.report import generate_single_report
+
+    await generate_single_report(
+        location_sk=42,
+        address="123 N MAIN ST",
+        user_id=UUID("00000000-0000-0000-0000-000000000001"),
+        skip_narrative=True,
+    )
+
+    rule_eng.get_score_and_flags.assert_awaited_once_with(42)
+    rule_eng.get_all_supporting_records.assert_awaited_once_with(42)
+    rule_eng.get_data_freshness.assert_awaited_once()
+
+
+async def test_generate_single_report_cache_hit(mock_deps):
+    """Second call for same location_sk should use cached data."""
+    conn, rule_eng = mock_deps
+
+    from backend.app.services.report import generate_single_report
+
+    r1 = await generate_single_report(
+        location_sk=42,
+        address="123 N MAIN ST",
+        user_id=UUID("00000000-0000-0000-0000-000000000001"),
+        skip_narrative=True,
+    )
+    r2 = await generate_single_report(
+        location_sk=42,
+        address="123 N MAIN ST",
+        user_id=UUID("00000000-0000-0000-0000-000000000001"),
+        skip_narrative=True,
+    )
+
+    # Both reports should have same data but different IDs
+    assert r1["report_id"] != r2["report_id"]
+    assert r1["activity_score"] == r2["activity_score"]
+
+    # Rule engine should only be called once (second call uses cache)
+    assert rule_eng.get_score_and_flags.await_count == 1
+    assert rule_eng.get_all_supporting_records.await_count == 1

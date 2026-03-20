@@ -1,8 +1,18 @@
--- CIVITAS – Layer 1: VIEW_PROPERTY_SUMMARY
+-- CIVITAS – Layer 1: VIEW_PROPERTY_SUMMARY (Materialized)
 -- Aggregates all fact table metrics per location_sk.
 -- Run after schema and data load.
+--
+-- This is a materialized view for performance — the 6-table LEFT JOIN with
+-- 28+ aggregates is expensive to compute on-the-fly.  Refresh after ETL
+-- ingestion or on a schedule.
 
-CREATE OR REPLACE VIEW view_property_summary AS
+-- Drop the old regular view if it exists (safe — only runs on first migration)
+DROP VIEW IF EXISTS view_property_score CASCADE;
+DROP VIEW IF EXISTS view_property_flags CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS view_property_summary;
+DROP VIEW IF EXISTS view_property_summary CASCADE;
+
+CREATE MATERIALIZED VIEW view_property_summary AS
 SELECT
     l.location_sk,
     l.full_address_standardized,
@@ -95,3 +105,7 @@ GROUP BY
     l.zip,
     l.lat,
     l.lon;
+
+-- Unique index for fast single-location lookups
+CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_summary_loc
+    ON view_property_summary(location_sk);

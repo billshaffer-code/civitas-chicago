@@ -22,6 +22,6 @@ describe('FindingCard', () => {
 
   it('falls back to gray for unknown action group', () => {
     const { container } = render(<FindingCard flag={makeFlag({ action_group: 'Unknown' })} />)
-    expect(container.firstChild).toHaveClass('border-gray-300')
+    expect(container.firstChild).toHaveClass('border-separator-opaque')
   })
 })

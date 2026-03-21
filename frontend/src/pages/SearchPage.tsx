@@ -6,6 +6,7 @@ import ParcelVerify from '../components/ParcelVerify'
 import { lookupProperty, generateReport, getReportHistory, getReport, getReportSummary } from '../api/civitas'
 import type { LookupRequest, LookupResponse, ReportResponse, ReportHistoryItem } from '../api/civitas'
 import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
+import { useToast } from '../components/Toast'
 
 type Phase = 'search' | 'lookup-loading' | 'lookup-done' | 'report-loading' | 'report-done'
 
@@ -17,6 +18,7 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
   const [lastReq, setLastReq]   = useState<LookupRequest>({ address: '' })
   const [error, setError]       = useState<string | null>(null)
   const [history, setHistory]   = useState<ReportHistoryItem[]>([])
+  const { toast } = useToast()
 
   // Load report or trigger search from URL params
   useEffect(() => {
@@ -94,6 +96,7 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
       const r = await generateReport(lookup.location_sk, lastReq.address)
       setReport(r)
       setPhase('report-done')
+      toast('Report generated successfully')
 
       // Load AI summary in the background
       if (!r.ai_summary) {
@@ -104,7 +107,9 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
           .catch(() => {})
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Report generation failed')
+      const msg = e instanceof Error ? e.message : 'Report generation failed'
+      setError(msg)
+      toast(msg, 'error')
       setPhase('lookup-done')
     }
   }

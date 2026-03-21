@@ -81,3 +81,86 @@ async def test_autocomplete(client):
     data = resp.json()
     assert len(data) == 2
     assert data[0]["full_address"] == "100 N STATE ST 60602"
+
+
+# ── Assessment history ──────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_assessment_history_valid_pin(client):
+    """GET /api/v1/property/assessment-history with valid PIN returns rows."""
+    fake_rows = [{"pin": "1234567890", "tax_year": "2024", "certified_total": "250000"}]
+
+    with patch(
+        "backend.app.routers.property.get_assessment_history",
+        new_callable=AsyncMock,
+        return_value=fake_rows,
+    ):
+        resp = await client.get(
+            "/api/v1/property/assessment-history",
+            params={"pin": "1234567890"},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["pin"] == "1234567890"
+
+
+@pytest.mark.asyncio
+async def test_assessment_history_invalid_pin_returns_400(client):
+    """GET /api/v1/property/assessment-history with short PIN returns 400."""
+    resp = await client.get(
+        "/api/v1/property/assessment-history",
+        params={"pin": "123"},
+    )
+
+    assert resp.status_code == 400
+    assert "Invalid PIN" in resp.json()["detail"]
+
+
+# ── Parcel search ────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_parcel_search(client):
+    """GET /api/v1/property/parcel-search returns matching parcels."""
+    fake_rows = [
+        {"pin": "1234567890", "property_address": "123 N MAIN ST", "tax_year": "2024"},
+    ]
+
+    with patch(
+        "backend.app.routers.property.search_parcels_by_address",
+        new_callable=AsyncMock,
+        return_value=fake_rows,
+    ):
+        resp = await client.get(
+            "/api/v1/property/parcel-search",
+            params={"address": "123 Main"},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["pin"] == "1234567890"
+
+
+# ── Parcel verify ────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_parcel_verify(client):
+    """GET /api/v1/property/parcel-verify returns parcel records."""
+    fake_rows = [{"pin": "1234567890", "tax_year": "2024", "certified_total": "250000"}]
+
+    with patch(
+        "backend.app.routers.property.verify_parcel",
+        new_callable=AsyncMock,
+        return_value=fake_rows,
+    ):
+        resp = await client.get(
+            "/api/v1/property/parcel-verify",
+            params={"pin": "1234567890"},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["pin"] == "1234567890"

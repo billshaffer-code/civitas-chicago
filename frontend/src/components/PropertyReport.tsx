@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import type { ReportResponse, FlagResult } from '../api/civitas'
 import FindingCard from './FindingCard'
@@ -6,9 +7,10 @@ import PropertyMap from './PropertyMap'
 import RecordTimeline from './RecordTimeline'
 import AssessmentHistory from './AssessmentHistory'
 import LiveRecordCheck from './LiveRecordCheck'
-import { downloadPdf } from '../api/civitas'
+import { downloadPdf, getReportPdf } from '../api/civitas'
 import Markdown from 'react-markdown'
 import { LEVEL_CONFIG, ACTION_ORDER, type ActionGroup, type ActivityLevel } from '../constants/terminology'
+import { useToast } from './Toast'
 
 interface Props {
   report?: ReportResponse
@@ -120,6 +122,7 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
     return () => observer.disconnect()
   }, [])
 
+  const { toast } = useToast()
   const cfg = LEVEL_CONFIG[(report?.activity_level as ActivityLevel) ?? ''] ?? LEVEL_CONFIG.QUIET
 
   const handleFindingClick = useCallback((flagCode: string) => {
@@ -132,13 +135,31 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
 
   async function handlePdf() {
     if (!report) return
-    const blob = await downloadPdf(locationSk, address)
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = url
-    a.download = `civitas_${report.report_id}.pdf`
-    a.click()
-    URL.revokeObjectURL(url)
+    try {
+      const blob = await downloadPdf(locationSk, address)
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `civitas_${report.report_id}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast('PDF downloaded')
+    } catch {
+      toast('PDF download failed', 'error')
+    }
+  }
+
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
+
+  async function handlePdfPreview() {
+    if (!report) return
+    try {
+      const blob = await getReportPdf(report.report_id)
+      const url = URL.createObjectURL(blob)
+      setPdfPreviewUrl(url)
+    } catch {
+      toast('Failed to load PDF preview', 'error')
+    }
   }
 
   const summaryText = report?.ai_summary || ''
@@ -156,6 +177,24 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
     { key: 'records',  label: 'Records' },
     ...(hasPin ? [{ key: 'assessment' as SectionTab, label: 'Assessment' }] : []),
   ]
+
+  // Keyboard shortcuts: 1-5 to switch section tabs, Esc to close PDF preview
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+      const idx = parseInt(e.key) - 1
+      if (idx >= 0 && idx < sectionTabs.length) {
+        setSectionTab(sectionTabs[idx].key)
+      }
+      if (e.key === 'Escape' && pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl)
+        setPdfPreviewUrl(null)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  })
 
   return (
     <div className="animate-apple-fade-in space-y-3">
@@ -195,6 +234,14 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
               className="h-[32px] px-3.5 bg-surface-raised hover:bg-surface-sunken text-ink-secondary hover:text-ink-primary text-[12px] font-medium rounded-apple-sm border border-separator transition-all duration-150 ease-apple"
             >
               Compare
+            </button>
+          )}
+          {!loading && report && (
+            <button
+              onClick={handlePdfPreview}
+              className="h-[32px] px-3.5 bg-accent hover:bg-accent-hover text-white text-[12px] font-semibold rounded-apple-sm shadow-[0_1px_2px_rgba(0,113,227,0.3)] transition-all duration-150 ease-apple"
+            >
+              Preview PDF
             </button>
           )}
           {!loading && report && (
@@ -426,6 +473,36 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
         <p className="text-[11px] text-ink-quaternary border-t border-separator/60 pt-4 leading-relaxed">
           {report.disclaimer}
         </p>
+      )}
+
+      {/* ── PDF Preview Slide-over ────────────────────────────────── */}
+      {pdfPreviewUrl && createPortal(
+        <div className="fixed inset-0 z-[9998] flex justify-end">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => { URL.revokeObjectURL(pdfPreviewUrl); setPdfPreviewUrl(null) }} />
+          <div className="relative w-[90vw] max-w-4xl bg-white shadow-apple-sheet animate-apple-fade-in flex flex-col">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-separator">
+              <h3 className="text-[15px] font-semibold text-ink-primary">PDF Preview</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePdf}
+                  className="h-[30px] px-3 bg-accent hover:bg-accent-hover text-white text-[12px] font-semibold rounded-apple-sm transition-all duration-150"
+                >
+                  Download
+                </button>
+                <button
+                  onClick={() => { URL.revokeObjectURL(pdfPreviewUrl); setPdfPreviewUrl(null) }}
+                  className="w-7 h-7 flex items-center justify-center rounded-apple-sm hover:bg-surface-raised text-ink-quaternary hover:text-ink-primary transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <iframe src={pdfPreviewUrl} className="flex-1 w-full" title="PDF Preview" />
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )
@@ -854,9 +931,22 @@ function DataTabs({ records, activeTab }: DataTabsProps) {
       {/* Table */}
       <div className="overflow-x-auto">
         {sortedRows.length === 0 ? (
-          <p className="text-[13px] text-ink-quaternary italic p-6">
-            {rawRows.length > 0 && filter ? 'No matching records.' : 'No records found.'}
-          </p>
+          <div className="p-6 text-center">
+            {rawRows.length > 0 && filter ? (
+              <p className="text-[13px] text-ink-quaternary italic">No matching records.</p>
+            ) : (
+              <>
+                <svg className="w-10 h-10 mx-auto text-ink-quaternary/40 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="text-[13px] font-medium text-ink-tertiary">No {current.label.toLowerCase()} found</p>
+                <p className="text-[11px] text-ink-quaternary mt-1">
+                  This property has no recorded {current.label.toLowerCase()} in our dataset.
+                </p>
+              </>
+            )}
+          </div>
         ) : (
           <table className="min-w-full text-xs">
             <thead className="sticky top-0 z-10">

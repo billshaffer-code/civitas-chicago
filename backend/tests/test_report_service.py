@@ -5,7 +5,7 @@ CIVITAS – Tests for the extracted report generation service.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
 import pytest

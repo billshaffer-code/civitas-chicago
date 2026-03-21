@@ -4,7 +4,7 @@ Tests for backend.app.services.address — pure function + async resolution test
 
 import pytest
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from backend.app.services.address import _normalize_pin, _build_result, resolve_address
 

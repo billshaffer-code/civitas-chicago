@@ -95,7 +95,8 @@ def _fetch_pages(url: str, token: Optional[str]) -> list[dict]:
             timeout=60,
         )
         resp.raise_for_status()
-        import csv, io
+        import csv
+        import io
         reader = csv.DictReader(io.StringIO(resp.text))
         page = list(reader)
         all_rows.extend(page)

@@ -17,7 +17,6 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-from backend.app.config import settings
 from backend.app.database import get_conn
 from backend.ingestion.base import AddressStandardizer
 

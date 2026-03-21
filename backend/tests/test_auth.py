@@ -4,7 +4,6 @@ CIVITAS – Authentication tests.
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 from uuid import UUID

@@ -10,8 +10,6 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
-import pytest
-import httpx
 
 
 MOCK_BATCH_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"

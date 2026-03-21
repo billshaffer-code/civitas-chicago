@@ -24,7 +24,7 @@ from fastapi.responses import Response
 from backend.app.constants import TIER_LABELS
 from backend.app.database import get_conn
 from backend.app.dependencies import get_current_user
-from backend.app.schemas.report import ReportHistoryItem, ReportRequest, ReportResponse
+from backend.app.schemas.report import ReportHistoryItem, ReportRequest
 from backend.app.services.pdf import generate_pdf
 from backend.app.services.report import generate_report_summary, generate_single_report, normalize_report
 

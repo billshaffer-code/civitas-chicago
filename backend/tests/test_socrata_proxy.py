@@ -159,7 +159,7 @@ class TestVerifyParcel:
         mock_client_instance.__aexit__ = AsyncMock(return_value=False)
 
         with patch("backend.app.services.socrata_proxy.httpx.AsyncClient", return_value=mock_client_instance):
-            result = await verify_parcel("12345678901234")
+            await verify_parcel("12345678901234")
 
         call_kwargs = mock_client_instance.get.call_args
         params = call_kwargs.kwargs.get("params") or call_kwargs[1].get("params")

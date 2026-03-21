@@ -58,6 +58,24 @@ async def generate_report(
             },
         )
 
+    # Enrich with geo fields so the map works without a separate lookup
+    async with get_conn() as conn:
+        loc = await conn.fetchrow(
+            """SELECT l.lat, l.lon, p.parcel_id
+               FROM dim_location l
+               LEFT JOIN dim_parcel p ON p.location_sk = l.location_sk
+               WHERE l.location_sk = $1""",
+            body.location_sk,
+        )
+    if loc:
+        report["location_sk"] = body.location_sk
+        if loc["lat"] is not None:
+            report["lat"] = float(loc["lat"])
+        if loc["lon"] is not None:
+            report["lon"] = float(loc["lon"])
+        if loc["parcel_id"]:
+            report["parcel_id"] = loc["parcel_id"]
+
     return report
 
 
@@ -148,7 +166,13 @@ async def get_report(report_id: str, user: dict = Depends(get_current_user)):
     """Retrieve a previously generated report by ID."""
     async with get_conn() as conn:
         row = await conn.fetchrow(
-            "SELECT report_json FROM report_audit WHERE report_id = $1",
+            """SELECT ra.report_json, ra.location_sk,
+                      l.lat, l.lon, l.full_address_standardized,
+                      p.parcel_id
+               FROM report_audit ra
+               LEFT JOIN dim_location l ON l.location_sk = ra.location_sk
+               LEFT JOIN dim_parcel p ON p.location_sk = ra.location_sk
+               WHERE ra.report_id = $1""",
             report_id,
         )
     if not row or not row["report_json"]:
@@ -156,7 +180,16 @@ async def get_report(report_id: str, user: dict = Depends(get_current_user)):
     # asyncpg returns JSONB as a str — parse it before FastAPI re-serializes
     raw = row["report_json"]
     report = json.loads(raw) if isinstance(raw, str) else raw
-    return normalize_report(report)
+    report = normalize_report(report)
+    # Enrich with geo and identity fields for map/assessment features
+    report["location_sk"] = row["location_sk"]
+    if row["lat"] is not None:
+        report["lat"] = float(row["lat"])
+    if row["lon"] is not None:
+        report["lon"] = float(row["lon"])
+    if row["parcel_id"]:
+        report["parcel_id"] = row["parcel_id"]
+    return report
 
 
 @router.get("/{report_id}/pdf")

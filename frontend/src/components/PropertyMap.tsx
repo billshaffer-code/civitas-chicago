@@ -36,7 +36,7 @@ export default function PropertyMap({ lat, lon, address, locationSk }: Props) {
     return () => { cancelled = true }
   }, [locationSk])
 
-  // Render map
+  // Initialize map once (subject marker only — renders instantly)
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -59,35 +59,6 @@ export default function PropertyMap({ lat, lon, address, locationSk }: Props) {
     }).addTo(map)
 
     L.control.zoom({ position: 'topright' }).addTo(map)
-
-    // Neighbor markers
-    neighbors.forEach(n => {
-      const color = LEVEL_COLORS[n.activity_level] || LEVEL_COLORS.QUIET
-      const cfg = LEVEL_CONFIG[n.activity_level as ActivityLevel] || LEVEL_CONFIG.QUIET
-
-      const marker = L.circleMarker([n.lat, n.lon], {
-        radius: 6,
-        fillColor: color,
-        fillOpacity: 0.8,
-        color: '#fff',
-        weight: 1.5,
-      }).addTo(map)
-
-      const findingHtml = n.top_finding
-        ? `<div style="font-size:10px;color:#6b7280;margin-top:4px">${n.top_finding}</div>`
-        : ''
-
-      marker.bindPopup(`
-        <div style="font-family:Calibri,sans-serif;min-width:160px">
-          <div style="font-size:12px;font-weight:600;color:#111827;margin-bottom:4px">${n.full_address}</div>
-          <div style="display:inline-flex;align-items:center;gap:6px">
-            <span style="font-size:18px;font-weight:700;color:#111827">${n.activity_score}</span>
-            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:9999px;background:${cfg.pillBg ? '#e5e7eb' : '#e5e7eb'};color:${color}">${cfg.label}</span>
-          </div>
-          ${findingHtml}
-        </div>
-      `, { closeButton: false, className: 'civitas-popup' })
-    })
 
     // Subject property marker (larger, prominent)
     const icon = L.divIcon({
@@ -115,7 +86,58 @@ export default function PropertyMap({ lat, lon, address, locationSk }: Props) {
       map.remove()
       mapRef.current = null
     }
-  }, [lat, lon, address, neighbors])
+  }, [lat, lon, address])
+
+  // Add neighbor markers incrementally (doesn't re-create the map)
+  const neighborLayerRef = useRef<L.LayerGroup | null>(null)
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || neighbors.length === 0) return
+
+    // Clear previous neighbor markers
+    if (neighborLayerRef.current) {
+      neighborLayerRef.current.clearLayers()
+    }
+
+    const layer = L.layerGroup().addTo(map)
+
+    neighbors.forEach(n => {
+      const color = LEVEL_COLORS[n.activity_level] || LEVEL_COLORS.QUIET
+      const cfg = LEVEL_CONFIG[n.activity_level as ActivityLevel] || LEVEL_CONFIG.QUIET
+
+      const marker = L.circleMarker([n.lat, n.lon], {
+        radius: 6,
+        fillColor: color,
+        fillOpacity: 0.8,
+        color: '#fff',
+        weight: 1.5,
+      })
+
+      const findingHtml = n.top_finding
+        ? `<div style="font-size:10px;color:#6b7280;margin-top:4px">${n.top_finding}</div>`
+        : ''
+
+      marker.bindPopup(`
+        <div style="font-family:Calibri,sans-serif;min-width:160px">
+          <div style="font-size:12px;font-weight:600;color:#111827;margin-bottom:4px">${n.full_address}</div>
+          <div style="display:inline-flex;align-items:center;gap:6px">
+            <span style="font-size:18px;font-weight:700;color:#111827">${n.activity_score}</span>
+            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:9999px;background:#e5e7eb;color:${color}">${cfg.label}</span>
+          </div>
+          ${findingHtml}
+        </div>
+      `, { closeButton: false, className: 'civitas-popup' })
+
+      layer.addLayer(marker)
+    })
+
+    neighborLayerRef.current = layer
+
+    return () => {
+      layer.remove()
+    }
+  }, [neighbors])
 
   return (
     <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden relative">

@@ -103,8 +103,15 @@ const BASELINE_MAP: Record<string, { key: string }> = {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function PropertyReport({ report, loading = false, locationSk, address, lat, lon, parcelId, onNewSearch }: Props) {
+export default function PropertyReport({ report, loading = false, locationSk: propLocationSk, address, lat: propLat, lon: propLon, parcelId: propParcelId, onNewSearch }: Props) {
   const navigate = useNavigate()
+
+  // Use report-level fields as fallbacks (always available, even for historical reports)
+  const lat = propLat ?? (report as any)?.lat ?? null
+  const lon = propLon ?? (report as any)?.lon ?? null
+  const locationSk = propLocationSk || (report as any)?.location_sk || 0
+  const parcelId = propParcelId ?? (report as any)?.parcel_id ?? null
+
   const [sectionTab, setSectionTab] = useState<SectionTab>('findings')
   const [activeRecordTab, setActiveRecordTab] = useState<TabKey>('violations')
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import PropertySearch from '../components/PropertySearch'
 import PropertyReport from '../components/PropertyReport'
+import ParcelVerify from '../components/ParcelVerify'
 import { lookupProperty, generateReport, getReportHistory, getReport, getReportSummary } from '../api/civitas'
 import type { LookupRequest, LookupResponse, ReportResponse, ReportHistoryItem } from '../api/civitas'
 import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
@@ -216,6 +217,13 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
                     </div>
                   </div>
 
+                  {/* Parcel verification */}
+                  {lookup.parcel_id && (
+                    <div className="mt-3">
+                      <ParcelVerify pin={lookup.parcel_id} address={lastReq.address} mode="verify" />
+                    </div>
+                  )}
+
                   {/* Generate button */}
                   <button
                     onClick={handleGenerateReport}
@@ -289,21 +297,24 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
                   )}
                 </div>
               ) : (
-                <div className="mt-5 bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 animate-apple-fade-in">
-                  <div className="flex items-start gap-3.5">
-                    <div className="w-9 h-9 rounded-apple-sm bg-amber-50 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-[14px] font-semibold text-ink-primary">Address not found</p>
-                      <p className="text-[13px] text-ink-secondary mt-0.5">
-                        {lookup.warning ?? 'Address match uncertain — manual verification recommended.'}
-                      </p>
+                <div className="mt-5 space-y-3">
+                  <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5 animate-apple-fade-in">
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-9 h-9 rounded-apple-sm bg-amber-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-semibold text-ink-primary">Address not found</p>
+                        <p className="text-[13px] text-ink-secondary mt-0.5">
+                          {lookup.warning ?? 'Address match uncertain — manual verification recommended.'}
+                        </p>
+                      </div>
                     </div>
                   </div>
+                  <ParcelVerify address={lastReq.address} mode="search" />
                 </div>
               )}
             </>
@@ -321,6 +332,7 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
           address={lastReq.address}
           lat={lookup?.lat}
           lon={lookup?.lon}
+          parcelId={lookup?.parcel_id}
           onNewSearch={handleNewSearch}
         />
       )}

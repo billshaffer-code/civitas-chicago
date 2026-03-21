@@ -2,17 +2,23 @@
 CIVITAS – Data browse router.
 
 GET /api/v1/data/browse?table=violations&page=1&page_size=25&filter=&sort=&sort_dir=asc
-  Response: { rows: [...], total: int, page: int, page_size: int }
+GET /api/v1/data/health  — dataset freshness dashboard
+GET /api/v1/data/live-check?dataset=violations&address=...&since=...
 """
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.database import get_conn
 from backend.app.dependencies import get_current_user
+from backend.app.services.socrata_proxy import (
+    KNOWN_DATASETS,
+    get_dataset_freshness,
+    live_record_check,
+)
 
 router = APIRouter(prefix="/api/v1/data", tags=["data"])
 
@@ -163,3 +169,103 @@ async def list_tables(user: dict = Depends(get_current_user)):
             for key in TABLE_CONFIG
         ]
     }
+
+
+@router.get("/health")
+async def data_health(user: dict = Depends(get_current_user)) -> Dict[str, Any]:
+    """Return data health: local ingestion timestamps, portal freshness, record counts, quality alerts."""
+    import asyncio
+
+    # 1. Local ingestion timestamps + record counts
+    local_data: Dict[str, Dict[str, Any]] = {}
+    async with get_conn() as conn:
+        for key, cfg in TABLE_CONFIG.items():
+            count = await conn.fetchval(f"SELECT count(*) FROM {cfg['fact']}")
+
+            # Try to get last ingestion time from ingestion_batch table
+            last_ingested = None
+            try:
+                last_ingested = await conn.fetchval(
+                    "SELECT MAX(completed_at) FROM ingestion_batch WHERE source_dataset = $1",
+                    key,
+                )
+            except Exception:
+                pass
+
+            local_data[key] = {
+                "record_count": count,
+                "last_ingested": last_ingested.isoformat() if last_ingested else None,
+                "label": cfg.get("label", key.replace("_", " ").title()),
+            }
+
+        # Check for quality alerts from data_quality_check if table exists
+        quality_alerts: List[Dict[str, Any]] = []
+        try:
+            alerts = await conn.fetch(
+                """SELECT source_dataset, check_name, status, message, checked_at
+                   FROM data_quality_check
+                   WHERE status != 'pass'
+                   ORDER BY checked_at DESC
+                   LIMIT 20"""
+            )
+            quality_alerts = [dict(r) for r in alerts]
+        except Exception:
+            pass  # Table may not exist
+
+    # 2. Portal freshness (parallel async calls)
+    portal_datasets = ["violations", "inspections", "permits", "311", "vacant_buildings"]
+    freshness_tasks = [get_dataset_freshness(ds) for ds in portal_datasets]
+    freshness_results = await asyncio.gather(*freshness_tasks, return_exceptions=True)
+
+    portal_freshness: Dict[str, Any] = {}
+    for ds_key, result in zip(portal_datasets, freshness_results):
+        if isinstance(result, Exception):
+            portal_freshness[ds_key] = {"error": str(result)}
+        else:
+            portal_freshness[ds_key] = result
+
+    # 3. Combine into per-dataset response
+    datasets: List[Dict[str, Any]] = []
+    for key in TABLE_CONFIG:
+        entry = {
+            "key": key,
+            **(local_data.get(key, {})),
+        }
+        # Merge portal freshness if available
+        if key in portal_freshness:
+            pf = portal_freshness[key]
+            entry["portal_updated_at"] = pf.get("rows_updated_iso")
+            entry["portal_age_hours"] = pf.get("age_hours")
+            entry["portal_error"] = pf.get("error")
+
+            # Staleness indicator
+            age = pf.get("age_hours")
+            if age is not None:
+                if age < 48:
+                    entry["staleness"] = "fresh"
+                elif age < 168:
+                    entry["staleness"] = "stale"
+                else:
+                    entry["staleness"] = "very_stale"
+        datasets.append(entry)
+
+    return {
+        "datasets": datasets,
+        "quality_alerts": quality_alerts,
+    }
+
+
+@router.get("/live-check")
+async def data_live_check(
+    dataset: str = Query(..., description="Dataset key (violations, inspections, etc.)"),
+    address: str = Query(..., min_length=3, description="Property address"),
+    since: str = Query(..., description="ISO datetime — check for records after this"),
+    user: dict = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Query Chicago Data Portal for records newer than our last ingestion."""
+    if dataset not in KNOWN_DATASETS:
+        raise HTTPException(status_code=400, detail=f"Unknown dataset: {dataset}")
+    try:
+        return await live_record_check(dataset, address, since)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Socrata API error: {exc}")

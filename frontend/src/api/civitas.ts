@@ -346,3 +346,81 @@ export async function getTableList(): Promise<TableInfo[]> {
   const { data } = await api.get<{ tables: TableInfo[] }>('/api/v1/data/tables')
   return data.tables
 }
+
+// ── Assessment History ──────────────────────────────────────────────────────
+
+export interface AssessmentRecord {
+  pin?: string
+  tax_year?: string
+  property_address?: string
+  property_class?: string
+  land_square_feet?: string
+  building_square_feet?: string
+  certified_total?: string
+  [key: string]: unknown
+}
+
+export async function getAssessmentHistory(pin: string): Promise<AssessmentRecord[]> {
+  const { data } = await api.get<AssessmentRecord[]>('/api/v1/property/assessment-history', {
+    params: { pin },
+  })
+  return data
+}
+
+// ── Data Health ─────────────────────────────────────────────────────────────
+
+export interface DatasetHealth {
+  key: string
+  label?: string
+  record_count?: number
+  last_ingested?: string | null
+  portal_updated_at?: string | null
+  portal_age_hours?: number | null
+  portal_error?: string | null
+  staleness?: 'fresh' | 'stale' | 'very_stale'
+}
+
+export interface DataHealthResponse {
+  datasets: DatasetHealth[]
+  quality_alerts: Record<string, unknown>[]
+}
+
+export async function getDataHealth(): Promise<DataHealthResponse> {
+  const { data } = await api.get<DataHealthResponse>('/api/v1/data/health')
+  return data
+}
+
+// ── Parcel Verification ─────────────────────────────────────────────────────
+
+export async function searchParcels(address: string): Promise<AssessmentRecord[]> {
+  const { data } = await api.get<AssessmentRecord[]>('/api/v1/property/parcel-search', {
+    params: { address },
+  })
+  return data
+}
+
+export async function verifyParcel(pin: string): Promise<AssessmentRecord[]> {
+  const { data } = await api.get<AssessmentRecord[]>('/api/v1/property/parcel-verify', {
+    params: { pin },
+  })
+  return data
+}
+
+// ── Live Record Check ───────────────────────────────────────────────────────
+
+export interface LiveCheckResponse {
+  records: Record<string, unknown>[]
+  count: number
+  error?: string
+}
+
+export async function checkLiveRecords(
+  dataset: string,
+  address: string,
+  since: string,
+): Promise<LiveCheckResponse> {
+  const { data } = await api.get<LiveCheckResponse>('/api/v1/data/live-check', {
+    params: { dataset, address, since },
+  })
+  return data
+}

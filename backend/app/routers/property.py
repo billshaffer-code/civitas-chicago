@@ -2,16 +2,18 @@
 CIVITAS – Property lookup router.
 
 POST /api/v1/property/lookup
-  Body:     { "address": "...", "pin": "..." }
-  Response: PropertyLookupResponse
-
 GET /api/v1/property/autocomplete?q={prefix}&limit=10
-  Response: list[AutocompleteItem]
+GET /api/v1/property/neighbors?location_sk=...&radius=500
+GET /api/v1/property/assessment-history?pin=...
+GET /api/v1/property/parcel-search?address=...
+GET /api/v1/property/parcel-verify?pin=...
 """
 
-from typing import List
+from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from typing import Any, Dict, List
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.database import get_conn
 from backend.app.dependencies import get_current_user
@@ -22,6 +24,11 @@ from backend.app.schemas.property import (
     PropertyLookupResponse,
 )
 from backend.app.services.address import resolve_address
+from backend.app.services.socrata_proxy import (
+    get_assessment_history,
+    search_parcels_by_address,
+    verify_parcel,
+)
 
 router = APIRouter(prefix="/api/v1/property", tags=["property"])
 
@@ -119,3 +126,43 @@ async def autocomplete_address(
         AutocompleteItem(location_sk=r["location_sk"], full_address=r["full_address_standardized"])
         for r in rows
     ]
+
+
+@router.get("/assessment-history")
+async def assessment_history(
+    pin: str = Query(..., description="14-digit Cook County PIN"),
+    user: dict = Depends(get_current_user),
+) -> List[Dict[str, Any]]:
+    """Proxy assessment history from Cook County Assessor Socrata API."""
+    if not pin or len(pin.replace("-", "")) < 10:
+        raise HTTPException(status_code=400, detail="Invalid PIN format")
+    try:
+        return await get_assessment_history(pin)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Cook County API error: {exc}")
+
+
+@router.get("/parcel-search")
+async def parcel_search(
+    address: str = Query(..., min_length=3, description="Address to search"),
+    user: dict = Depends(get_current_user),
+) -> List[Dict[str, Any]]:
+    """Search Cook County Assessor for parcels matching an address."""
+    try:
+        return await search_parcels_by_address(address)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Cook County API error: {exc}")
+
+
+@router.get("/parcel-verify")
+async def parcel_verify_endpoint(
+    pin: str = Query(..., description="PIN to verify"),
+    user: dict = Depends(get_current_user),
+) -> List[Dict[str, Any]]:
+    """Verify a parcel PIN against Cook County Assessor."""
+    if not pin or len(pin.replace("-", "")) < 10:
+        raise HTTPException(status_code=400, detail="Invalid PIN format")
+    try:
+        return await verify_parcel(pin)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Cook County API error: {exc}")

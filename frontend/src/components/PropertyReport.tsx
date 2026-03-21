@@ -4,6 +4,8 @@ import type { ReportResponse, FlagResult } from '../api/civitas'
 import FindingCard from './FindingCard'
 import PropertyMap from './PropertyMap'
 import RecordTimeline from './RecordTimeline'
+import AssessmentHistory from './AssessmentHistory'
+import LiveRecordCheck from './LiveRecordCheck'
 import { downloadPdf } from '../api/civitas'
 import Markdown from 'react-markdown'
 import { LEVEL_CONFIG, ACTION_ORDER, type ActionGroup, type ActivityLevel } from '../constants/terminology'
@@ -15,6 +17,7 @@ interface Props {
   address: string
   lat?: number
   lon?: number
+  parcelId?: string | null
   onNewSearch: () => void
 }
 
@@ -76,7 +79,7 @@ const FLAG_TO_TAB: Record<string, TabKey> = {
 
 // ── Section tabs ─────────────────────────────────────────────────────────────
 
-type SectionTab = 'findings' | 'summary' | 'timeline' | 'records'
+type SectionTab = 'findings' | 'summary' | 'timeline' | 'records' | 'assessment'
 
 const RECORD_STATS: { key: string; label: string }[] = [
   { key: 'violations',       label: 'Violations' },
@@ -87,9 +90,18 @@ const RECORD_STATS: { key: string; label: string }[] = [
   { key: 'vacant_buildings', label: 'Vacant Bldgs' },
 ]
 
+// Map stat card keys to baseline field names
+const BASELINE_MAP: Record<string, { key: string }> = {
+  violations:       { key: 'avg_violations_per_property' },
+  inspections:      { key: 'avg_inspection_failure_rate' },
+  permits:          { key: 'avg_permits_per_property' },
+  service_311:      { key: 'avg_311_requests_12mo' },
+  tax_liens:        { key: 'pct_properties_with_liens' },
+}
+
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function PropertyReport({ report, loading = false, locationSk, address, lat, lon, onNewSearch }: Props) {
+export default function PropertyReport({ report, loading = false, locationSk, address, lat, lon, parcelId, onNewSearch }: Props) {
   const navigate = useNavigate()
   const [sectionTab, setSectionTab] = useState<SectionTab>('findings')
   const [activeRecordTab, setActiveRecordTab] = useState<TabKey>('violations')
@@ -135,11 +147,14 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
     setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
+  const hasPin = !!(parcelId || report?.baselines?.parcel_id)
+
   const sectionTabs: { key: SectionTab; label: string; count?: number }[] = [
     { key: 'findings', label: 'Findings', count: report?.triggered_flags.length },
     { key: 'summary',  label: 'Summary' },
     { key: 'timeline', label: 'Timeline' },
     { key: 'records',  label: 'Records' },
+    ...(hasPin ? [{ key: 'assessment' as SectionTab, label: 'Assessment' }] : []),
   ]
 
   return (
@@ -242,6 +257,9 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
             {/* Record stat cards */}
             {RECORD_STATS.map(s => {
               const count = (report.supporting_records[s.key as keyof typeof report.supporting_records] ?? []).length
+              const baseline = BASELINE_MAP[s.key]
+              const baselineVal = baseline ? report.baselines?.[baseline.key] : undefined
+              const comparison = baselineVal != null ? (count > baselineVal ? 'above' : count < baselineVal ? 'below' : 'at') : undefined
               return (
                 <button
                   key={s.key}
@@ -250,6 +268,14 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
                 >
                   <div className="text-[20px] font-bold text-ink-primary tabular-nums">{count}</div>
                   <div className="text-[10px] text-ink-tertiary leading-tight mt-0.5 font-medium">{s.label}</div>
+                  {baselineVal != null && (
+                    <div className={`text-[9px] mt-1 font-medium leading-tight ${
+                      comparison === 'above' ? 'text-blue-600' : comparison === 'below' ? 'text-slate-400' : 'text-slate-400'
+                    }`}>
+                      {comparison === 'above' ? '\u25B2' : comparison === 'below' ? '\u25BC' : '\u2022'}{' '}
+                      Avg: {Number(baselineVal) % 1 === 0 ? baselineVal : Number(baselineVal).toFixed(1)}
+                    </div>
+                  )}
                 </button>
               )
             })}
@@ -351,8 +377,19 @@ export default function PropertyReport({ report, loading = false, locationSk, ad
             </div>
           </div>
         ) : (
-          <DataTabs key={activeRecordTab} records={report.supporting_records} activeTab={activeRecordTab} />
+          <div className="space-y-3 animate-apple-fade-in">
+            <LiveRecordCheck
+              datasetKey={activeRecordTab === 'service_311' ? '311' : activeRecordTab}
+              address={report.property.address}
+              dataFreshness={report.data_freshness}
+            />
+            <DataTabs key={activeRecordTab} records={report.supporting_records} activeTab={activeRecordTab} />
+          </div>
         )
+      )}
+
+      {sectionTab === 'assessment' && hasPin && (
+        <AssessmentHistory pin={(parcelId || report?.baselines?.parcel_id) as string} />
       )}
 
       {/* ── Data Freshness ─────────────────────────────────────── */}

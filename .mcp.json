@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "civitas-db": {
+      "command": "python3",
+      "args": ["-m", "mcp_servers.civitas_db.server"],
+      "cwd": "/home/bill/source/Civitas",
+      "env": { "DATABASE_URL": "postgresql://civitas:civitas@localhost:5432/civitas" }
+    },
+    "chicago-data": {
+      "command": "python3",
+      "args": ["-m", "mcp_servers.chicago_data.server"],
+      "cwd": "/home/bill/source/Civitas"
+    },
+    "cook-county": {
+      "command": "python3",
+      "args": ["-m", "mcp_servers.cook_county.server"],
+      "cwd": "/home/bill/source/Civitas",
+      "env": { "DATABASE_URL": "postgresql://civitas:civitas@localhost:5432/civitas" }
+    },
+    "civitas-reports": {
+      "command": "python3",
+      "args": ["-m", "mcp_servers.report_gen.server"],
+      "cwd": "/home/bill/source/Civitas",
+      "env": { "DATABASE_URL": "postgresql://civitas:civitas@localhost:5432/civitas" }
+    }
+  }
+}

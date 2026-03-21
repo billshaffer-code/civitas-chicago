@@ -50,6 +50,34 @@ services:
     depends_on:
       - backend
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: tasks/Dockerfile
+    container_name: civitas_scheduler
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://civitas:civitas@postgres:5432/civitas
+    volumes:
+      - ./chicago_datasets:/app/chicago_datasets:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  mcp-civitas-db:
+    build:
+      context: .
+      dockerfile: mcp_servers/Dockerfile
+    container_name: civitas_mcp_db
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://civitas:civitas@postgres:5432/civitas
+      MCP_SERVER: civitas_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
   reports:

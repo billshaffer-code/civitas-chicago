@@ -17,12 +17,14 @@ All scoring logic is expressed in SQL. No finding is invented, inferred, or comp
 │  Chicago Socrata API (vacant buildings)                      │
 └──────────────────────┬──────────────────────────────────────┘
                        │ ETL (Python / psycopg2)
+                       │ ← nightly_etl task (2 AM cron)
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                     PostgreSQL + PostGIS                     │
 │                                                             │
 │  dim_location   dim_parcel   ingestion_batch  rule_config   │
 │  users          report_audit                                │
+│  task_run       data_quality_check   usage_analytics        │
 │                                                             │
 │  fact_violation   fact_inspection   fact_permit             │
 │  fact_311         fact_tax_lien     fact_vacant_building     │
@@ -30,32 +32,35 @@ All scoring logic is expressed in SQL. No finding is invented, inferred, or comp
 │  ── SQL Views ──────────────────────────────────────────    │
 │  view_property_summary  →  view_property_flags              │
 │                         →  view_property_score              │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ asyncpg
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    FastAPI Backend                           │
-│                                                             │
-│  /api/v1/auth/*               AuthService (JWT + bcrypt)    │
-│  /api/v1/property/lookup      AddressService (4-tier)       │
-│  /api/v1/report/generate      RuleEngineService             │
-│  /api/v1/report/my-reports    ReportService                 │
-│  /api/v1/batch/*              ClaudeAIService               │
-│                               PDFService (WeasyPrint)       │
-│                               get_current_user dependency   │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ HTTP / proxy
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│                React Frontend (Vite + React Router)          │
-│                                                             │
-│  /login → /signup → /dashboard → /search                    │
-│  /batch → /compare                                          │
-│  AuthContext   ProtectedRoute   AppLayout                   │
-│  PropertySearch → LookupResult → PropertyReport             │
-│  ActivityBar  FindingCard  RecordsTables  PDF download       │
-│  BatchPage (CSV upload + SSE)  ComparePage (side-by-side)   │
-└─────────────────────────────────────────────────────────────┘
+└────────┬──────────────────────┬─────────────────────────────┘
+         │ asyncpg              │ asyncpg / psycopg2
+         ▼                     ▼
+┌────────────────────┐ ┌───────────────────────────────────────┐
+│  FastAPI Backend   │ │  MCP Servers (stdio transport)         │
+│                    │ │                                       │
+│  /api/v1/auth/*    │ │  civitas-db    → 6 read-only DB tools │
+│  /api/v1/property/ │ │  chicago-data  → 4 Socrata API tools  │
+│  /api/v1/report/*  │ │  cook-county   → 3 parcel tools       │
+│  /api/v1/batch/*   │ │  civitas-rpts  → 4 report tools       │
+│  /api/v1/data/*    │ │                                       │
+└────────┬───────────┘ └───────────────┬───────────────────────┘
+         │ HTTP / proxy                │ MCP protocol
+         ▼                            ▼
+┌────────────────────┐ ┌───────────────────────────────────────┐
+│  React Frontend    │ │  Claude Desktop / Claude Code          │
+│  (Vite + Router)   │ │  (structured data access via MCP)     │
+│                    │ └───────────────────────────────────────┘
+│  /login → /signup  │
+│  /dashboard        │ ┌───────────────────────────────────────┐
+│  /search → /batch  │ │  Task Scheduler (APScheduler)          │
+│  /compare /browse  │ │                                       │
+│                    │ │  nightly_etl      2 AM  (ETL pipeline)│
+│  AuthContext       │ │  refresh_scores   3 AM  (matview)     │
+│  PropertyReport    │ │  report_staleness 4 AM  (flag stale)  │
+│  ActivityBar       │ │  staleness_check  8 AM  (freshness)   │
+│  FindingCard       │ │  quality_audit    Sun 6AM (integrity) │
+│  RecordTimeline    │ │  usage_analytics  Mon 9AM (metrics)   │
+└────────────────────┘ └───────────────────────────────────────┘
 ```
 
 ---
@@ -374,11 +379,59 @@ response   WeasyPrint
 
 ---
 
+## MCP Servers
+
+Four MCP servers expose CIVITAS data to Claude via the Model Context Protocol (stdio transport). Each server is a `FastMCP` instance with typed tool functions.
+
+| Server | Module | Pool Mode | Tools |
+|--------|--------|-----------|-------|
+| `civitas-db` | `mcp_servers.civitas_db.server` | Read-only asyncpg | `query_property`, `get_flags`, `get_score`, `search_addresses`, `get_data_freshness`, `run_sql` |
+| `chicago-data` | `mcp_servers.chicago_data.server` | None (HTTP only) | `query_dataset`, `get_dataset_metadata`, `check_freshness`, `count_records` |
+| `cook-county` | `mcp_servers.cook_county.server` | Read-only asyncpg | `lookup_parcel_by_pin`, `get_assessment_history`, `search_parcels_by_address` |
+| `civitas-reports` | `mcp_servers.report_gen.server` | Read-write asyncpg | `generate_report`, `get_report`, `list_reports`, `download_pdf` |
+
+**Shared infrastructure** (`mcp_servers/common/`):
+- `config.py` — `MCPSettings(BaseSettings)` reads `DATABASE_URL`, `SOCRATA_APP_TOKEN`, timeouts from `.env`
+- `db.py` — asyncpg pool with optional read-only mode and configurable statement timeout
+- `socrata.py` — `SocrataClient` wrapping the SODA2 API (query, count, metadata, freshness)
+
+**Safety:** `civitas-db.run_sql` validates that only `SELECT`/`WITH` statements are accepted (comments stripped before check). `civitas-reports` uses a read-write pool for `report_audit` inserts. All other database servers use read-only pools (`SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY`).
+
+---
+
+## Recurring Tasks
+
+Six tasks run on cron schedules via APScheduler, or can be invoked individually from the CLI.
+
+**Architecture:**
+- `tasks/common/registry.py` — Maps task names to `(callable, cron_expression)` tuples. Each task module calls `register()` at import time.
+- `tasks/common/runner.py` — CLI entry point (`--task`, `--scheduler`, `--list`). `run_task()` wraps each execution with `log_task_start` → function call → `log_task_complete/failure`.
+- `tasks/common/db.py` — psycopg2 helpers for logging to the `task_run` table.
+
+**Execution flow:**
+```
+CLI: python3 -m tasks.common.runner --task staleness_check
+  │
+  ├→ registry._register_all()   # imports all 6 task modules
+  ├→ registry.get_task(name)     # returns (callable, cron)
+  ├→ db.log_task_start()         # INSERT task_run → run_id
+  ├→ func()                      # execute the task
+  └→ db.log_task_complete()      # UPDATE task_run (duration, summary JSON)
+     or db.log_task_failure()    # UPDATE task_run (error message)
+```
+
+**Database tables** (`sql/05_tasks_and_quality.sql`):
+- `task_run` — Execution log (run_id, task_name, status, duration_ms, result_summary JSONB)
+- `data_quality_check` — Staleness and audit results (check_type, metric_name, is_alert, details JSONB)
+- `usage_analytics` — Weekly usage metrics (period_start/end, metric_name, metric_value, details JSONB)
+
+---
+
 ## Testing
 
-126 total tests across backend and frontend.
+158 total tests across backend, tasks, MCP servers, and frontend.
 
-### Backend (63 tests)
+### Backend (65 tests)
 
 Run with `python3 -m pytest backend/tests/ -v`.
 
@@ -395,7 +448,28 @@ Run with `python3 -m pytest backend/tests/ -v`.
 | `test_api_property.py` | 3 | Lookup, no-match, autocomplete |
 | `test_api_report.py` | 5 | Report generation, retrieval, history |
 
-### Frontend (63 tests)
+### Tasks (16 tests)
+
+Run with `python3 -m pytest tasks/tests/ -v`.
+
+| Test File | Count | Coverage |
+|-----------|-------|----------|
+| `test_staleness_check.py` | 5 | All fresh, one stale, missing dataset, webhook, DB writes |
+| `test_quality_audit.py` | 3 | All clean, orphan alert, 7-metric completeness |
+| `test_usage_analytics.py` | 2 | Return keys, DB writes |
+| `test_runner.py` | 3 | Logging flow, failure handling, unknown task exit |
+| `test_registry.py` | 3 | Register/get, list, unknown lookup |
+
+### MCP Servers (10 tests)
+
+Run with `python3 -m pytest mcp_servers/tests/ -v`.
+
+| Test File | Count | Coverage |
+|-----------|-------|----------|
+| `test_socrata.py` | 3 | URL/param building, count parsing, metadata structure |
+| `test_civitas_db.py` | 7 | Property lookup (PIN/address/no-match), flags, scores, search, SQL injection rejection — **skipped on Python < 3.10** |
+
+### Frontend (67 tests)
 
 Run with `cd frontend && npm run test:run`.
 
@@ -421,7 +495,7 @@ Tests use `FakeConnection` (mock asyncpg), `httpx.AsyncClient`, `unittest.mock.A
 ## Scalability Considerations (Future)
 
 - **Horizontal API scaling:** The API is stateless. Multiple FastAPI instances behind a load balancer require only a shared PostgreSQL connection pool.
-- **ETL scheduling:** Current scripts are run manually. A simple cron job or Airflow DAG could refresh each dataset on a weekly cadence.
+- **ETL scheduling:** Implemented — APScheduler runs all 6 ingestion scripts nightly at 2 AM via the `nightly_etl` task. Task execution is logged to `task_run` with duration and result summaries.
 - **Multi-city expansion:** The schema is city-agnostic (`city_id` on `dim_location`). Adding a second city requires new ETL scripts and address standardization tuning — the rule engine and API are unchanged.
 - **Portfolio analysis:** Implemented — CSV upload via `/api/v1/batch/upload` processes up to 100 addresses with SSE progress streaming. Results include per-property activity scores and a portfolio-level summary with level distribution.
 - **Production auth hardening:** Migrate tokens to httpOnly cookies, add rate limiting on auth endpoints, add password reset flow, consider OAuth2 for enterprise SSO.

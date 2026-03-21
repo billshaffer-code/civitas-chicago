@@ -28,11 +28,19 @@ async def test_generate_report_json(client, sample_report):
         "disclaimer": "Test disclaimer.",
     }
 
+    geo_conn = FakeConnection(fetchrow_return={
+        "lat": 41.8781, "lon": -87.6298, "parcel_id": "17-01-100-001-0000",
+    })
+
+    @asynccontextmanager
+    async def _get_conn():
+        yield geo_conn
+
     with patch(
         "backend.app.routers.report.generate_single_report",
         new_callable=AsyncMock,
         return_value=mock_report,
-    ):
+    ), patch("backend.app.routers.report.get_conn", _get_conn):
         resp = await client.post(
             "/api/v1/report/generate",
             json={"location_sk": 42, "address": "123 N MAIN ST"},
@@ -47,7 +55,14 @@ async def test_generate_report_json(client, sample_report):
 
 @pytest.mark.asyncio
 async def test_get_report_found(client, sample_report):
-    conn = FakeConnection(fetchrow_return={"report_json": json.dumps(sample_report)})
+    conn = FakeConnection(fetchrow_return={
+        "report_json": json.dumps(sample_report),
+        "location_sk": 42,
+        "lat": 41.8781,
+        "lon": -87.6298,
+        "full_address_standardized": "123 N MAIN ST 60601",
+        "parcel_id": "17-01-100-001-0000",
+    })
 
     @asynccontextmanager
     async def _get_conn():

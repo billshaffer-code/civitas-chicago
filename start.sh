@@ -32,6 +32,7 @@ psql "$DATABASE_URL" -f sql/04_batch.sql -q
 psql "$DATABASE_URL" -f sql/views/01_summary.sql -q
 psql "$DATABASE_URL" -f sql/views/02_flags.sql -q
 psql "$DATABASE_URL" -f sql/views/03_score.sql -q
+psql "$DATABASE_URL" -f sql/05_tasks_and_quality.sql -q
 echo "Schema applied."
 
 # ── 3. Backend API ──────────────────────────────────────────────────
@@ -45,12 +46,23 @@ cd "$PROJECT_DIR/frontend" && npm run dev &
 FRONTEND_PID=$!
 cd "$PROJECT_DIR"
 
+# ── 5. Task scheduler (optional) ──────────────────────────────────────
+SCHEDULER_PID=""
+if [ "${SCHEDULER_ENABLED:-false}" = "true" ]; then
+  echo "Starting task scheduler..."
+  python3 -m tasks.common.runner --scheduler &
+  SCHEDULER_PID=$!
+fi
+
 echo ""
 echo "CIVITAS is running:"
-echo "  Backend  → http://localhost:8000"
-echo "  Frontend → http://localhost:3000"
+echo "  Backend   → http://localhost:8000"
+echo "  Frontend  → http://localhost:3000"
+if [ -n "$SCHEDULER_PID" ]; then
+  echo "  Scheduler → PID $SCHEDULER_PID"
+fi
 echo ""
 echo "Press Ctrl+C to stop all services."
 
-trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; echo 'Stopped.'" EXIT INT TERM
+trap "kill $BACKEND_PID $FRONTEND_PID $SCHEDULER_PID 2>/dev/null; echo 'Stopped.'" EXIT INT TERM
 wait

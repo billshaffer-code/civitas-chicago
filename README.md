@@ -140,13 +140,17 @@ Reports support a **client/detail view toggle**: detail view shows full scoring 
 
 ```
 civitas/
-├── docker-compose.yml         # 3-service stack (postgres, backend, frontend)
-├── .env.example
+├── docker-compose.yml         # 5-service stack (postgres, backend, frontend, scheduler, mcp)
+├── .env
+├── .mcp.json                  # Claude Code MCP server configuration
+├── start.sh                   # One-command startup (DB + schema + API + frontend + scheduler)
 ├── sql/
 │   ├── 00_schema.sql          # All table DDL (8 tables)
 │   ├── 01_indexes.sql         # Performance indexes
 │   ├── 02_seed_rules.sql      # 15 rule_config rows
 │   ├── 03_users.sql           # Users table + report_audit FK
+│   ├── 04_batch.sql           # Batch processing tables
+│   ├── 05_tasks_and_quality.sql  # task_run, data_quality_check, usage_analytics
 │   └── views/
 │       ├── 01_summary.sql     # VIEW_PROPERTY_SUMMARY
 │       ├── 02_flags.sql       # VIEW_PROPERTY_FLAGS (15 rules)
@@ -159,7 +163,7 @@ civitas/
 │   │   ├── config.py
 │   │   ├── database.py
 │   │   ├── dependencies.py    # JWT auth dependency
-│   │   ├── routers/           # auth.py, property.py, report.py, batch.py
+│   │   ├── routers/           # auth.py, property.py, report.py, batch.py, data.py
 │   │   ├── services/          # auth.py, address.py, rule_engine.py, report.py, claude_ai.py, pdf.py
 │   │   ├── schemas/           # auth.py, property.py, report.py, batch.py
 │   │   └── templates/         # report.html, report.css
@@ -171,7 +175,29 @@ civitas/
 │   │   ├── ingest_311.py
 │   │   ├── ingest_tax_liens.py
 │   │   └── ingest_vacant_buildings.py
-│   └── tests/                 # 63 tests (pytest + pytest-asyncio)
+│   └── tests/                 # 65 tests (pytest + pytest-asyncio)
+├── tasks/                     # Recurring background tasks
+│   ├── common/
+│   │   ├── db.py              # psycopg2 task logging helpers
+│   │   ├── registry.py        # Task name → (callable, cron) registry
+│   │   └── runner.py          # CLI runner + APScheduler daemon
+│   ├── nightly_etl.py         # 2 AM — runs all 6 ingestion scripts
+│   ├── refresh_scores.py      # 3 AM — refreshes materialized view
+│   ├── report_staleness.py    # 4 AM — flags stale reports
+│   ├── staleness_check.py     # 8 AM — checks data freshness
+│   ├── quality_audit.py       # Sun 6 AM — orphan/duplicate/null FK audit
+│   ├── usage_analytics.py     # Mon 9 AM — weekly usage metrics
+│   └── tests/                 # 16 tests
+├── mcp_servers/               # MCP servers for Claude integration
+│   ├── common/
+│   │   ├── config.py          # MCPSettings (pydantic-settings)
+│   │   ├── db.py              # asyncpg pool (read-only by default)
+│   │   └── socrata.py         # Socrata SODA2 API client
+│   ├── civitas_db/server.py   # 6 database tools (property, flags, scores, SQL)
+│   ├── chicago_data/server.py # 4 Socrata API tools
+│   ├── cook_county/server.py  # 3 parcel/assessment tools
+│   ├── report_gen/server.py   # 4 report generation tools
+│   └── tests/                 # 10 tests (7 require Python 3.10+)
 └── frontend/
     ├── Dockerfile             # Multi-stage: node build → nginx
     ├── nginx.conf             # SPA routing + /api reverse proxy
@@ -237,6 +263,7 @@ psql $DATABASE_URL -f sql/01_indexes.sql
 psql $DATABASE_URL -f sql/02_seed_rules.sql
 psql $DATABASE_URL -f sql/03_users.sql
 psql $DATABASE_URL -f sql/04_batch.sql
+psql $DATABASE_URL -f sql/05_tasks_and_quality.sql
 psql $DATABASE_URL -f sql/views/01_summary.sql
 psql $DATABASE_URL -f sql/views/02_flags.sql
 psql $DATABASE_URL -f sql/views/03_score.sql
@@ -384,17 +411,77 @@ curl -X POST http://localhost:8000/api/v1/report/generate \
 
 ---
 
+## MCP Servers (Claude Integration)
+
+Four MCP servers give Claude direct, structured access to CIVITAS data via the [Model Context Protocol](https://modelcontextprotocol.io/). Configured in `.mcp.json` (Claude Code reads this automatically).
+
+| Server | Tools | Description |
+|--------|-------|-------------|
+| `civitas-db` | 6 | Read-only database access — property lookup, flags, scores, address search, ad-hoc SQL |
+| `chicago-data` | 4 | Live Socrata SODA2 API queries against the Chicago Data Portal |
+| `cook-county` | 3 | Cook County Assessor parcel lookups and assessment history |
+| `civitas-reports` | 4 | Generate/retrieve reports and download PDFs |
+
+```bash
+# Via Docker
+docker compose up -d mcp-civitas-db
+
+# Manually (requires Python 3.10+ and mcp package)
+pip install -r requirements-mcp.txt
+python3 -m mcp_servers.civitas_db.server
+```
+
+## Recurring Tasks
+
+Six background tasks automate ETL, data quality monitoring, and usage analytics via APScheduler.
+
+| Task | Schedule | Description |
+|------|----------|-------------|
+| `nightly_etl` | 2 AM daily | Runs all 6 ingestion scripts + refreshes materialized view |
+| `refresh_scores` | 3 AM daily | Refreshes `view_property_summary` |
+| `report_staleness` | 4 AM daily | Flags reports older than latest ingestion |
+| `staleness_check` | 8 AM daily | Checks dataset freshness against configurable thresholds |
+| `quality_audit` | Sun 6 AM | Counts orphaned records, duplicates, null FKs |
+| `usage_analytics` | Mon 9 AM | Aggregates weekly report counts and top addresses |
+
+```bash
+# Run a single task
+python3 -m tasks.common.runner --task staleness_check
+
+# Start the scheduler daemon
+python3 -m tasks.common.runner --scheduler
+
+# List all registered tasks
+python3 -m tasks.common.runner --list
+
+# Via Docker
+docker compose up -d scheduler
+```
+
+For full details on tools, configuration, and database tables, see [docs/MCP_AND_TASKS.md](docs/MCP_AND_TASKS.md).
+
+---
+
 ## Testing
 
 ```bash
-# Backend (63 tests)
+# Backend (65 tests)
 cd /path/to/Civitas && python3 -m pytest backend/tests/ -v
 
-# Frontend (63 tests)
+# Tasks (16 tests)
+python3 -m pytest tasks/tests/ -v
+
+# MCP servers (10 tests — 7 skipped on Python < 3.10)
+python3 -m pytest mcp_servers/tests/ -v
+
+# Frontend (67 tests)
 cd /path/to/Civitas/frontend && npm run test:run
+
+# All Python tests together
+python3 -m pytest backend/tests/ tasks/tests/ mcp_servers/tests/ -v
 ```
 
-**126 total tests** across backend and frontend. Backend tests cover authentication, address resolution, rule engine, Claude AI integration, PDF generation, batch processing, report service, and all API endpoints. Frontend tests cover auth context, all pages, and all components. Tests use mock database connections, async HTTP clients, and autouse auth fixtures — no running database required.
+**158 total tests** across backend, tasks, MCP servers, and frontend. Backend tests cover authentication, address resolution, rule engine, Claude AI integration, PDF generation, batch processing, report service, and all API endpoints. Task tests cover staleness checks, quality audits, usage analytics, the runner, and the registry. MCP tests cover the Socrata client and database tools. Frontend tests cover auth context, all pages, and all components. Tests use mock database connections, async HTTP clients, and autouse auth fixtures — no running database required.
 
 ---
 

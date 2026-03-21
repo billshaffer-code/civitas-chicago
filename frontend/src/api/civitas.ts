@@ -281,6 +281,13 @@ export async function downloadPdf(location_sk: number, address: string): Promise
   return data
 }
 
+export async function getReportPdf(report_id: string): Promise<Blob> {
+  const { data } = await api.get(`/api/v1/report/${report_id}/pdf`, {
+    responseType: 'blob',
+  })
+  return data
+}
+
 // ── Batch API calls ─────────────────────────────────────────────────────────
 
 export async function uploadBatch(file: File, batchName?: string): Promise<BatchUploadResponse> {

@@ -7,12 +7,26 @@ Reuses dataset IDs and patterns from mcp_servers/common/socrata.py.
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
 import httpx
 
 from backend.app.config import settings
+
+# ── Input sanitization ──────────────────────────────────────────────────────
+
+def _sanitize(value: str) -> str:
+    """Sanitize user input for SoQL interpolation.
+
+    Escapes single quotes (SoQL escape) and strips control characters.
+    """
+    # Strip control characters (keep printable + spaces)
+    cleaned = re.sub(r'[\x00-\x1f\x7f]', '', value)
+    # Escape single quotes for SoQL
+    return cleaned.replace("'", "''")
+
 
 # ── Known dataset IDs ────────────────────────────────────────────────────────
 
@@ -109,7 +123,7 @@ async def get_assessment_history(pin: str) -> list[dict[str, Any]]:
     rows = await socrata_query(
         COOK_COUNTY_BASE,
         COOK_COUNTY_ASSESSMENT_DATASET,
-        where=f"pin='{clean_pin}'",
+        where=f"pin='{_sanitize(clean_pin)}'",
         order="tax_year DESC",
         limit=20,
     )
@@ -162,7 +176,7 @@ async def search_parcels_by_address(address: str) -> list[dict[str, Any]]:
         select="pin, property_address, property_city, property_zip, "
                "property_class, land_square_feet, building_square_feet, "
                "certified_total, tax_year",
-        where=f"upper(property_address) LIKE '%{addr_upper}%'",
+        where=f"upper(property_address) LIKE '%{_sanitize(addr_upper)}%'",
         order="tax_year DESC",
         limit=20,
     )
@@ -184,7 +198,7 @@ async def verify_parcel(pin: str) -> list[dict[str, Any]]:
     rows = await socrata_query(
         COOK_COUNTY_BASE,
         COOK_COUNTY_ASSESSMENT_DATASET,
-        where=f"pin='{clean_pin}'",
+        where=f"pin='{_sanitize(clean_pin)}'",
         order="tax_year DESC",
         limit=5,
     )
@@ -231,11 +245,11 @@ async def live_record_check(
         # Extract house number from the address for basic matching
         parts = addr_upper.split()
         if parts:
-            where = f"starts_with(street_number, '{parts[0]}') AND {date_col} > '{since_iso}'"
+            where = f"starts_with(street_number, '{_sanitize(parts[0])}') AND {date_col} > '{_sanitize(since_iso)}'"
         else:
             return {"records": [], "count": 0}
     else:
-        where = f"upper({addr_col}) LIKE '%{addr_upper}%' AND {date_col} > '{since_iso}'"
+        where = f"upper({addr_col}) LIKE '%{_sanitize(addr_upper)}%' AND {date_col} > '{_sanitize(since_iso)}'"
 
     try:
         rows = await socrata_query(

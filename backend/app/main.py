@@ -7,7 +7,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.config import settings as app_settings
 from backend.app.database import init_pool, close_pool
+from backend.app.middleware import RequestLoggingMiddleware
 from backend.app.routers import auth as auth_router
 from backend.app.routers import batch as batch_router
 from backend.app.routers import data as data_router
@@ -23,15 +25,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="CIVITAS Municipal Risk API",
-    description="Chicago v1 – Deterministic property risk intelligence",
+    title="CIVITAS Municipal Intelligence API",
+    description="Chicago v1 – Deterministic property activity intelligence",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=[o.strip() for o in app_settings.cors_origins.split(",") if o.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

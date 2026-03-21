@@ -11,6 +11,9 @@ import BatchPage from './pages/BatchPage'
 import BrowsePage from './pages/BrowsePage'
 import ComparePage from './pages/ComparePage'
 import LearnMorePage from './pages/LearnMorePage'
+import ErrorBoundary from './components/ErrorBoundary'
+import { ToastProvider } from './components/Toast'
+import KeyboardShortcuts from './components/KeyboardShortcuts'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -20,6 +23,8 @@ function ScrollToTop() {
 
 export default function App() {
   return (
+    <ErrorBoundary>
+    <ToastProvider>
     <BrowserRouter>
       <ScrollToTop />
       <AuthProvider>
@@ -38,5 +43,8 @@ export default function App() {
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+    <KeyboardShortcuts />
+    </ToastProvider>
+    </ErrorBoundary>
   )
 }

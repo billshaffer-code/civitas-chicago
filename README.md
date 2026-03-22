@@ -163,8 +163,8 @@ civitas/
 │   │   ├── config.py
 │   │   ├── database.py
 │   │   ├── dependencies.py    # JWT auth dependency
-│   │   ├── routers/           # auth.py, property.py, report.py, batch.py, data.py
-│   │   ├── services/          # auth.py, address.py, rule_engine.py, report.py, claude_ai.py, pdf.py
+│   │   │   ├── routers/           # auth.py, property.py, report.py, batch.py, data.py
+│   │   ├── services/          # auth.py, address.py, rule_engine.py, report.py, claude_ai.py, pdf.py, baselines.py, socrata_proxy.py
 │   │   ├── schemas/           # auth.py, property.py, report.py, batch.py
 │   │   └── templates/         # report.html, report.css
 │   ├── ingestion/             # ETL scripts
@@ -175,7 +175,7 @@ civitas/
 │   │   ├── ingest_311.py
 │   │   ├── ingest_tax_liens.py
 │   │   └── ingest_vacant_buildings.py
-│   └── tests/                 # 65 tests (pytest + pytest-asyncio)
+│   └── tests/                 # 86 tests (pytest + pytest-asyncio)
 ├── tasks/                     # Recurring background tasks
 │   ├── common/
 │   │   ├── db.py              # psycopg2 task logging helpers
@@ -213,17 +213,27 @@ civitas/
         │   ├── SignupPage.tsx
         │   ├── DashboardPage.tsx
         │   ├── SearchPage.tsx
-        │   ├── BatchPage.tsx     # CSV upload + SSE processing
-        │   └── ComparePage.tsx   # Side-by-side report comparison
+        │   ├── BatchPage.tsx        # CSV upload + SSE processing
+        │   ├── ComparePage.tsx      # Side-by-side report comparison
+        │   ├── BrowsePage.tsx       # Server-side paginated dataset browser
+        │   └── LearnMorePage.tsx    # Marketing / product info page
         └── components/
             ├── ProtectedRoute.tsx
             ├── AppLayout.tsx
+            ├── ErrorBoundary.tsx     # React error boundary for crash recovery
+            ├── Toast.tsx             # Toast notification context + portal
+            ├── KeyboardShortcuts.tsx  # ? overlay for keyboard shortcuts
             ├── PropertySearch.tsx
-            ├── PropertyReport.tsx  # Full report with client/detail toggle
-            ├── PropertyMap.tsx
-            ├── ActivityBar.tsx     # Horizontal segmented score bar
-            ├── FindingCard.tsx     # Action-group colored finding card
-            └── ReportComparison.tsx
+            ├── PropertyReport.tsx    # Full report with tabbed sections
+            ├── PropertyMap.tsx       # Leaflet map with neighbor dots
+            ├── ActivityBar.tsx       # Horizontal segmented score bar
+            ├── FindingCard.tsx       # Action-group colored finding card
+            ├── RecordTimeline.tsx    # Chronological record feed + chart
+            ├── ReportComparison.tsx  # Side-by-side diff component
+            ├── AssessmentHistory.tsx  # Cook County assessment data
+            ├── ParcelVerify.tsx      # Parcel verification widget
+            ├── LiveRecordCheck.tsx   # Live Socrata record check
+            └── DataHealth.tsx        # Dataset freshness dashboard
 ```
 
 ---
@@ -465,7 +475,7 @@ For full details on tools, configuration, and database tables, see [docs/MCP_AND
 ## Testing
 
 ```bash
-# Backend (65 tests)
+# Backend (86 tests)
 cd /path/to/Civitas && python3 -m pytest backend/tests/ -v
 
 # Tasks (16 tests)
@@ -474,14 +484,16 @@ python3 -m pytest tasks/tests/ -v
 # MCP servers (10 tests — 7 skipped on Python < 3.10)
 python3 -m pytest mcp_servers/tests/ -v
 
-# Frontend (67 tests)
+# Frontend (87 tests)
 cd /path/to/Civitas/frontend && npm run test:run
 
 # All Python tests together
 python3 -m pytest backend/tests/ tasks/tests/ mcp_servers/tests/ -v
 ```
 
-**158 total tests** across backend, tasks, MCP servers, and frontend. Backend tests cover authentication, address resolution, rule engine, Claude AI integration, PDF generation, batch processing, report service, and all API endpoints. Task tests cover staleness checks, quality audits, usage analytics, the runner, and the registry. MCP tests cover the Socrata client and database tools. Frontend tests cover auth context, all pages, and all components. Tests use mock database connections, async HTTP clients, and autouse auth fixtures — no running database required.
+**199 total tests** across backend, tasks, MCP servers, and frontend. Backend tests cover authentication, address resolution, rule engine, Claude AI integration, PDF generation, batch processing, report service, Socrata proxy, data health endpoints, and all API endpoints. Task tests cover staleness checks, quality audits, usage analytics, the runner, and the registry. MCP tests cover the Socrata client and database tools. Frontend tests cover auth context, all pages, and all components including error boundary, toast notifications, assessment history, parcel verification, and live record checks. Tests use mock database connections, async HTTP clients, and autouse auth fixtures — no running database required.
+
+CI runs all backend, frontend, and lint checks automatically on every push and pull request via GitHub Actions.
 
 ---
 

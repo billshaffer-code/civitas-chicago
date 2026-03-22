@@ -254,7 +254,7 @@ The PDF uses an Apple-inspired light theme matching the frontend: white backgrou
 The React frontend uses **React Router** with six routes, all behind authentication:
 
 ```
-/login → /signup → /dashboard → /search → /batch → /compare
+/login → /signup → /dashboard → /search → /batch → /compare → /browse → /learn-more
 ```
 
 ### Authentication Layer
@@ -283,20 +283,34 @@ search → lookup-loading → lookup-done → report-loading → report-done
 
 **`ComparePage`** — Side-by-side report comparison. Select two reports from history and view score deltas, finding differences (shared, only-in-A, only-in-B), and AI summary comparison.
 
+**`BrowsePage`** — Server-side paginated table browser for exploring raw municipal datasets. Cross-table address filtering. Dataset picker for violations, inspections, permits, 311, tax liens, vacant buildings.
+
+**`LearnMorePage`** — Marketing / product information page linked from the login screen.
+
 **`AppLayout`** — Shared header with CIVITAS branding, Dashboard/Search/Batch/Compare nav links, user name, and Sign Out button. Renders an `<Outlet />` for nested route content.
 
 ### Report View Components
 
-**`PropertyReport`** — Full report view with client/detail view toggle:
+**`PropertyReport`** — Full report view with tabbed sections (Findings, Summary, Timeline, Records):
 - `ActivityBar` — horizontal segmented bar with score marker, four labeled segments (QUIET/TYPICAL/ACTIVE/COMPLEX) in blue-scale
-- `PropertyMap` — Leaflet map centered on the property location
+- `PropertyMap` — Leaflet map centered on the property, neighbor dots color-coded by activity level. Map renders instantly; neighbors load asynchronously.
 - `FindingCard[]` — one card per triggered finding, colored by action group (blue-scale with amber for Action Required), grouped by ACTION_ORDER
-- AI narrative — rendered as markdown via `react-markdown` + Tailwind Typography
+- `RecordTimeline` — chronological feed of all record types with interactive bar chart; click a bar to scroll to that period. Slide-over detail panel via `createPortal`.
+- AI narrative — rendered as markdown via `react-markdown` + Tailwind Typography, loaded asynchronously
 - Six tabbed data tables (violations, inspections, permits, 311 requests, tax liens, vacant buildings)
-- Client view hides numeric score, shows clean level badge only
-- PDF download — calls `POST /api/v1/report/generate?format=pdf`, triggers browser download
+- PDF download and preview (slide-over iframe with blob URL)
+- Keyboard shortcuts: `1`--`5` to switch tabs, `?` for overlay
 
 **`ReportComparison`** — Side-by-side diff component showing score deltas (neutral blue), finding differences, record count changes, and AI summary comparison. Used by `ComparePage`.
+
+**Utility components:**
+- `ErrorBoundary` — React class component; catches render errors and shows a recovery UI
+- `Toast` — Context provider + portal system for toast notifications (auto-dismiss after 4s)
+- `KeyboardShortcuts` — `?` key overlay showing available shortcuts
+- `AssessmentHistory` — Cook County assessment data panel (via Socrata proxy)
+- `ParcelVerify` — Parcel PIN verification widget
+- `LiveRecordCheck` — Live Socrata record check for specific datasets
+- `DataHealth` — Dataset freshness monitoring dashboard
 
 **Theme:** Apple-inspired light design (white/gray cards, blue-600 accents, clean shadows, `#f5f5f7` background). Blue-scale palette throughout — no red/orange/yellow severity colors.
 
@@ -429,9 +443,9 @@ CLI: python3 -m tasks.common.runner --task staleness_check
 
 ## Testing
 
-158 total tests across backend, tasks, MCP servers, and frontend.
+199 total tests across backend, tasks, MCP servers, and frontend.
 
-### Backend (65 tests)
+### Backend (86 tests)
 
 Run with `python3 -m pytest backend/tests/ -v`.
 
@@ -442,11 +456,13 @@ Run with `python3 -m pytest backend/tests/ -v`.
 | `test_claude_ai.py` | 5 | Payload structure (activity_score/level/action_group), truncation, Anthropic API call |
 | `test_rule_engine.py` | 5 | Score/flags queries (activity_level), data freshness formatting |
 | `test_pdf.py` | 7 | PDF generation, all 4 activity levels (QUIET/TYPICAL/ACTIVE/COMPLEX), empty records |
-| `test_report_service.py` | 3 | Report generation, missing location, audit storage |
+| `test_report_service.py` | 5 | Report generation, missing location, audit storage, parallel queries, cache hit |
 | `test_batch.py` | 8 | CSV upload, validation, batch retrieval, level distribution |
 | `test_api_health.py` | 1 | Health endpoint |
-| `test_api_property.py` | 3 | Lookup, no-match, autocomplete |
-| `test_api_report.py` | 5 | Report generation, retrieval, history |
+| `test_api_property.py` | 6 | Lookup, no-match, autocomplete, assessment history, parcel search, parcel verify |
+| `test_api_report.py` | 5 | Report generation (with geo enrichment), retrieval (with JOIN fields), history |
+| `test_api_data_health.py` | 3 | Data health dashboard, live record check, unknown dataset handling |
+| `test_socrata_proxy.py` | 15 | SoQL sanitization, assessment history, parcel search, parcel verify, dataset freshness, live record check, caching |
 
 ### Tasks (16 tests)
 
@@ -469,7 +485,7 @@ Run with `python3 -m pytest mcp_servers/tests/ -v`.
 | `test_socrata.py` | 3 | URL/param building, count parsing, metadata structure |
 | `test_civitas_db.py` | 7 | Property lookup (PIN/address/no-match), flags, scores, search, SQL injection rejection — **skipped on Python < 3.10** |
 
-### Frontend (67 tests)
+### Frontend (87 tests)
 
 Run with `cd frontend && npm run test:run`.
 
@@ -478,14 +494,17 @@ Run with `cd frontend && npm run test:run`.
 | `AuthContext.test.tsx` | 8 | Auth state, login, register, logout |
 | `LoginPage.test.tsx` | 6 | Form rendering, auth flow, error handling |
 | `SignupPage.test.tsx` | 7 | Registration, validation, error states |
-| `DashboardPage.test.tsx` | 6 | Welcome, loading, report cards, navigation |
+| `DashboardPage.test.tsx` | 10 | Welcome, loading, report cards, navigation, quick search |
 | `PropertySearch.test.tsx` | 6 | Input, submit, autocomplete, keyboard nav |
 | `AppLayout.test.tsx` | 4 | Header, nav, sign out |
 | `ProtectedRoute.test.tsx` | 3 | Auth guard, redirect, children rendering |
 | `ActivityBar.test.tsx` | 4 | Score display, level label, all activity levels |
 | `FindingCard.test.tsx` | 4 | Flag code, action group, border colors, fallback |
-| `ScoreGauge.test.tsx` | 4 | Legacy component tests |
-| `FlagBadge.test.tsx` | 4 | Legacy component tests |
+| `ErrorBoundary.test.tsx` | 3 | Error catch, fallback UI, recovery |
+| `Toast.test.tsx` | 5 | Toast display, dismiss, auto-removal, multiple toasts |
+| `AssessmentHistory.test.tsx` | 4 | Assessment table, loading, error, empty states |
+| `ParcelVerify.test.tsx` | 9 | PIN verification, match/mismatch, loading, error states |
+| `LiveRecordCheck.test.tsx` | 7 | Live record check, loading, results display, error handling |
 | `civitas.test.ts` | 7 | API client, auth interceptors |
 
 Tests use `FakeConnection` (mock asyncpg), `httpx.AsyncClient`, `unittest.mock.AsyncMock`, and an autouse `mock_auth` fixture that overrides `get_current_user` for all non-auth tests. No running database required.

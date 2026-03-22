@@ -1,0 +1,263 @@
+# CIVITAS — User Guide
+
+This guide walks through every feature of CIVITAS from a user's perspective.
+
+---
+
+## Getting Started
+
+### Creating an Account
+
+1. Navigate to the CIVITAS login page
+2. Click **Sign Up** (or the link below the login form)
+3. Fill in your details:
+   - **Full Name** — displayed in the app header and on reports
+   - **Email** — used for login (must be unique)
+   - **Company Name** (optional) — your firm or organization
+   - **Password** — minimum 8 characters
+   - **Confirm Password** — must match
+4. Click **Create Account**
+5. You'll be signed in automatically and taken to your dashboard
+
+### Signing In
+
+1. Enter your email and password on the login page
+2. Click **Sign In**
+3. Your session stays active for up to 7 days — the app automatically refreshes your login in the background
+
+### Signing Out
+
+Click your name in the top-right corner of the header, then click **Sign Out**.
+
+---
+
+## Dashboard
+
+The dashboard is your home screen after signing in. It shows:
+
+- **Welcome greeting** with your name
+- **Quick search bar** — type an address to jump straight to a property report
+- **Action cards** for the three main workflows:
+  - **Property Search** — single property lookup
+  - **Portfolio Analysis** — batch CSV upload
+  - **Compare Reports** — side-by-side comparison
+- **Recent reports** — your most recently generated reports, click any to reopen
+- **Recent batches** — your most recent batch analysis jobs
+
+---
+
+## Searching a Property
+
+### From the Dashboard
+
+Type an address into the quick search bar and press Enter. You'll be taken to the Search page with results loading automatically.
+
+### From the Search Page
+
+1. Click **Search** in the navigation bar
+2. Enter a Chicago street address (e.g., "3500 N Hoyne Ave") or a Cook County PIN (14-digit parcel ID)
+3. As you type, an **autocomplete dropdown** appears with matching addresses from the database — click a suggestion or keep typing
+4. Press Enter or click the search button
+
+### Understanding the Lookup Result
+
+After searching, CIVITAS shows you the matched property with:
+
+- **Standardized address** — the canonical form stored in the database
+- **Match confidence** — how the address was resolved:
+  - `EXACT_PIN` — matched by Cook County parcel ID (highest confidence)
+  - `EXACT_ADDRESS` — matched by full standardized address
+  - `STREET_ZIP` — matched by house number + street name + ZIP
+  - `GEOSPATIAL` — matched by proximity (within 50 meters)
+  - `NO_MATCH` — no matching property found
+
+If the match confidence is low or uncertain, you'll see a warning recommending manual verification.
+
+### Generating a Report
+
+Once the property is resolved, click **Generate Report**. The report page loads immediately with a skeleton layout, and data fills in as it becomes available:
+
+1. Activity score and level appear first
+2. Findings and data tables load next
+3. The AI narrative generates last (may take a few seconds)
+
+---
+
+## Reading a Report
+
+### Activity Score
+
+The **activity score** is displayed as a number alongside a horizontal segmented bar:
+
+```
+|  QUIET  | TYPICAL |  ACTIVE | COMPLEX |
+0        25        50        75       100+
+```
+
+A marker shows where the property's score falls. The segments are color-coded in a blue scale (light to dark), with amber highlighting for the Action Required category.
+
+The score is a simple sum of the severity weights of all triggered findings. It is not a prediction or a judgment — it reflects the volume and nature of municipal activity on record.
+
+### Activity Level
+
+| Level | Score Range | Interpretation |
+|-------|-------------|----------------|
+| **Quiet** | 0 -- 24 | Minimal municipal activity. Few or no findings triggered. |
+| **Typical** | 25 -- 49 | Normal level of municipal interactions for a Chicago property. |
+| **Active** | 50 -- 74 | Above-average activity. Multiple findings worth reviewing before closing. |
+| **Complex** | 75+ | Significant municipal history. Detailed review recommended. |
+
+### Findings
+
+Findings are the specific rules that fired for this property. Each finding card shows:
+
+- **Finding code** (e.g., `ACTIVE_MUNICIPAL_VIOLATION`)
+- **Description** in plain language
+- **Action group** — the category color and label
+- **Severity weight** — how many points this finding contributed to the score
+- **Supporting record count** — how many underlying records triggered this finding
+
+Findings are grouped by action group in this order:
+
+1. **Action Required** (amber) — Tax liens and high-value financial findings
+2. **Review Recommended** (dark blue) — Open violations, enforcement actions, demolition permits
+3. **Worth Noting** (medium blue) — Repeat compliance issues, inspection failures
+4. **Informational** (light blue) — Permit delays, 311 trends, enforcement intensity changes
+
+### AI Summary
+
+The narrative section contains a professionally written summary generated by Claude AI. This summary:
+
+- Explains the findings in plain language
+- References only the structured data shown in the report
+- Uses neutral, informational language
+- Includes the legal disclaimer
+
+The AI summary loads asynchronously — you may see a brief loading state while it generates.
+
+### Property Map
+
+An interactive Leaflet map shows:
+
+- **The subject property** as a centered marker
+- **Nearby properties** (within 500 meters) as colored dots reflecting their activity level
+
+You can zoom and pan the map. The map loads instantly; neighbor markers appear shortly after as the data loads.
+
+### Record Timeline
+
+The **Timeline** tab shows a chronological feed of all municipal records for the property, organized by date. An interactive bar chart at the top visualizes record volume over time. Click any bar to scroll to that time period's records. Click a record to open a slide-over panel with all available fields.
+
+Record types are color-coded:
+- **Violations** — dark blue
+- **Inspections** — medium blue
+- **Permits** — light blue
+- **311 Requests** — slate
+- **Tax Liens** — amber
+- **Vacant Buildings** — gray
+
+### Data Tables
+
+The **Records** tab contains detailed data tables for each record type:
+
+- Building Violations (date, code, status, description, inspection result)
+- Food Inspections (DBA name, facility type, risk level, result)
+- Building Permits (type, status, application date, issue date, processing time)
+- 311 Service Requests (request number, type, code, status, dates)
+- Tax Lien Events (sale year, type, sold status, amount)
+- Vacant Building Violations (docket, type, disposition, fines)
+
+Tables support sorting by column headers and CSV export.
+
+---
+
+## Downloading a PDF Report
+
+1. On any report, click the **Download PDF** button in the report header
+2. A 3-page PDF downloads to your browser:
+   - **Page 1 — Executive Summary:** Address, score, level, findings, AI narrative, disclaimer
+   - **Page 2 — Detailed Findings:** Full data tables for all record types
+   - **Page 3 — Methodology Appendix:** Rule definitions, scoring weights, data sources, freshness timestamps
+
+### PDF Preview
+
+Click the **Preview PDF** button to view the PDF in a slide-over panel without downloading.
+
+---
+
+## Portfolio / Batch Analysis
+
+For analyzing multiple properties at once:
+
+1. Navigate to **Batch** from the navigation bar (or click the Portfolio Analysis card on the dashboard)
+2. Upload a CSV file containing an `address` column (one address per row, max 100 rows)
+   - You can drag and drop the file or click to browse
+3. Processing begins immediately with a live progress stream:
+   - Each address is resolved and scored in sequence
+   - A progress bar shows completion percentage
+   - Results appear as they complete
+4. When finished, you'll see:
+   - **Portfolio summary** — activity level distribution across all properties
+   - **Results table** — every property with its address, score, level, and finding count
+   - Click any row to view the full report
+
+---
+
+## Comparing Reports
+
+To compare two properties (or the same property at different times):
+
+1. Navigate to **Compare** from the navigation bar
+2. Select two reports from your report history using the dropdown selectors
+3. The comparison view shows:
+   - **Score delta** — the numeric difference between the two scores
+   - **Finding differences** — findings that are shared, only in Report A, or only in Report B
+   - **Record count changes** — how the number of violations, inspections, etc. differ
+   - **AI summary comparison** — both narratives side by side
+
+---
+
+## Browsing Raw Data
+
+The **Browse** page lets you explore the underlying municipal datasets:
+
+1. Navigate to **Browse** from the dashboard's Browse Data card
+2. Select a dataset from the table picker (violations, inspections, permits, 311, tax liens, vacant buildings)
+3. Browse the data with server-side pagination (the full dataset is not loaded at once)
+4. Use the **address filter** to narrow results to a specific property across all tables
+
+---
+
+## Report History
+
+All generated reports are saved to your account automatically.
+
+### Accessing Past Reports
+
+- From the **Dashboard** — click any report in the Recent Reports section
+- From the **Search page** — after searching a property, report history for that location appears below the current report
+
+Past reports load with the same detail as when they were generated, including the map and all data tables.
+
+---
+
+## Keyboard Shortcuts
+
+Press **?** at any time to see available keyboard shortcuts:
+
+| Key | Action |
+|-----|--------|
+| `?` | Show/hide keyboard shortcuts |
+| `1` -- `5` | Switch between report tabs (Findings, Summary, Timeline, Records, Map) |
+
+---
+
+## Important Disclaimers
+
+- CIVITAS does **not** provide legal advice
+- CIVITAS does **not** replace formal title examination
+- Reports reflect municipal data as of the timestamps shown — they are not real-time
+- Activity scores are informational summaries, not risk ratings or predictions
+- Always verify findings through official channels before making transaction decisions
+
+Every report includes a full legal disclaimer and data freshness timestamps for each dataset.

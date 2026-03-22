@@ -432,13 +432,42 @@ Four MCP servers give Claude direct, structured access to CIVITAS data via the [
 | `cook-county` | 3 | Cook County Assessor parcel lookups and assessment history |
 | `civitas-reports` | 4 | Generate/retrieve reports and download PDFs |
 
-```bash
-# Via Docker
-docker compose up -d mcp-civitas-db
+### Local Setup (for Claude Code / Claude Desktop)
 
-# Manually (requires Python 3.10+ and mcp package)
-pip install -r requirements-mcp.txt
-python3 -m mcp_servers.civitas_db.server
+MCP servers require Python 3.10+. If your system Python is older, use pyenv or deadsnakes:
+
+**Option A — pyenv (recommended):**
+```bash
+# Install pyenv (if not already installed)
+curl https://pyenv.run | bash
+# Add to ~/.bashrc: export PYENV_ROOT="$HOME/.pyenv" && PATH="$PYENV_ROOT/bin:$PATH" && eval "$(pyenv init - bash)"
+
+# Install Python 3.12 and create a dedicated venv
+pyenv install 3.12
+~/.pyenv/versions/3.12.*/bin/python3.12 -m venv .venv-mcp
+.venv-mcp/bin/pip install -r requirements-mcp.txt
+.venv-mcp/bin/pip install -r backend/requirements.txt   # needed by civitas-reports server
+```
+
+**Option B — deadsnakes PPA (Ubuntu 22.04+):**
+```bash
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt install -y python3.12 python3.12-venv
+python3.12 -m venv .venv-mcp
+.venv-mcp/bin/pip install -r requirements-mcp.txt
+.venv-mcp/bin/pip install -r backend/requirements.txt
+```
+
+`.mcp.json` is pre-configured to use `.venv-mcp/bin/python`. Claude Code reads this file automatically.
+
+### Docker Setup
+
+```bash
+# Start all 4 MCP servers as containers
+./scripts/start-mcp.sh
+
+# Or individually
+docker compose up -d mcp-civitas-db mcp-chicago-data mcp-cook-county mcp-civitas-reports
 ```
 
 ## Recurring Tasks

@@ -78,6 +78,42 @@ services:
       postgres:
         condition: service_healthy
 
+  mcp-chicago-data:
+    build:
+      context: .
+      dockerfile: mcp_servers/Dockerfile
+    container_name: civitas_mcp_chicago
+    env_file: .env
+    environment:
+      MCP_SERVER: chicago_data
+    # No DB dependency — Socrata API only
+
+  mcp-cook-county:
+    build:
+      context: .
+      dockerfile: mcp_servers/Dockerfile
+    container_name: civitas_mcp_cook
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://civitas:civitas@postgres:5432/civitas
+      MCP_SERVER: cook_county
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  mcp-civitas-reports:
+    build:
+      context: .
+      dockerfile: mcp_servers/Dockerfile
+    container_name: civitas_mcp_reports
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://civitas:civitas@postgres:5432/civitas
+      MCP_SERVER: report_gen
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
   reports:

@@ -471,13 +471,12 @@ export interface NeighborhoodPropertyItem {
   full_address_standardized: string
   lat: number
   lon: number
-  activity_score: number
-  activity_level: string
-  flag_count: number
   total_violations: number
   active_violation_count: number
   sr_count_12mo: number
   total_lien_events: number
+  failed_inspection_count_24mo: number
+  vacant_violation_count: number
 }
 
 export interface NeighborhoodPropertiesResponse {

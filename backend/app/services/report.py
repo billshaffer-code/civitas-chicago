@@ -17,6 +17,7 @@ from backend.app.database import get_conn
 from backend.app.services import rule_engine
 from backend.app.services.baselines import CHICAGO_BASELINES
 from backend.app.services.claude_ai import build_claude_payload, generate_narrative
+from backend.app.services.neighborhood import get_neighborhood_baselines
 
 
 # ── Report cache ────────────────────────────────────────────────────────────────
@@ -167,7 +168,25 @@ async def generate_single_report(
         )
         narrative = await generate_narrative(claude_payload)
 
-    # ── 5. Assemble report dict ───────────────────────────────────────────────
+    # ── 5. Neighborhood baselines ──────────────────────────────────────────────
+    ca_id = location_row.get("community_area_id")
+    neighborhood_data = None
+    if ca_id:
+        neighborhood_baselines = await get_neighborhood_baselines(ca_id)
+        if neighborhood_baselines:
+            # Look up community area name
+            async with get_conn() as conn:
+                ca_name = await conn.fetchval(
+                    "SELECT name FROM dim_community_area WHERE community_area_id = $1",
+                    ca_id,
+                )
+            neighborhood_data = {
+                "community_area_id": ca_id,
+                "community_area_name": ca_name,
+                "baselines": neighborhood_baselines,
+            }
+
+    # ── 6. Assemble report dict ───────────────────────────────────────────────
     report_id = str(uuid.uuid4())
     now_iso = datetime.now(timezone.utc).isoformat()
 
@@ -192,6 +211,7 @@ async def generate_single_report(
         },
         "pdf_url": f"/api/v1/report/{report_id}/pdf",
         "baselines": CHICAGO_BASELINES,
+        "neighborhood": neighborhood_data,
         "disclaimer": (
             "This report does not constitute legal advice or a title examination. "
             "It is based solely on structured municipal data as of the dates noted "
@@ -199,10 +219,10 @@ async def generate_single_report(
         ),
     }
 
-    # ── 6. Cache the report data ──────────────────────────────────────────────
+    # ── 7. Cache the report data ──────────────────────────────────────────────
     _cache_set(location_sk, report)
 
-    # ── 7. Audit log (store full report JSON) ─────────────────────────────────
+    # ── 8. Audit log (store full report JSON) ─────────────────────────────────
     async with get_conn() as conn:
         await conn.execute(
             """

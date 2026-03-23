@@ -98,6 +98,11 @@ export interface ReportResponse {
   data_freshness: Record<string, string | null>
   pdf_url?: string
   baselines?: Record<string, number>
+  neighborhood?: {
+    community_area_id: number
+    community_area_name: string
+    baselines: Record<string, number>
+  } | null
   disclaimer: string
 }
 
@@ -429,5 +434,86 @@ export async function checkLiveRecords(
   const { data } = await api.get<LiveCheckResponse>('/api/v1/data/live-check', {
     params: { dataset, address, since },
   })
+  return data
+}
+
+// ── Neighborhood API ───────────────────────────────────────────────────────
+
+export interface CommunityAreaSummary {
+  community_area_id: number
+  community_area_name: string
+  property_count: number
+  avg_activity_score: number
+  median_activity_score: number
+  quiet_count: number
+  typical_count: number
+  active_count: number
+  complex_count: number
+  avg_violations: number
+  avg_active_violations: number
+  avg_311_12mo: number
+  avg_lien_events: number
+  avg_permit_processing_days: number
+  avg_failed_inspections_24mo: number
+  total_violations: number
+  total_311_12mo: number
+  total_lien_events: number
+  total_lien_amount: number
+  total_vacant_violations: number
+}
+
+export interface CommunityAreaDetail extends CommunityAreaSummary {
+  boundary_geojson: GeoJSON.Geometry
+}
+
+export interface NeighborhoodPropertyItem {
+  location_sk: number
+  full_address_standardized: string
+  lat: number
+  lon: number
+  activity_score: number
+  activity_level: string
+  flag_count: number
+  total_violations: number
+  active_violation_count: number
+  sr_count_12mo: number
+  total_lien_events: number
+}
+
+export interface NeighborhoodPropertiesResponse {
+  total: number
+  page: number
+  page_size: number
+  properties: NeighborhoodPropertyItem[]
+}
+
+export interface CommunityAreaGeoJSON {
+  type: 'FeatureCollection'
+  features: GeoJSON.Feature[]
+}
+
+export async function getNeighborhoodList(): Promise<CommunityAreaSummary[]> {
+  const { data } = await api.get<CommunityAreaSummary[]>('/api/v1/neighborhood/list')
+  return data
+}
+
+export async function getNeighborhoodDetail(id: number): Promise<CommunityAreaDetail> {
+  const { data } = await api.get<CommunityAreaDetail>(`/api/v1/neighborhood/${id}`)
+  return data
+}
+
+export async function getNeighborhoodProperties(
+  id: number,
+  params?: { page?: number; page_size?: number; sort_by?: string; sort_dir?: string },
+): Promise<NeighborhoodPropertiesResponse> {
+  const { data } = await api.get<NeighborhoodPropertiesResponse>(
+    `/api/v1/neighborhood/${id}/properties`,
+    { params },
+  )
+  return data
+}
+
+export async function getNeighborhoodGeoJSON(): Promise<CommunityAreaGeoJSON> {
+  const { data } = await api.get<CommunityAreaGeoJSON>('/api/v1/neighborhood/geojson')
   return data
 }

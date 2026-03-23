@@ -23,6 +23,7 @@ def run() -> dict[str, Any]:
     try:
         with conn.cursor() as cur:
             cur.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY view_property_summary")
+            cur.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY view_community_area_summary")
         conn.commit()
         duration = round(time.time() - start, 1)
         log.info("Materialized view refreshed in %.1fs", duration)

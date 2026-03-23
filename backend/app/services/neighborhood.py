@@ -65,20 +65,23 @@ async def get_neighborhood_properties(
     community_area_id: int,
     page: int = 1,
     page_size: int = 25,
-    sort_by: str = "activity_score",
+    sort_by: str = "violations",
     sort_dir: str = "desc",
 ) -> dict:
-    """Return paginated property list for a community area with scores."""
+    """Return paginated property list for a community area.
+
+    Uses only the materialized view_property_summary (indexed) to avoid the
+    expensive view_property_score view which computes flags on-the-fly.
+    """
     offset = (page - 1) * page_size
 
     allowed_sorts = {
-        "activity_score": "COALESCE(sc.raw_score, 0)",
         "address": "vps.full_address_standardized",
         "violations": "vps.total_violations",
         "311": "vps.sr_count_12mo",
         "liens": "vps.total_lien_events",
     }
-    order_col = allowed_sorts.get(sort_by, "COALESCE(sc.raw_score, 0)")
+    order_col = allowed_sorts.get(sort_by, "vps.total_violations")
     order_dir = "ASC" if sort_dir.lower() == "asc" else "DESC"
 
     async with get_conn() as conn:
@@ -96,14 +99,13 @@ async def get_neighborhood_properties(
             f"""
             SELECT vps.location_sk, vps.full_address_standardized,
                    vps.lat, vps.lon,
-                   COALESCE(sc.raw_score, 0) AS activity_score,
-                   COALESCE(sc.activity_level, 'QUIET') AS activity_level,
-                   COALESCE(sc.flag_count, 0) AS flag_count,
                    vps.total_violations, vps.active_violation_count,
-                   vps.sr_count_12mo, vps.total_lien_events
+                   vps.sr_count_12mo, vps.total_lien_events,
+                   vps.total_lien_events AS lien_count,
+                   vps.failed_inspection_count_24mo,
+                   vps.vacant_violation_count
             FROM dim_location dl
             JOIN view_property_summary vps ON vps.location_sk = dl.location_sk
-            LEFT JOIN view_property_score sc ON sc.location_sk = dl.location_sk
             WHERE dl.community_area_id = $1
             ORDER BY {order_col} {order_dir}
             LIMIT $2 OFFSET $3

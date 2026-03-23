@@ -3,7 +3,6 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
 import { getNeighborhoodDetail, getNeighborhoodProperties } from '../api/civitas'
 import type { CommunityAreaDetail, NeighborhoodPropertyItem } from '../api/civitas'
-import MiniActivityBar from './MiniActivityBar'
 
 interface Props {
   communityAreaId: number
@@ -30,24 +29,28 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
   const [properties, setProperties] = useState<NeighborhoodPropertyItem[]>([])
   const [propTotal, setPropTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [loading, setLoading] = useState(true)
+  const [detailLoading, setDetailLoading] = useState(true)
+  const [propsLoading, setPropsLoading] = useState(true)
 
+  // Load detail (fast — hits materialized view) and properties (slower) independently
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    setDetailLoading(true)
+    setPropsLoading(true)
     setPage(1)
+    setProperties([])
 
-    Promise.all([
-      getNeighborhoodDetail(communityAreaId),
-      getNeighborhoodProperties(communityAreaId, { page: 1, page_size: 25, sort_by: 'activity_score', sort_dir: 'desc' }),
-    ]).then(([d, p]) => {
-      if (cancelled) return
-      setDetail(d)
-      setProperties(p.properties)
-      setPropTotal(p.total)
-    }).finally(() => {
-      if (!cancelled) setLoading(false)
-    })
+    getNeighborhoodDetail(communityAreaId)
+      .then(d => { if (!cancelled) setDetail(d) })
+      .finally(() => { if (!cancelled) setDetailLoading(false) })
+
+    getNeighborhoodProperties(communityAreaId, { page: 1, page_size: 25, sort_by: 'violations', sort_dir: 'desc' })
+      .then(p => {
+        if (cancelled) return
+        setProperties(p.properties)
+        setPropTotal(p.total)
+      })
+      .finally(() => { if (!cancelled) setPropsLoading(false) })
 
     return () => { cancelled = true }
   }, [communityAreaId])
@@ -55,13 +58,13 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
   function loadMore() {
     const nextPage = page + 1
     setPage(nextPage)
-    getNeighborhoodProperties(communityAreaId, { page: nextPage, page_size: 25, sort_by: 'activity_score', sort_dir: 'desc' })
+    getNeighborhoodProperties(communityAreaId, { page: nextPage, page_size: 25, sort_by: 'violations', sort_dir: 'desc' })
       .then(p => {
         setProperties(prev => [...prev, ...p.properties])
       })
   }
 
-  if (loading || !detail) {
+  if (detailLoading || !detail) {
     return (
       <div className={`bg-white shadow-apple-xs border border-separator rounded-2xl p-6 ${embedded ? 'lg:max-h-[500px]' : ''}`}>
         <div className="animate-pulse space-y-4">
@@ -105,7 +108,7 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
               <span>&larr;</span> Back to all neighborhoods
             </button>
             <div className="flex items-center justify-between">
-              <h2 className={`font-bold text-ink-primary ${embedded ? 'text-[15px]' : 'text-lg'}`}>
+              <h2 className="text-[15px] font-bold text-ink-primary">
                 {detail.community_area_name}
               </h2>
               <div className="flex items-center gap-2">
@@ -176,36 +179,49 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
           <h3 className="text-[11px] font-semibold text-ink-quaternary uppercase tracking-wider mb-2">
             Properties ({propTotal.toLocaleString()})
           </h3>
-          <div className={`space-y-1 ${embedded ? '' : 'max-h-[320px] overflow-y-auto'}`}>
-            {properties.map(p => (
-              <div
-                key={p.location_sk}
-                className="flex items-center justify-between py-1.5 px-2.5 rounded-lg hover:bg-surface-raised transition-colors"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className={`font-medium text-ink-primary truncate ${embedded ? 'text-[12px]' : 'text-[13px]'}`}>
-                    {p.full_address_standardized}
+          {propsLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="animate-pulse flex items-center gap-3 py-1.5 px-2.5">
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 bg-surface-sunken rounded w-3/4" />
+                    <div className="h-2 bg-surface-sunken rounded w-1/2" />
                   </div>
-                  <div className="text-[9px] text-ink-tertiary mt-0.5">
-                    {p.total_violations} violations &middot; {p.sr_count_12mo} 311 &middot; {p.total_lien_events} liens
+                  <div className="h-3 bg-surface-sunken rounded w-12" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className={`space-y-1 ${embedded ? '' : 'max-h-[320px] overflow-y-auto'}`}>
+                {properties.map(p => (
+                  <div
+                    key={p.location_sk}
+                    className="flex items-center justify-between py-1.5 px-2.5 rounded-lg hover:bg-surface-raised transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className={`font-medium text-ink-primary truncate ${embedded ? 'text-[12px]' : 'text-[13px]'}`}>
+                        {p.full_address_standardized}
+                      </div>
+                      <div className="text-[9px] text-ink-tertiary mt-0.5">
+                        {p.total_violations} violations &middot; {p.sr_count_12mo} 311 &middot; {p.total_lien_events} liens
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 ml-2 text-[11px] font-semibold text-ink-secondary tabular-nums">
+                      {p.total_violations}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                  <MiniActivityBar score={p.activity_score} />
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${LEVEL_CONFIG[p.activity_level as ActivityLevel]?.pillBg || ''} ${LEVEL_CONFIG[p.activity_level as ActivityLevel]?.pillText || ''}`}>
-                    {p.activity_score}
-                  </span>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-          {properties.length < propTotal && (
-            <button
-              onClick={loadMore}
-              className="w-full mt-2 py-1.5 text-[12px] font-medium text-accent hover:text-accent/80 transition-colors"
-            >
-              Load more
-            </button>
+              {properties.length < propTotal && (
+                <button
+                  onClick={loadMore}
+                  className="w-full mt-2 py-1.5 text-[12px] font-medium text-accent hover:text-accent/80 transition-colors"
+                >
+                  Load more
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

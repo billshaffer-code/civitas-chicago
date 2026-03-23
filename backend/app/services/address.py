@@ -49,6 +49,7 @@ async def resolve_address(
         "lat": None,
         "lon": None,
         "parcel_id": None,
+        "community_area_id": None,
         "match_confidence": "NO_MATCH",
         "warning": None,
     }
@@ -63,7 +64,8 @@ async def resolve_address(
                     SELECT p.parcel_sk, p.parcel_id,
                            l.location_sk, l.full_address_standardized,
                            l.house_number, l.street_direction, l.street_name,
-                           l.street_type, l.zip, l.lat, l.lon
+                           l.street_type, l.zip, l.lat, l.lon,
+                           l.community_area_id
                     FROM dim_parcel p
                     JOIN dim_location l ON l.location_sk = p.location_sk
                     WHERE p.parcel_id = $1
@@ -93,7 +95,7 @@ async def resolve_address(
                 SELECT l.location_sk, l.full_address_standardized,
                        l.house_number, l.street_direction, l.street_name,
                        l.street_type, l.zip, l.lat, l.lon,
-                       p.parcel_id
+                       l.community_area_id, p.parcel_id
                 FROM dim_location l
                 LEFT JOIN dim_parcel p ON p.location_sk = l.location_sk
                 WHERE l.full_address_standardized = $1
@@ -112,7 +114,7 @@ async def resolve_address(
                 SELECT l.location_sk, l.full_address_standardized,
                        l.house_number, l.street_direction, l.street_name,
                        l.street_type, l.zip, l.lat, l.lon,
-                       p.parcel_id
+                       l.community_area_id, p.parcel_id
                 FROM dim_location l
                 LEFT JOIN dim_parcel p ON p.location_sk = l.location_sk
                 WHERE l.full_address_standardized = $1
@@ -142,7 +144,7 @@ async def resolve_address(
                 SELECT l.location_sk, l.full_address_standardized,
                        l.house_number, l.street_direction, l.street_name,
                        l.street_type, l.zip, l.lat, l.lon,
-                       p.parcel_id
+                       l.community_area_id, p.parcel_id
                 FROM dim_location l
                 LEFT JOIN dim_parcel p ON p.location_sk = l.location_sk
                 WHERE {where}
@@ -160,7 +162,7 @@ async def resolve_address(
                 SELECT l.location_sk, l.full_address_standardized,
                        l.house_number, l.street_direction, l.street_name,
                        l.street_type, l.zip, l.lat, l.lon,
-                       p.parcel_id
+                       l.community_area_id, p.parcel_id
                 FROM dim_location l
                 LEFT JOIN dim_parcel p ON p.location_sk = l.location_sk
                 WHERE l.house_number = $1
@@ -198,6 +200,7 @@ def _build_result(row, confidence: str, parcel_id: Optional[str] = None) -> dict
         "lat": row["lat"],
         "lon": row["lon"],
         "parcel_id": parcel_id,
+        "community_area_id": row.get("community_area_id"),
         "match_confidence": confidence,
         "warning": None,
     }

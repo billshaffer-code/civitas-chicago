@@ -13,6 +13,7 @@ from backend.app.middleware import RequestLoggingMiddleware
 from backend.app.routers import auth as auth_router
 from backend.app.routers import batch as batch_router
 from backend.app.routers import data as data_router
+from backend.app.routers import neighborhood as neighborhood_router
 from backend.app.routers import property as property_router
 from backend.app.routers import report as report_router
 
@@ -45,6 +46,7 @@ app.add_middleware(
 app.include_router(auth_router.router)
 app.include_router(batch_router.router)
 app.include_router(data_router.router)
+app.include_router(neighborhood_router.router)
 app.include_router(property_router.router)
 app.include_router(report_router.router)
 

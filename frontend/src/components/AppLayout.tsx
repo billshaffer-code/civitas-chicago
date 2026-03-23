@@ -6,7 +6,8 @@ const NAV_ITEMS = [
   { path: '/search',    label: 'Search' },
   { path: '/browse',    label: 'Browse' },
   { path: '/batch',     label: 'Portfolio' },
-  { path: '/compare',   label: 'Compare' },
+  { path: '/compare',       label: 'Compare' },
+  { path: '/neighborhoods', label: 'Neighborhoods' },
 ]
 
 export default function AppLayout() {

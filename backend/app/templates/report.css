@@ -99,6 +99,29 @@ h3 { font-size: 10pt; margin: 12pt 0 4pt; color: #374151; font-weight: 600; }
     text-align: center;
 }
 
+/* ── Neighborhood context ────────────────────────────── */
+.neighborhood-card {
+    border: 1pt solid #dbeafe;
+    border-radius: 8pt;
+    padding: 12pt 16pt;
+    margin: 12pt 0;
+    background: #eff6ff;
+}
+.neighborhood-card h2 {
+    font-size: 11pt;
+    color: #1e40af;
+    margin-bottom: 6pt;
+}
+.neighborhood-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+}
+.neighborhood-table td {
+    padding: 3pt 6pt;
+    border: none;
+}
+
 /* ── Finding cards by action group ─────────────────── */
 .flag-card {
     border-left: 3pt solid #d1d5db;

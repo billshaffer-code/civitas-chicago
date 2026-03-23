@@ -32,7 +32,9 @@ psql "$DATABASE_URL" -f sql/04_batch.sql -q
 psql "$DATABASE_URL" -f sql/views/01_summary.sql -q
 psql "$DATABASE_URL" -f sql/views/02_flags.sql -q
 psql "$DATABASE_URL" -f sql/views/03_score.sql -q
+psql "$DATABASE_URL" -f sql/views/04_neighborhood.sql -q
 psql "$DATABASE_URL" -f sql/05_tasks_and_quality.sql -q
+psql "$DATABASE_URL" -f sql/06_neighborhood.sql -q
 echo "Schema applied."
 
 # ── 3. Backend API ──────────────────────────────────────────────────

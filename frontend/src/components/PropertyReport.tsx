@@ -273,6 +273,25 @@ export default function PropertyReport({ report, loading = false, locationSk: pr
         <PropertyMap lat={lat} lon={lon} address={report.property.address} locationSk={locationSk} />
       )}
 
+      {/* ── Neighborhood Context ─────────────────────────────────── */}
+      {!loading && report?.neighborhood && (
+        <button
+          onClick={() => navigate(`/neighborhoods?selected=${report.neighborhood!.community_area_id}`)}
+          className="w-full bg-white shadow-apple-xs border border-separator rounded-apple-lg px-5 py-3 flex items-center justify-between hover:shadow-apple-sm hover:border-accent-muted/60 transition-all duration-150 ease-apple group"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600">
+              {report.neighborhood.community_area_name}
+            </span>
+            <span className="text-[12px] text-ink-tertiary">
+              Neighborhood avg: <span className="font-semibold text-ink-secondary">{Math.round(report.neighborhood.baselines.avg_violations_per_property ?? 0)}</span> violations
+              &middot; This property: <span className="font-semibold text-ink-primary">{(report.supporting_records.violations ?? []).length}</span>
+            </span>
+          </div>
+          <span className="text-[11px] text-ink-quaternary group-hover:text-accent transition-colors">&rarr;</span>
+        </button>
+      )}
+
       {/* ── Score + Stat Cards ─────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
         {loading || !report ? (
@@ -312,7 +331,9 @@ export default function PropertyReport({ report, loading = false, locationSk: pr
             {RECORD_STATS.map(s => {
               const count = (report.supporting_records[s.key as keyof typeof report.supporting_records] ?? []).length
               const baseline = BASELINE_MAP[s.key]
-              const baselineVal = baseline ? report.baselines?.[baseline.key] : undefined
+              const effectiveBaselines = report.neighborhood?.baselines ?? report.baselines
+              const baselineVal = baseline ? effectiveBaselines?.[baseline.key] : undefined
+              const baselineLabel = report.neighborhood ? 'Neighborhood' : 'Avg'
               const comparison = baselineVal != null ? (count > baselineVal ? 'above' : count < baselineVal ? 'below' : 'at') : undefined
               return (
                 <button
@@ -327,7 +348,7 @@ export default function PropertyReport({ report, loading = false, locationSk: pr
                       comparison === 'above' ? 'text-blue-600' : comparison === 'below' ? 'text-slate-400' : 'text-slate-400'
                     }`}>
                       {comparison === 'above' ? '\u25B2' : comparison === 'below' ? '\u25BC' : '\u2022'}{' '}
-                      Avg: {Number(baselineVal) % 1 === 0 ? baselineVal : Number(baselineVal).toFixed(1)}
+                      {baselineLabel}: {Number(baselineVal) % 1 === 0 ? baselineVal : Number(baselineVal).toFixed(1)}
                     </div>
                   )}
                 </button>

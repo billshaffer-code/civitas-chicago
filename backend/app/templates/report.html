@@ -36,6 +36,27 @@
 </div>
 {% endif %}
 
+{% if report.neighborhood %}
+<div class="neighborhood-card">
+  <h2 style="margin-top:0">Neighborhood Context</h2>
+  <p><strong>Community Area:</strong> {{ report.neighborhood.community_area_name }}</p>
+  <table class="neighborhood-table">
+    <tr>
+      <td><strong>Neighborhood Avg Violations:</strong></td>
+      <td>{{ report.neighborhood.baselines.avg_violations_per_property | round(1) }}</td>
+      <td><strong>This Property:</strong></td>
+      <td>{{ report.supporting_records.violations | length }}</td>
+    </tr>
+    <tr>
+      <td><strong>Neighborhood Avg 311 (12mo):</strong></td>
+      <td>{{ report.neighborhood.baselines.avg_311_requests_12mo | round(1) }}</td>
+      <td><strong>This Property:</strong></td>
+      <td>{{ report.supporting_records.service_311 | length }}</td>
+    </tr>
+  </table>
+</div>
+{% endif %}
+
 {% if report.triggered_flags %}
 <h2>Findings</h2>
 {% for f in report.triggered_flags %}

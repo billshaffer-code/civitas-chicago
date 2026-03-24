@@ -503,7 +503,7 @@ export async function getNeighborhoodDetail(id: number): Promise<CommunityAreaDe
 
 export async function getNeighborhoodProperties(
   id: number,
-  params?: { page?: number; page_size?: number; sort_by?: string; sort_dir?: string },
+  params?: { page?: number; page_size?: number; sort_by?: string; sort_dir?: string; address?: string },
 ): Promise<NeighborhoodPropertiesResponse> {
   const { data } = await api.get<NeighborhoodPropertiesResponse>(
     `/api/v1/neighborhood/${id}/properties`,

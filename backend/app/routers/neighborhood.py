@@ -51,8 +51,9 @@ async def neighborhood_properties(
     community_area_id: int,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
-    sort_by: str = Query(default="activity_score"),
+    sort_by: str = Query(default="violations"),
     sort_dir: str = Query(default="desc"),
+    address: str = Query(default=None),
     user: dict = Depends(get_current_user),
 ):
     """Return paginated property list for a community area."""
@@ -62,4 +63,5 @@ async def neighborhood_properties(
         page_size=page_size,
         sort_by=sort_by,
         sort_dir=sort_dir,
+        address=address,
     )

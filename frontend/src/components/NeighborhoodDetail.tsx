@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
-import { getNeighborhoodDetail, getNeighborhoodProperties } from '../api/civitas'
+import { getNeighborhoodDetail, getNeighborhoodProperties, generateReport } from '../api/civitas'
 import type { CommunityAreaDetail, NeighborhoodPropertyItem } from '../api/civitas'
 
 interface Props {
@@ -25,6 +26,7 @@ function activityLevel(score: number): ActivityLevel {
 }
 
 export default function NeighborhoodDetail({ communityAreaId, onClose, embedded }: Props) {
+  const navigate = useNavigate()
   const [detail, setDetail] = useState<CommunityAreaDetail | null>(null)
   const [properties, setProperties] = useState<NeighborhoodPropertyItem[]>([])
   const [propTotal, setPropTotal] = useState(0)
@@ -32,36 +34,122 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
   const [detailLoading, setDetailLoading] = useState(true)
   const [propsLoading, setPropsLoading] = useState(true)
 
-  // Load detail (fast — hits materialized view) and properties (slower) independently
+  // Search
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeSearch, setActiveSearch] = useState('')
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Multi-select
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [generating, setGenerating] = useState(false)
+  const [genProgress, setGenProgress] = useState({ done: 0, total: 0 })
+
+  const fetchProperties = useCallback(
+    (pg: number, address?: string, append = false) => {
+      if (!append) setPropsLoading(true)
+      getNeighborhoodProperties(communityAreaId, {
+        page: pg,
+        page_size: 25,
+        sort_by: 'violations',
+        sort_dir: 'desc',
+        address: address || undefined,
+      })
+        .then(p => {
+          if (append) {
+            setProperties(prev => [...prev, ...p.properties])
+          } else {
+            setProperties(p.properties)
+          }
+          setPropTotal(p.total)
+        })
+        .finally(() => setPropsLoading(false))
+    },
+    [communityAreaId],
+  )
+
+  // Load detail and initial properties
   useEffect(() => {
     let cancelled = false
     setDetailLoading(true)
     setPropsLoading(true)
     setPage(1)
     setProperties([])
+    setSearchQuery('')
+    setActiveSearch('')
+    setSelected(new Set())
 
     getNeighborhoodDetail(communityAreaId)
       .then(d => { if (!cancelled) setDetail(d) })
       .finally(() => { if (!cancelled) setDetailLoading(false) })
 
-    getNeighborhoodProperties(communityAreaId, { page: 1, page_size: 25, sort_by: 'violations', sort_dir: 'desc' })
-      .then(p => {
-        if (cancelled) return
-        setProperties(p.properties)
-        setPropTotal(p.total)
-      })
-      .finally(() => { if (!cancelled) setPropsLoading(false) })
+    fetchProperties(1)
 
     return () => { cancelled = true }
-  }, [communityAreaId])
+  }, [communityAreaId, fetchProperties])
+
+  // Debounced search
+  function handleSearchChange(value: string) {
+    setSearchQuery(value)
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => {
+      setActiveSearch(value)
+      setPage(1)
+      setSelected(new Set())
+      fetchProperties(1, value)
+    }, 300)
+  }
 
   function loadMore() {
     const nextPage = page + 1
     setPage(nextPage)
-    getNeighborhoodProperties(communityAreaId, { page: nextPage, page_size: 25, sort_by: 'violations', sort_dir: 'desc' })
-      .then(p => {
-        setProperties(prev => [...prev, ...p.properties])
-      })
+    fetchProperties(nextPage, activeSearch, true)
+  }
+
+  function toggleSelect(locationSk: number) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(locationSk)) next.delete(locationSk)
+      else next.add(locationSk)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === properties.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(properties.map(p => p.location_sk)))
+    }
+  }
+
+  async function handleGenerateReports() {
+    if (selected.size === 0) return
+    const selectedProps = properties.filter(p => selected.has(p.location_sk))
+
+    setGenerating(true)
+    setGenProgress({ done: 0, total: selectedProps.length })
+    const reportIds: string[] = []
+
+    for (const p of selectedProps) {
+      try {
+        const r = await generateReport(p.location_sk, p.full_address_standardized)
+        reportIds.push(r.report_id)
+      } catch {
+        // skip failed
+      }
+      setGenProgress(prev => ({ ...prev, done: prev.done + 1 }))
+    }
+
+    setGenerating(false)
+    setSelected(new Set())
+
+    if (reportIds.length === 1) {
+      // Single report — navigate directly to it
+      navigate(`/search?report=${reportIds[0]}`)
+    } else if (reportIds.length > 1) {
+      // Multiple reports — navigate to dashboard
+      navigate('/dashboard')
+    }
   }
 
   if (detailLoading || !detail) {
@@ -176,9 +264,76 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
 
         {/* Property list */}
         <div className={embedded ? 'px-4 py-3' : 'px-6 py-4'}>
-          <h3 className="text-[11px] font-semibold text-ink-quaternary uppercase tracking-wider mb-2">
-            Properties ({propTotal.toLocaleString()})
-          </h3>
+          {/* Search + header row */}
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-[11px] font-semibold text-ink-quaternary uppercase tracking-wider">
+              Properties ({propTotal.toLocaleString()})
+            </h3>
+            {!propsLoading && properties.length > 0 && (
+              <button
+                onClick={toggleSelectAll}
+                className="text-[10px] font-medium text-accent hover:text-accent/80 transition-colors"
+              >
+                {selected.size === properties.length ? 'Deselect all' : 'Select all'}
+              </button>
+            )}
+          </div>
+
+          {/* Search box */}
+          <div className="relative mb-2">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-quaternary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => handleSearchChange(e.target.value)}
+              placeholder="Search by address..."
+              className="w-full pl-8 pr-3 py-1.5 text-[12px] bg-surface-sunken border border-separator rounded-lg
+                         placeholder:text-ink-quaternary text-ink-primary
+                         focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40
+                         transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => handleSearchChange('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-quaternary hover:text-ink-secondary text-[12px]"
+              >
+                &times;
+              </button>
+            )}
+          </div>
+
+          {/* Generate reports action bar */}
+          {selected.size > 0 && (
+            <div className="flex items-center gap-2 mb-2 px-2.5 py-1.5 bg-accent/5 border border-accent/20 rounded-lg">
+              <span className="text-[11px] font-medium text-ink-secondary flex-1">
+                {generating
+                  ? `Generating ${genProgress.done}/${genProgress.total}...`
+                  : `${selected.size} selected`}
+              </span>
+              <button
+                onClick={handleGenerateReports}
+                disabled={generating}
+                className="text-[11px] font-semibold text-white bg-accent hover:bg-accent/90
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           px-3 py-1 rounded-md transition-colors"
+              >
+                {generating ? 'Generating...' : `Generate ${selected.size} Report${selected.size > 1 ? 's' : ''}`}
+              </button>
+            </div>
+          )}
+
+          {/* Progress bar during generation */}
+          {generating && (
+            <div className="mb-2 h-1 bg-surface-sunken rounded-full overflow-hidden">
+              <div
+                className="h-full bg-accent transition-all duration-300 rounded-full"
+                style={{ width: `${genProgress.total > 0 ? (genProgress.done / genProgress.total) * 100 : 0}%` }}
+              />
+            </div>
+          )}
+
           {propsLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -191,27 +346,49 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
                 </div>
               ))}
             </div>
+          ) : properties.length === 0 ? (
+            <div className="text-center py-6 text-[12px] text-ink-tertiary">
+              {activeSearch ? 'No properties match your search' : 'No properties found'}
+            </div>
           ) : (
             <>
               <div className={`space-y-1 ${embedded ? '' : 'max-h-[320px] overflow-y-auto'}`}>
-                {properties.map(p => (
-                  <div
-                    key={p.location_sk}
-                    className="flex items-center justify-between py-1.5 px-2.5 rounded-lg hover:bg-surface-raised transition-colors"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className={`font-medium text-ink-primary truncate ${embedded ? 'text-[12px]' : 'text-[13px]'}`}>
-                        {p.full_address_standardized}
+                {properties.map(p => {
+                  const isSelected = selected.has(p.location_sk)
+                  return (
+                    <div
+                      key={p.location_sk}
+                      className={`flex items-center gap-2 py-1.5 px-2.5 rounded-lg transition-colors cursor-pointer ${
+                        isSelected ? 'bg-accent/5 border border-accent/20' : 'hover:bg-surface-raised border border-transparent'
+                      }`}
+                      onClick={() => toggleSelect(p.location_sk)}
+                    >
+                      {/* Checkbox */}
+                      <div className={`flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                        isSelected
+                          ? 'bg-accent border-accent'
+                          : 'border-separator hover:border-ink-quaternary'
+                      }`}>
+                        {isSelected && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
                       </div>
-                      <div className="text-[9px] text-ink-tertiary mt-0.5">
-                        {p.total_violations} violations &middot; {p.sr_count_12mo} 311 &middot; {p.total_lien_events} liens
+                      <div className="min-w-0 flex-1">
+                        <div className={`font-medium text-ink-primary truncate ${embedded ? 'text-[12px]' : 'text-[13px]'}`}>
+                          {p.full_address_standardized}
+                        </div>
+                        <div className="text-[9px] text-ink-tertiary mt-0.5">
+                          {p.total_violations} violations &middot; {p.sr_count_12mo} 311 &middot; {p.total_lien_events} liens
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 ml-2 text-[11px] font-semibold text-ink-secondary tabular-nums">
+                        {p.total_violations}
                       </div>
                     </div>
-                    <div className="flex-shrink-0 ml-2 text-[11px] font-semibold text-ink-secondary tabular-nums">
-                      {p.total_violations}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
               {properties.length < propTotal && (
                 <button

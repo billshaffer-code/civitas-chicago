@@ -67,6 +67,7 @@ async def get_neighborhood_properties(
     page_size: int = 25,
     sort_by: str = "violations",
     sort_dir: str = "desc",
+    address: Optional[str] = None,
 ) -> dict:
     """Return paginated property list for a community area.
 
@@ -84,15 +85,26 @@ async def get_neighborhood_properties(
     order_col = allowed_sorts.get(sort_by, "vps.total_violations")
     order_dir = "ASC" if sort_dir.lower() == "asc" else "DESC"
 
+    # Build optional address filter
+    address_clause = ""
+    params: list = [community_area_id]
+    if address and address.strip():
+        address_clause = (
+            " AND vps.full_address_standardized ILIKE '%' || $2 || '%'"
+        )
+        params.append(address.strip())
+
+    param_offset = len(params)
+
     async with get_conn() as conn:
         count = await conn.fetchval(
-            """
+            f"""
             SELECT COUNT(*)
             FROM dim_location dl
             JOIN view_property_summary vps ON vps.location_sk = dl.location_sk
-            WHERE dl.community_area_id = $1
+            WHERE dl.community_area_id = $1{address_clause}
             """,
-            community_area_id,
+            *params,
         )
 
         rows = await conn.fetch(
@@ -106,11 +118,11 @@ async def get_neighborhood_properties(
                    vps.vacant_violation_count
             FROM dim_location dl
             JOIN view_property_summary vps ON vps.location_sk = dl.location_sk
-            WHERE dl.community_area_id = $1
+            WHERE dl.community_area_id = $1{address_clause}
             ORDER BY {order_col} {order_dir}
-            LIMIT $2 OFFSET $3
+            LIMIT ${param_offset + 1} OFFSET ${param_offset + 2}
             """,
-            community_area_id,
+            *params,
             page_size,
             offset,
         )

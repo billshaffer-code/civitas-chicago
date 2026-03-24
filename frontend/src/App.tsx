@@ -10,7 +10,6 @@ import SearchPage from './pages/SearchPage'
 import BatchPage from './pages/BatchPage'
 import BrowsePage from './pages/BrowsePage'
 import ComparePage from './pages/ComparePage'
-import NeighborhoodPage from './pages/NeighborhoodPage'
 import LearnMorePage from './pages/LearnMorePage'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ToastProvider } from './components/Toast'
@@ -39,7 +38,7 @@ export default function App() {
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/batch" element={<BatchPage />} />
             <Route path="/compare" element={<ComparePage />} />
-            <Route path="/neighborhoods" element={<NeighborhoodPage />} />
+            <Route path="/neighborhoods" element={<Navigate to="/dashboard" replace />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

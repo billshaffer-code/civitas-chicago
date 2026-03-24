@@ -8,6 +8,7 @@ interface Props {
   selectedId: number | null
   selectedBounds: L.LatLngBoundsExpression | null
   onSelect: (id: number) => void
+  height?: number | string
 }
 
 /** Map avg_activity_score (0–100) to a blue gradient */
@@ -18,7 +19,7 @@ function scoreToColor(score: number): string {
   return '#e2e8f0'                  // slate-200
 }
 
-export default function NeighborhoodMap({ geojson, selectedId, selectedBounds, onSelect }: Props) {
+export default function NeighborhoodMap({ geojson, selectedId, selectedBounds, onSelect, height = 500 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const layerRef = useRef<L.GeoJSON | null>(null)
@@ -39,14 +40,17 @@ export default function NeighborhoodMap({ geojson, selectedId, selectedBounds, o
       attributionControl: false,
     })
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       subdomains: 'abcd',
-      maxZoom: 19,
+      maxZoom: 20,
     }).addTo(map)
 
     L.control.zoom({ position: 'topright' }).addTo(map)
 
     mapRef.current = map
+
+    // Ensure map sizes correctly after CSS layout settles
+    requestAnimationFrame(() => map.invalidateSize())
 
     return () => {
       map.remove()
@@ -70,8 +74,8 @@ export default function NeighborhoodMap({ geojson, selectedId, selectedBounds, o
         const isSelected = props?.community_area_id === selectedId
         return {
           fillColor: scoreToColor(score),
-          fillOpacity: isSelected ? 0.85 : 0.6,
-          color: isSelected ? '#111827' : '#fff',
+          fillOpacity: isSelected ? 0.55 : 0.35,
+          color: isSelected ? '#111827' : 'rgba(255,255,255,0.7)',
           weight: isSelected ? 2.5 : 1,
         }
       },
@@ -109,8 +113,8 @@ export default function NeighborhoodMap({ geojson, selectedId, selectedBounds, o
   }, [selectedBounds])
 
   return (
-    <div className="bg-white shadow-apple-xs border border-separator rounded-2xl overflow-hidden relative">
-      <div ref={containerRef} style={{ height: 500 }} />
+    <div className="bg-white shadow-apple-xs border border-separator rounded-2xl overflow-hidden relative" style={typeof height === 'string' ? { height } : undefined}>
+      <div ref={containerRef} style={{ height: typeof height === 'string' ? '100%' : height }} />
 
       {/* Legend */}
       <div className="absolute bottom-3 left-3 z-[1000] bg-white/95 backdrop-blur-sm rounded-lg border border-separator px-3 py-2 shadow-apple-xs">

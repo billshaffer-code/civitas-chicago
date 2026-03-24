@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { getNeighborhoodList, getNeighborhoodGeoJSON } from '../api/civitas'
 
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard' },
@@ -7,13 +9,18 @@ const NAV_ITEMS = [
   { path: '/browse',    label: 'Browse' },
   { path: '/batch',     label: 'Portfolio' },
   { path: '/compare',       label: 'Compare' },
-  { path: '/neighborhoods', label: 'Neighborhoods' },
 ]
 
 export default function AppLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Prefetch neighborhood data on app shell mount (cached, so dashboard loads instantly)
+  useEffect(() => {
+    getNeighborhoodList().catch(() => {})
+    getNeighborhoodGeoJSON().catch(() => {})
+  }, [])
 
   function handleLogout() {
     logout()

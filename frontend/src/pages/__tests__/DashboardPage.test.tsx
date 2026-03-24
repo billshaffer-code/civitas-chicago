@@ -19,6 +19,22 @@ vi.mock('../../api/civitas', () => ({
   getMyReports: vi.fn(),
   getMyBatches: vi.fn(),
   autocompleteAddress: vi.fn().mockResolvedValue([]),
+  getNeighborhoodList: vi.fn().mockResolvedValue([]),
+  getNeighborhoodGeoJSON: vi.fn().mockResolvedValue({ type: 'FeatureCollection', features: [] }),
+}))
+
+// Mock leaflet to avoid DOM issues in tests
+vi.mock('leaflet', () => ({
+  default: {
+    map: () => ({
+      remove: vi.fn(),
+      setView: vi.fn(),
+      fitBounds: vi.fn(),
+    }),
+    tileLayer: () => ({ addTo: vi.fn() }),
+    control: { zoom: () => ({ addTo: vi.fn() }) },
+    geoJSON: () => ({ addTo: vi.fn(), remove: vi.fn(), getBounds: vi.fn() }),
+  },
 }))
 
 import { useAuth } from '../../context/AuthContext'
@@ -48,7 +64,6 @@ describe('DashboardPage', () => {
     vi.mocked(useAuth).mockReturnValue(makeAuthValue())
     vi.mocked(getMyReports).mockReturnValue(new Promise(() => {}))
     renderDashboard()
-    // Loading skeletons are rendered
     expect(document.querySelectorAll('.skeleton').length).toBeGreaterThan(0)
   })
 
@@ -62,7 +77,6 @@ describe('DashboardPage', () => {
     renderDashboard()
 
     await waitFor(() => {
-      // Report count appears in stats row; '2' is the count of reports
       expect(screen.getAllByText('2').length).toBeGreaterThan(0)
     })
   })
@@ -83,7 +97,6 @@ describe('DashboardPage', () => {
     await waitFor(() => {
       expect(screen.getAllByText('456 W OAK ST').length).toBeGreaterThan(0)
       expect(screen.getAllByText('72').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('ACTIVE').length).toBeGreaterThan(0)
     })
   })
 
@@ -108,9 +121,8 @@ describe('DashboardPage', () => {
     })
 
     const user = userEvent.setup()
-    // Click the report card row (the one with text-[14px] font-medium)
     const matches = screen.getAllByText('123 N MAIN ST')
-    const reportCard = matches.find(el => el.className.includes('text-[14px]')) ?? matches[0]
+    const reportCard = matches.find(el => el.className.includes('text-[13px]')) ?? matches[0]
     await user.click(reportCard)
 
     expect(mockNavigate).toHaveBeenCalledWith('/search?report=rpt-99')
@@ -136,27 +148,31 @@ describe('DashboardPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/search?q=123%20MAIN%20ST')
   })
 
-  it('shows activity level distribution when reports exist', async () => {
-    const reports = [
-      makeReportHistoryItem({ report_id: 'r1', activity_level: 'QUIET' }),
-      makeReportHistoryItem({ report_id: 'r2', activity_level: 'ACTIVE' }),
-    ]
-    vi.mocked(useAuth).mockReturnValue(makeAuthValue())
-    vi.mocked(getMyReports).mockResolvedValue(reports)
-    renderDashboard()
-
-    await waitFor(() => {
-      expect(screen.getByText('Portfolio at a Glance')).toBeInTheDocument()
-    })
-  })
-
-  it('shows action cards for batch, compare, browse', async () => {
+  it('shows tool shortcut buttons', async () => {
     vi.mocked(useAuth).mockReturnValue(makeAuthValue())
     vi.mocked(getMyReports).mockResolvedValue([])
     renderDashboard()
 
-    expect(screen.getByText('Portfolio Analysis')).toBeInTheDocument()
-    expect(screen.getByText('Compare Reports')).toBeInTheDocument()
+    expect(screen.getByText('Portfolio')).toBeInTheDocument()
+    expect(screen.getByText('Compare')).toBeInTheDocument()
     expect(screen.getByText('Browse Data')).toBeInTheDocument()
+    expect(screen.getByText('Data Health')).toBeInTheDocument()
+  })
+
+  it('shows neighborhoods section when areas load', async () => {
+    vi.mocked(useAuth).mockReturnValue(makeAuthValue())
+    vi.mocked(getMyReports).mockResolvedValue([])
+
+    const { getNeighborhoodList } = await import('../../api/civitas')
+    vi.mocked(getNeighborhoodList).mockResolvedValue([
+      { community_area_id: 1, community_area_name: 'Rogers Park', property_count: 100, avg_activity_score: 30 } as any,
+    ])
+
+    renderDashboard()
+
+    await waitFor(() => {
+      expect(screen.getByText('Neighborhoods')).toBeInTheDocument()
+      expect(screen.getByText('Rogers Park')).toBeInTheDocument()
+    })
   })
 })

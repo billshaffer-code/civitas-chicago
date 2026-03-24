@@ -154,7 +154,7 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
 
   if (detailLoading || !detail) {
     return (
-      <div className={`bg-white shadow-apple-xs border border-separator rounded-2xl p-6 ${embedded ? 'lg:max-h-[500px]' : ''}`}>
+      <div className={`bg-white shadow-apple-xs border border-separator rounded-2xl p-6 ${embedded ? 'h-full' : ''}`}>
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-surface-sunken rounded w-48" />
           <div className="h-40 bg-surface-sunken rounded" />
@@ -183,7 +183,7 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
 
   return (
     <div className={`bg-white shadow-apple-xs border border-separator rounded-2xl overflow-hidden ${
-      embedded ? 'lg:max-h-[500px] flex flex-col' : ''
+      embedded ? 'h-full flex flex-col' : ''
     }`}>
       {/* Header */}
       <div className={`border-b border-separator flex-shrink-0 ${embedded ? 'px-4 py-3' : 'px-6 py-5'}`}>

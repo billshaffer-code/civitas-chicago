@@ -491,9 +491,17 @@ export interface CommunityAreaGeoJSON {
   features: GeoJSON.Feature[]
 }
 
-export async function getNeighborhoodList(): Promise<CommunityAreaSummary[]> {
-  const { data } = await api.get<CommunityAreaSummary[]>('/api/v1/neighborhood/list')
-  return data
+// Session-level cache for neighborhood data (static during a session)
+let _neighborhoodListCache: Promise<CommunityAreaSummary[]> | null = null
+let _neighborhoodGeoJSONCache: Promise<CommunityAreaGeoJSON> | null = null
+
+export function getNeighborhoodList(): Promise<CommunityAreaSummary[]> {
+  if (!_neighborhoodListCache) {
+    _neighborhoodListCache = api.get<CommunityAreaSummary[]>('/api/v1/neighborhood/list')
+      .then(r => r.data)
+      .catch(e => { _neighborhoodListCache = null; throw e })
+  }
+  return _neighborhoodListCache
 }
 
 export async function getNeighborhoodDetail(id: number): Promise<CommunityAreaDetail> {
@@ -512,7 +520,11 @@ export async function getNeighborhoodProperties(
   return data
 }
 
-export async function getNeighborhoodGeoJSON(): Promise<CommunityAreaGeoJSON> {
-  const { data } = await api.get<CommunityAreaGeoJSON>('/api/v1/neighborhood/geojson')
-  return data
+export function getNeighborhoodGeoJSON(): Promise<CommunityAreaGeoJSON> {
+  if (!_neighborhoodGeoJSONCache) {
+    _neighborhoodGeoJSONCache = api.get<CommunityAreaGeoJSON>('/api/v1/neighborhood/geojson')
+      .then(r => r.data)
+      .catch(e => { _neighborhoodGeoJSONCache = null; throw e })
+  }
+  return _neighborhoodGeoJSONCache
 }

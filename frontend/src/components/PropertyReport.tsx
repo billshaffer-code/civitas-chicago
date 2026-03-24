@@ -276,7 +276,7 @@ export default function PropertyReport({ report, loading = false, locationSk: pr
       {/* ── Neighborhood Context ─────────────────────────────────── */}
       {!loading && report?.neighborhood && (
         <button
-          onClick={() => navigate(`/neighborhoods?selected=${report.neighborhood!.community_area_id}`)}
+          onClick={() => navigate('/dashboard')}
           className="w-full bg-white shadow-apple-xs border border-separator rounded-apple-lg px-5 py-3 flex items-center justify-between hover:shadow-apple-sm hover:border-accent-muted/60 transition-all duration-150 ease-apple group"
         >
           <div className="flex items-center gap-3">

@@ -94,6 +94,7 @@ export interface ReportResponse {
     service_311: Record<string, unknown>[]
     vacant_buildings: Record<string, unknown>[]
   }
+  location_sk?: number
   ai_summary: string
   data_freshness: Record<string, string | null>
   pdf_url?: string

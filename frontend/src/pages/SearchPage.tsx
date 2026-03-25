@@ -19,6 +19,8 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
   const [error, setError]       = useState<string | null>(null)
   const [history, setHistory]   = useState<ReportHistoryItem[]>([])
   const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [previousReport, setPreviousReport] = useState<ReportResponse | null>(null)
+  const [prevReportLoading, setPrevReportLoading] = useState(false)
   const streamCleanupRef = useRef<(() => void) | null>(null)
   const { toast } = useToast()
 
@@ -35,7 +37,7 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
           setReport(r)
           setLookup({
             resolved: true,
-            location_sk: undefined,
+            location_sk: r.location_sk,
             full_address: r.property.address,
             match_confidence: r.match_confidence,
           })
@@ -66,6 +68,30 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
     }
   }, [lookup])
 
+  // Fetch previous report for the "Changes Since" card
+  useEffect(() => {
+    if (!report || history.length === 0) {
+      setPreviousReport(null)
+      return
+    }
+    // Find the most recent history entry before the current report
+    const currentTime = new Date(report.generated_at).getTime()
+    const prev = history
+      .filter(h => h.report_id !== report.report_id && new Date(h.generated_at).getTime() < currentTime)
+      .sort((a, b) => new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime())[0]
+
+    if (!prev) {
+      setPreviousReport(null)
+      return
+    }
+
+    setPrevReportLoading(true)
+    getReport(prev.report_id)
+      .then(setPreviousReport)
+      .catch(() => setPreviousReport(null))
+      .finally(() => setPrevReportLoading(false))
+  }, [report?.report_id, history]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleNewSearch() {
     streamCleanupRef.current?.()
     setPhase('search')
@@ -73,6 +99,7 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
     setReport(null)
     setError(null)
     setSummaryError(null)
+    setPreviousReport(null)
     setLastReq({ address: '' })
     setHistory([])
   }
@@ -381,6 +408,8 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
           onNewSearch={handleNewSearch}
           summaryError={summaryError ?? undefined}
           onRetrySummary={handleRetrySummary}
+          previousReport={previousReport}
+          prevReportLoading={prevReportLoading}
         />
       )}
     </div>

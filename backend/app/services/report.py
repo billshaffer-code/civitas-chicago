@@ -20,7 +20,6 @@ from backend.app.services.claude_ai import (
     build_claude_payload,
     generate_executive_brief,
     generate_narrative,
-    generate_narrative_structured,
     generate_pdf_narrative,
 )
 from backend.app.services.neighborhood import get_neighborhood_baselines
@@ -306,12 +305,8 @@ async def generate_report_summary(report_id: str) -> str:
     )
     narrative = await generate_narrative(claude_payload)
 
-    # ── 4. Also generate structured output ────────────────────────────────────
-    structured = await generate_narrative_structured(claude_payload)
-
-    # ── 5. Update stored report ──────────────────────────────────────────────
+    # ── 4. Update stored report ──────────────────────────────────────────────
     report["ai_summary"] = narrative
-    report["ai_summary_structured"] = structured
     async with get_conn() as conn:
         await conn.execute(
             "UPDATE report_audit SET report_json = $1::jsonb WHERE report_id = $2",

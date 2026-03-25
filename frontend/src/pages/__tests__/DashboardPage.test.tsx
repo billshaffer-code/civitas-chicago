@@ -30,6 +30,7 @@ vi.mock('leaflet', () => ({
       remove: vi.fn(),
       setView: vi.fn(),
       fitBounds: vi.fn(),
+      invalidateSize: vi.fn(),
     }),
     tileLayer: () => ({ addTo: vi.fn() }),
     control: { zoom: () => ({ addTo: vi.fn() }) },

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import PropertySearch from '../components/PropertySearch'
 import PropertyReport from '../components/PropertyReport'
 import ParcelVerify from '../components/ParcelVerify'
-import { lookupProperty, generateReport, getReportHistory, getReport, getReportSummary } from '../api/civitas'
+import { lookupProperty, generateReport, getReportHistory, getReport, getReportSummary, streamReportSummary } from '../api/civitas'
 import type { LookupRequest, LookupResponse, ReportResponse, ReportHistoryItem } from '../api/civitas'
 import { LEVEL_CONFIG, type ActivityLevel } from '../constants/terminology'
 import { useToast } from '../components/Toast'
@@ -18,6 +18,8 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
   const [lastReq, setLastReq]   = useState<LookupRequest>({ address: '' })
   const [error, setError]       = useState<string | null>(null)
   const [history, setHistory]   = useState<ReportHistoryItem[]>([])
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const streamCleanupRef = useRef<(() => void) | null>(null)
   const { toast } = useToast()
 
   // Load report or trigger search from URL params
@@ -62,13 +64,49 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
   }, [lookup])
 
   function handleNewSearch() {
+    streamCleanupRef.current?.()
     setPhase('search')
     setLookup(null)
     setReport(null)
     setError(null)
+    setSummaryError(null)
     setLastReq({ address: '' })
     setHistory([])
   }
+
+  const loadSummaryStream = useCallback((reportId: string) => {
+    streamCleanupRef.current?.()
+    setSummaryError(null)
+    let accumulated = ''
+
+    const cleanup = streamReportSummary(
+      reportId,
+      (chunk) => {
+        accumulated += chunk
+        const text = accumulated
+        setReport(prev => prev ? { ...prev, ai_summary: text } : prev)
+      },
+      () => { /* done */ },
+      () => {
+        // On stream error, fall back to non-streaming fetch
+        getReportSummary(reportId)
+          .then(summary => {
+            setReport(prev => prev ? { ...prev, ai_summary: summary } : prev)
+            setSummaryError(null)
+          })
+          .catch(() => {
+            setSummaryError('summary_failed')
+          })
+      },
+    )
+    streamCleanupRef.current = cleanup
+  }, [])
+
+  const handleRetrySummary = useCallback(() => {
+    if (report?.report_id) {
+      loadSummaryStream(report.report_id)
+    }
+  }, [report?.report_id, loadSummaryStream])
 
   async function handleLookup(req: LookupRequest) {
     setError(null)
@@ -98,13 +136,9 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
       setPhase('report-done')
       toast('Report generated successfully')
 
-      // Load AI summary in the background
+      // Stream AI summary in the background
       if (!r.ai_summary) {
-        getReportSummary(r.report_id)
-          .then(summary => {
-            setReport(prev => prev ? { ...prev, ai_summary: summary } : prev)
-          })
-          .catch(() => {})
+        loadSummaryStream(r.report_id)
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Report generation failed'
@@ -339,6 +373,8 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
           lon={lookup?.lon}
           parcelId={lookup?.parcel_id}
           onNewSearch={handleNewSearch}
+          summaryError={summaryError ?? undefined}
+          onRetrySummary={handleRetrySummary}
         />
       )}
     </div>

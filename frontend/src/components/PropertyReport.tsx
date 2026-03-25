@@ -11,6 +11,7 @@ import { downloadPdf, getReportPdf } from '../api/civitas'
 import Markdown from 'react-markdown'
 import { LEVEL_CONFIG, ACTION_ORDER, type ActionGroup, type ActivityLevel } from '../constants/terminology'
 import { useToast } from './Toast'
+import ReportQA from './ReportQA'
 
 interface Props {
   report?: ReportResponse
@@ -21,6 +22,8 @@ interface Props {
   lon?: number
   parcelId?: string | null
   onNewSearch: () => void
+  summaryError?: string
+  onRetrySummary?: () => void
 }
 
 // ── Utilities ────────────────────────────────────────────────────────────────
@@ -103,7 +106,7 @@ const BASELINE_MAP: Record<string, { key: string }> = {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function PropertyReport({ report, loading = false, locationSk: propLocationSk, address, lat: propLat, lon: propLon, parcelId: propParcelId, onNewSearch }: Props) {
+export default function PropertyReport({ report, loading = false, locationSk: propLocationSk, address, lat: propLat, lon: propLon, parcelId: propParcelId, onNewSearch, summaryError, onRetrySummary }: Props) {
   const navigate = useNavigate()
 
   // Use report-level fields as fallbacks (always available, even for historical reports)
@@ -406,13 +409,18 @@ export default function PropertyReport({ report, loading = false, locationSk: pr
       )}
 
       {sectionTab === 'summary' && (
-        <SummaryPanel
-          summaryText={summaryText}
-          report={report}
-          loading={loading}
-          collapsedSections={collapsedSections}
-          onToggleSection={toggleSection}
-        />
+        <>
+          <SummaryPanel
+            summaryText={summaryText}
+            report={report}
+            loading={loading}
+            collapsedSections={collapsedSections}
+            onToggleSection={toggleSection}
+            summaryError={summaryError}
+            onRetrySummary={onRetrySummary}
+          />
+          {report && <ReportQA reportId={report.report_id} />}
+        </>
       )}
 
       {sectionTab === 'timeline' && (
@@ -603,12 +611,16 @@ function SummaryPanel({
   loading,
   collapsedSections,
   onToggleSection,
+  summaryError,
+  onRetrySummary,
 }: {
   summaryText: string
   report?: ReportResponse
   loading: boolean
   collapsedSections: Record<string, boolean>
   onToggleSection: (key: string) => void
+  summaryError?: string
+  onRetrySummary?: () => void
 }) {
   const noFindings = report && report.triggered_flags.length === 0
 
@@ -644,13 +656,42 @@ function SummaryPanel({
     )
   }
 
+  // Error state with retry
+  if (!summaryText && summaryError) {
+    return (
+      <div className="space-y-3 animate-apple-fade-in">
+        {report && <SummaryMetrics report={report} actionRequiredCount={actionRequiredCount} reviewCount={reviewCount} />}
+        <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-[13px] font-medium text-ink-primary">AI summary unavailable</p>
+              <p className="text-[11px] text-ink-tertiary mt-0.5">All report data and findings are still accessible in other tabs.</p>
+            </div>
+            {onRetrySummary && (
+              <button
+                onClick={onRetrySummary}
+                className="px-3 py-1.5 text-[12px] font-semibold text-accent bg-accent-light hover:bg-accent/10
+                           rounded-apple transition-colors"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Generating state
   if (!summaryText) {
     return (
       <div className="space-y-3 animate-apple-fade-in">
-        {/* Metrics row (real data, since report exists) */}
         {report && <SummaryMetrics report={report} actionRequiredCount={actionRequiredCount} reviewCount={reviewCount} />}
-        {/* Generating indicator */}
         <div className="bg-white shadow-apple-xs border border-separator rounded-apple-lg p-5">
           <div className="flex items-center gap-3 py-2">
             <div className="w-5 h-5 rounded-full border-[2.5px] border-separator border-t-accent animate-spin" />

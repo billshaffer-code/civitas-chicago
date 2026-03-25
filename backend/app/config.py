@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     geo_radius_meters: int = 50
     reports_dir: str = "backend/reports"
     max_narrative_tokens: int = 800
+    max_brief_tokens: int = 150
+    max_pdf_narrative_tokens: int = 1000
+    max_qa_tokens: int = 400
+    narrative_max_retries: int = 1
+    narrative_retry_delay: float = 2.0
     jwt_secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 30

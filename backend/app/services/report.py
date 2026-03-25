@@ -16,7 +16,13 @@ from backend.app.constants import CATEGORY_ACTIONS, TIER_LABELS
 from backend.app.database import get_conn
 from backend.app.services import rule_engine
 from backend.app.services.baselines import CHICAGO_BASELINES
-from backend.app.services.claude_ai import build_claude_payload, generate_narrative
+from backend.app.services.claude_ai import (
+    build_claude_payload,
+    generate_executive_brief,
+    generate_narrative,
+    generate_narrative_structured,
+    generate_pdf_narrative,
+)
 from backend.app.services.neighborhood import get_neighborhood_baselines
 
 
@@ -151,7 +157,24 @@ async def generate_single_report(
         rule_engine.get_data_freshness(),
     )
 
-    # ── 4. Claude narrative (optional) ────────────────────────────────────────
+    # ── 4. Neighborhood baselines (before Claude so we can pass context) ─────
+    ca_id = location_row.get("community_area_id")
+    neighborhood_data = None
+    if ca_id:
+        neighborhood_baselines = await get_neighborhood_baselines(ca_id)
+        if neighborhood_baselines:
+            async with get_conn() as conn:
+                ca_name = await conn.fetchval(
+                    "SELECT name FROM dim_community_area WHERE community_area_id = $1",
+                    ca_id,
+                )
+            neighborhood_data = {
+                "community_area_id": ca_id,
+                "community_area_name": ca_name,
+                "baselines": neighborhood_baselines,
+            }
+
+    # ── 5. Claude narrative (optional) ────────────────────────────────────────
     if skip_narrative:
         narrative = ""
     else:
@@ -165,26 +188,9 @@ async def generate_single_report(
             tax_liens=records.get("tax_liens", []),
             freshness=freshness,
             match_confidence=address,
+            neighborhood=neighborhood_data,
         )
         narrative = await generate_narrative(claude_payload)
-
-    # ── 5. Neighborhood baselines ──────────────────────────────────────────────
-    ca_id = location_row.get("community_area_id")
-    neighborhood_data = None
-    if ca_id:
-        neighborhood_baselines = await get_neighborhood_baselines(ca_id)
-        if neighborhood_baselines:
-            # Look up community area name
-            async with get_conn() as conn:
-                ca_name = await conn.fetchval(
-                    "SELECT name FROM dim_community_area WHERE community_area_id = $1",
-                    ca_id,
-                )
-            neighborhood_data = {
-                "community_area_id": ca_id,
-                "community_area_name": ca_name,
-                "baselines": neighborhood_baselines,
-            }
 
     # ── 6. Assemble report dict ───────────────────────────────────────────────
     report_id = str(uuid.uuid4())
@@ -296,11 +302,118 @@ async def generate_report_summary(report_id: str) -> str:
         tax_liens=records.get("tax_liens", []),
         freshness=freshness,
         match_confidence=report.get("match_confidence", ""),
+        neighborhood=report.get("neighborhood"),
     )
     narrative = await generate_narrative(claude_payload)
 
-    # ── 4. Update stored report ──────────────────────────────────────────────
+    # ── 4. Also generate structured output ────────────────────────────────────
+    structured = await generate_narrative_structured(claude_payload)
+
+    # ── 5. Update stored report ──────────────────────────────────────────────
     report["ai_summary"] = narrative
+    report["ai_summary_structured"] = structured
+    async with get_conn() as conn:
+        await conn.execute(
+            "UPDATE report_audit SET report_json = $1::jsonb WHERE report_id = $2",
+            json.dumps(report),
+            report_id,
+        )
+
+    return narrative
+
+
+async def generate_report_brief(report_id: str) -> str:
+    """Generate a short executive brief for an existing report."""
+    async with get_conn() as conn:
+        row = await conn.fetchrow(
+            "SELECT report_json, location_sk FROM report_audit WHERE report_id = $1",
+            report_id,
+        )
+    if not row:
+        raise ValueError(f"report_id {report_id} not found")
+
+    raw = row["report_json"]
+    report = json.loads(raw) if isinstance(raw, str) else dict(raw)
+
+    if report.get("executive_brief"):
+        return report["executive_brief"]
+
+    location_sk = row["location_sk"]
+    async with get_conn() as conn:
+        loc = await conn.fetchrow(
+            "SELECT * FROM dim_location WHERE location_sk = $1",
+            location_sk,
+        )
+    if not loc:
+        raise ValueError(f"location_sk {location_sk} not found")
+
+    claude_payload = build_claude_payload(
+        location_row=dict(loc),
+        score={"raw_score": report.get("activity_score", 0), "activity_level": report.get("activity_level", "QUIET")},
+        flags=report.get("triggered_flags", []),
+        violations=report.get("supporting_records", {}).get("violations", []),
+        inspections=report.get("supporting_records", {}).get("inspections", []),
+        permits=report.get("supporting_records", {}).get("permits", []),
+        tax_liens=report.get("supporting_records", {}).get("tax_liens", []),
+        freshness=report.get("data_freshness", {}),
+        match_confidence=report.get("match_confidence", ""),
+        neighborhood=report.get("neighborhood"),
+    )
+
+    brief = await generate_executive_brief(claude_payload)
+
+    report["executive_brief"] = brief
+    async with get_conn() as conn:
+        await conn.execute(
+            "UPDATE report_audit SET report_json = $1::jsonb WHERE report_id = $2",
+            json.dumps(report),
+            report_id,
+        )
+
+    return brief
+
+
+async def generate_report_pdf_narrative(report_id: str) -> str:
+    """Generate a formal PDF narrative for an existing report."""
+    async with get_conn() as conn:
+        row = await conn.fetchrow(
+            "SELECT report_json, location_sk FROM report_audit WHERE report_id = $1",
+            report_id,
+        )
+    if not row:
+        raise ValueError(f"report_id {report_id} not found")
+
+    raw = row["report_json"]
+    report = json.loads(raw) if isinstance(raw, str) else dict(raw)
+
+    if report.get("pdf_narrative"):
+        return report["pdf_narrative"]
+
+    location_sk = row["location_sk"]
+    async with get_conn() as conn:
+        loc = await conn.fetchrow(
+            "SELECT * FROM dim_location WHERE location_sk = $1",
+            location_sk,
+        )
+    if not loc:
+        raise ValueError(f"location_sk {location_sk} not found")
+
+    claude_payload = build_claude_payload(
+        location_row=dict(loc),
+        score={"raw_score": report.get("activity_score", 0), "activity_level": report.get("activity_level", "QUIET")},
+        flags=report.get("triggered_flags", []),
+        violations=report.get("supporting_records", {}).get("violations", []),
+        inspections=report.get("supporting_records", {}).get("inspections", []),
+        permits=report.get("supporting_records", {}).get("permits", []),
+        tax_liens=report.get("supporting_records", {}).get("tax_liens", []),
+        freshness=report.get("data_freshness", {}),
+        match_confidence=report.get("match_confidence", ""),
+        neighborhood=report.get("neighborhood"),
+    )
+
+    narrative = await generate_pdf_narrative(claude_payload)
+
+    report["pdf_narrative"] = narrative
     async with get_conn() as conn:
         await conn.execute(
             "UPDATE report_audit SET report_json = $1::jsonb WHERE report_id = $2",

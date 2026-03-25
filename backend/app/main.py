@@ -15,6 +15,7 @@ from backend.app.routers import batch as batch_router
 from backend.app.routers import data as data_router
 from backend.app.routers import neighborhood as neighborhood_router
 from backend.app.routers import property as property_router
+from backend.app.routers import qa as qa_router
 from backend.app.routers import report as report_router
 
 
@@ -48,6 +49,7 @@ app.include_router(batch_router.router)
 app.include_router(data_router.router)
 app.include_router(neighborhood_router.router)
 app.include_router(property_router.router)
+app.include_router(qa_router.router)
 app.include_router(report_router.router)
 
 

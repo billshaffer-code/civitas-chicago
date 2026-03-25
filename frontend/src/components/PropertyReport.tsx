@@ -12,6 +12,7 @@ import Markdown from 'react-markdown'
 import { LEVEL_CONFIG, ACTION_ORDER, type ActionGroup, type ActivityLevel } from '../constants/terminology'
 import { useToast } from './Toast'
 import ReportQA from './ReportQA'
+import ChangesSinceCard from './ChangesSinceCard'
 
 interface Props {
   report?: ReportResponse
@@ -24,6 +25,8 @@ interface Props {
   onNewSearch: () => void
   summaryError?: string
   onRetrySummary?: () => void
+  previousReport?: ReportResponse | null
+  prevReportLoading?: boolean
 }
 
 // ── Utilities ────────────────────────────────────────────────────────────────
@@ -106,7 +109,7 @@ const BASELINE_MAP: Record<string, { key: string }> = {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function PropertyReport({ report, loading = false, locationSk: propLocationSk, address, lat: propLat, lon: propLon, parcelId: propParcelId, onNewSearch, summaryError, onRetrySummary }: Props) {
+export default function PropertyReport({ report, loading = false, locationSk: propLocationSk, address, lat: propLat, lon: propLon, parcelId: propParcelId, onNewSearch, summaryError, onRetrySummary, previousReport, prevReportLoading }: Props) {
   const navigate = useNavigate()
 
   // Use report-level fields as fallbacks (always available, even for historical reports)
@@ -360,6 +363,15 @@ export default function PropertyReport({ report, loading = false, locationSk: pr
           </>
         )}
       </div>
+
+      {/* ── Changes Since Card ───────────────────────────────────── */}
+      {report && (
+        <ChangesSinceCard
+          current={report}
+          previous={previousReport ?? null}
+          loading={prevReportLoading}
+        />
+      )}
 
       {/* ── Section Tabs ─────────────────────────────────────────── */}
       <nav className="flex gap-0.5 bg-surface-raised p-1 rounded-apple">

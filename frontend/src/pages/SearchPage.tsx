@@ -41,6 +41,9 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
           })
           setLastReq({ address: r.property.address })
           setPhase('report-done')
+          if (!r.ai_summary) {
+            loadSummaryStream(r.report_id)
+          }
         })
         .catch(() => {
           setError('Failed to load report')
@@ -156,6 +159,9 @@ export default function SearchPage({ embedded = false }: { embedded?: boolean })
       const r = await getReport(reportId)
       setReport(r)
       setPhase('report-done')
+      if (!r.ai_summary) {
+        loadSummaryStream(r.report_id)
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load report')
       setPhase('lookup-done')

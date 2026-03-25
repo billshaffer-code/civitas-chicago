@@ -77,7 +77,7 @@
 {% endif %}
 
 <h2>Property Summary</h2>
-<div class="ai-narrative">{{ report.ai_summary }}</div>
+<div class="ai-narrative">{{ report.pdf_narrative or report.ai_summary }}</div>
 
 <div class="disclaimer">{{ report.disclaimer }}</div>
 

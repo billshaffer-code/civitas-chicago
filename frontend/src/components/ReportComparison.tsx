@@ -1,4 +1,7 @@
+import { useState, useEffect } from 'react'
+import Markdown from 'react-markdown'
 import type { ReportResponse } from '../api/civitas'
+import { getCompareSummary } from '../api/civitas'
 import ActivityBar from './ActivityBar'
 import FindingCard from './FindingCard'
 
@@ -17,6 +20,19 @@ const recordLabels: Record<string, string> = {
 }
 
 export default function ReportComparison({ reportA, reportB }: Props) {
+  const [aiComparison, setAiComparison] = useState<string | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+
+  useEffect(() => {
+    if (reportA.report_id && reportB.report_id) {
+      setAiLoading(true)
+      getCompareSummary([reportA.report_id, reportB.report_id])
+        .then(setAiComparison)
+        .catch(() => setAiComparison(null))
+        .finally(() => setAiLoading(false))
+    }
+  }, [reportA.report_id, reportB.report_id])
+
   const scoreDelta = reportB.activity_score - reportA.activity_score
 
   // Finding set diff
@@ -133,6 +149,25 @@ export default function ReportComparison({ reportA, reportB }: Props) {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* AI Comparative Summary */}
+      <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          AI Comparative Analysis
+        </h3>
+        {aiLoading ? (
+          <div className="flex items-center gap-2 py-4">
+            <div className="w-4 h-4 rounded-full border-2 border-gray-200 border-t-blue-600 animate-spin" />
+            <span className="text-sm text-gray-500">Generating comparison…</span>
+          </div>
+        ) : aiComparison ? (
+          <div className="prose prose-sm prose-slate max-w-none">
+            <Markdown>{aiComparison}</Markdown>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400 italic">Comparative analysis unavailable.</p>
+        )}
       </div>
 
       {/* AI Summaries side-by-side */}

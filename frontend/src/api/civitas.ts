@@ -273,8 +273,62 @@ export async function getReport(report_id: string): Promise<ReportResponse> {
 }
 
 export async function getReportSummary(report_id: string): Promise<string> {
-  const { data } = await api.get<{ ai_summary: string }>(`/api/v1/report/${report_id}/summary`)
+  const { data } = await api.get<{ ai_summary: string; error?: string }>(`/api/v1/report/${report_id}/summary`)
+  if (data.error) throw new Error(data.error)
   return data.ai_summary
+}
+
+export function streamReportSummary(
+  reportId: string,
+  onChunk: (text: string) => void,
+  onDone: () => void,
+  onError: (err: Error) => void,
+): () => void {
+  const token = localStorage.getItem('civitas_access_token')
+  const url = `${api.defaults.baseURL || ''}/api/v1/report/${reportId}/summary/stream?token=${token}`
+  const es = new EventSource(url)
+
+  es.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data)
+      if (data.type === 'chunk') onChunk(data.text)
+      else if (data.type === 'done') { onDone(); es.close() }
+    } catch {
+      onError(new Error('Failed to parse stream event'))
+      es.close()
+    }
+  }
+
+  es.onerror = () => {
+    onError(new Error('Stream connection failed'))
+    es.close()
+  }
+
+  return () => es.close()
+}
+
+export async function getReportBrief(report_id: string): Promise<string> {
+  const { data } = await api.get<{ executive_brief: string }>(`/api/v1/report/${report_id}/brief`)
+  return data.executive_brief
+}
+
+export async function getCompareSummary(reportIds: string[]): Promise<string> {
+  const { data } = await api.post<{ comparative_summary: string }>('/api/v1/report/compare-summary', {
+    report_ids: reportIds,
+  })
+  return data.comparative_summary
+}
+
+export async function askFollowup(
+  reportId: string,
+  question: string,
+  history: { role: string; content: string }[],
+): Promise<string> {
+  const { data } = await api.post<{ answer: string }>(`/api/v1/qa/${reportId}/ask`, {
+    question,
+    conversation_history: history,
+  })
+  return data.answer
 }
 
 export async function downloadPdf(location_sk: number, address: string): Promise<Blob> {

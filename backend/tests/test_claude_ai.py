@@ -2,7 +2,7 @@
 Tests for backend.app.services.claude_ai — payload builder + narrative mock.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -14,6 +14,13 @@ from backend.app.services.claude_ai import (
     ask_report_followup,
     _fallback_narrative,
 )
+
+
+def _mock_async_client(mock_response):
+    """Create a mock AsyncAnthropic client whose messages.create is an AsyncMock."""
+    client = MagicMock()
+    client.messages.create = AsyncMock(return_value=mock_response)
+    return client
 
 
 class TestBuildClaudePayload:
@@ -74,7 +81,6 @@ class TestBuildClaudePayload:
         assert flag["severity_score"] == 25
         assert flag["action_group"] == "Review Recommended"
 
-
     def test_neighborhood_context_included(self):
         payload = self._make_payload(
             neighborhood={
@@ -96,30 +102,30 @@ class TestGenerateNarrative:
         mock_response = MagicMock()
         mock_response.content = [MagicMock(text="Test narrative output.")]
 
-        mock_client_instance = MagicMock()
-        mock_client_instance.messages.create.return_value = mock_response
+        mock_client = _mock_async_client(mock_response)
 
-        with patch("backend.app.services.claude_ai.anthropic.Anthropic", return_value=mock_client_instance):
+        with patch("backend.app.services.claude_ai.anthropic.AsyncAnthropic", return_value=mock_client):
             result = await generate_narrative({"test": "payload"})
 
         assert result == "Test narrative output."
-        mock_client_instance.messages.create.assert_called_once()
+        mock_client.messages.create.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_retry_on_api_error(self):
         import anthropic as anthropic_mod
 
-        mock_client_instance = MagicMock()
         mock_response = MagicMock()
         mock_response.content = [MagicMock(text="Retry success")]
 
-        # First call raises, second succeeds
-        mock_client_instance.messages.create.side_effect = [
-            anthropic_mod.APIConnectionError(request=MagicMock()),
-            mock_response,
-        ]
+        mock_client = MagicMock()
+        mock_client.messages.create = AsyncMock(
+            side_effect=[
+                anthropic_mod.APIConnectionError(request=MagicMock()),
+                mock_response,
+            ]
+        )
 
-        with patch("backend.app.services.claude_ai.anthropic.Anthropic", return_value=mock_client_instance):
+        with patch("backend.app.services.claude_ai.anthropic.AsyncAnthropic", return_value=mock_client):
             with patch("backend.app.services.claude_ai.settings") as mock_settings:
                 mock_settings.narrative_max_retries = 1
                 mock_settings.narrative_retry_delay = 0.01
@@ -128,18 +134,18 @@ class TestGenerateNarrative:
                 result = await generate_narrative({"test": "payload"})
 
         assert result == "Retry success"
-        assert mock_client_instance.messages.create.call_count == 2
+        assert mock_client.messages.create.call_count == 2
 
     @pytest.mark.asyncio
     async def test_fallback_on_exhausted_retries(self):
         import anthropic as anthropic_mod
 
-        mock_client_instance = MagicMock()
-        mock_client_instance.messages.create.side_effect = anthropic_mod.APIConnectionError(
-            request=MagicMock()
+        mock_client = MagicMock()
+        mock_client.messages.create = AsyncMock(
+            side_effect=anthropic_mod.APIConnectionError(request=MagicMock())
         )
 
-        with patch("backend.app.services.claude_ai.anthropic.Anthropic", return_value=mock_client_instance):
+        with patch("backend.app.services.claude_ai.anthropic.AsyncAnthropic", return_value=mock_client):
             with patch("backend.app.services.claude_ai.settings") as mock_settings:
                 mock_settings.narrative_max_retries = 0
                 mock_settings.narrative_retry_delay = 0.01
@@ -156,10 +162,9 @@ class TestGenerateExecutiveBrief:
         mock_response = MagicMock()
         mock_response.content = [MagicMock(text="Brief summary.")]
 
-        mock_client_instance = MagicMock()
-        mock_client_instance.messages.create.return_value = mock_response
+        mock_client = _mock_async_client(mock_response)
 
-        with patch("backend.app.services.claude_ai.anthropic.Anthropic", return_value=mock_client_instance):
+        with patch("backend.app.services.claude_ai.anthropic.AsyncAnthropic", return_value=mock_client):
             result = await generate_executive_brief({"test": "payload"})
 
         assert result == "Brief summary."
@@ -176,10 +181,9 @@ class TestGenerateNarrativeStructured:
         mock_response = MagicMock()
         mock_response.content = [tool_block]
 
-        mock_client_instance = MagicMock()
-        mock_client_instance.messages.create.return_value = mock_response
+        mock_client = _mock_async_client(mock_response)
 
-        with patch("backend.app.services.claude_ai.anthropic.Anthropic", return_value=mock_client_instance):
+        with patch("backend.app.services.claude_ai.anthropic.AsyncAnthropic", return_value=mock_client):
             result = await generate_narrative_structured({"test": "payload"})
 
         assert "sections" in result
@@ -192,10 +196,9 @@ class TestAskReportFollowup:
         mock_response = MagicMock()
         mock_response.content = [MagicMock(text="The property has 3 violations.")]
 
-        mock_client_instance = MagicMock()
-        mock_client_instance.messages.create.return_value = mock_response
+        mock_client = _mock_async_client(mock_response)
 
-        with patch("backend.app.services.claude_ai.anthropic.Anthropic", return_value=mock_client_instance):
+        with patch("backend.app.services.claude_ai.anthropic.AsyncAnthropic", return_value=mock_client):
             result = await ask_report_followup(
                 report_data={"activity_score": 55},
                 question="How many violations?",
@@ -209,10 +212,9 @@ class TestAskReportFollowup:
         mock_response = MagicMock()
         mock_response.content = [MagicMock(text="Answer.")]
 
-        mock_client_instance = MagicMock()
-        mock_client_instance.messages.create.return_value = mock_response
+        mock_client = _mock_async_client(mock_response)
 
-        with patch("backend.app.services.claude_ai.anthropic.Anthropic", return_value=mock_client_instance):
+        with patch("backend.app.services.claude_ai.anthropic.AsyncAnthropic", return_value=mock_client):
             await ask_report_followup(
                 report_data={"test": True},
                 question="New question",
@@ -222,7 +224,7 @@ class TestAskReportFollowup:
                 ],
             )
 
-        call_args = mock_client_instance.messages.create.call_args
+        call_args = mock_client.messages.create.call_args
         messages = call_args.kwargs.get("messages", call_args[1].get("messages", []))
         # 2 setup + 2 history + 1 new question = 5
         assert len(messages) == 5

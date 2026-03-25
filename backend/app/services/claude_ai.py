@@ -21,6 +21,7 @@ from datetime import datetime
 from typing import AsyncIterator, Optional
 
 import anthropic
+import httpx
 
 from backend.app.config import settings
 from backend.app.constants import CATEGORY_ACTIONS
@@ -200,21 +201,25 @@ def _build_user_message(payload: dict) -> str:
     )
 
 
-def _get_client() -> anthropic.Anthropic:
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+_CLIENT_TIMEOUT = httpx.Timeout(timeout=60.0, connect=10.0)
+
+
+def _get_async_client() -> anthropic.AsyncAnthropic:
+    return anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key, timeout=_CLIENT_TIMEOUT)
 
 
 async def generate_narrative(payload: dict) -> str:
     """
     Call Claude with the structured report payload and return the narrative string.
     Retries once on transient errors before returning a fallback.
+    Uses AsyncAnthropic to avoid blocking the FastAPI event loop.
     """
     user_msg = _build_user_message(payload)
 
     for attempt in range(settings.narrative_max_retries + 1):
         try:
-            client = _get_client()
-            response = client.messages.create(
+            client = _get_async_client()
+            response = await client.messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=settings.max_narrative_tokens,
                 temperature=0,
@@ -247,8 +252,8 @@ async def generate_narrative_structured(payload: dict) -> dict:
     user_msg = _build_user_message(payload)
 
     try:
-        client = _get_client()
-        response = client.messages.create(
+        client = _get_async_client()
+        response = await client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=settings.max_narrative_tokens,
             temperature=0,
@@ -274,21 +279,21 @@ async def generate_narrative_structured(payload: dict) -> dict:
 
 async def generate_narrative_stream(payload: dict) -> AsyncIterator[str]:
     """
-    Stream the narrative response chunk by chunk using the Anthropic streaming API.
-    Yields text deltas as they arrive.
+    Stream the narrative response chunk by chunk using the async Anthropic streaming API.
+    Yields text deltas as they arrive without blocking the event loop.
     """
     user_msg = _build_user_message(payload)
 
     try:
-        client = _get_client()
-        with client.messages.stream(
+        client = _get_async_client()
+        async with client.messages.stream(
             model="claude-sonnet-4-6",
             max_tokens=settings.max_narrative_tokens,
             temperature=0,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_msg}],
         ) as stream:
-            for text in stream.text_stream:
+            async for text in stream.text_stream:
                 yield text
     except Exception as exc:
         log.error("Streaming narrative error: %s", exc)
@@ -308,8 +313,8 @@ async def generate_executive_brief(payload: dict) -> str:
 
     for attempt in range(settings.narrative_max_retries + 1):
         try:
-            client = _get_client()
-            response = client.messages.create(
+            client = _get_async_client()
+            response = await client.messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=settings.max_brief_tokens,
                 temperature=0,
@@ -346,8 +351,8 @@ async def generate_pdf_narrative(payload: dict) -> str:
 
     for attempt in range(settings.narrative_max_retries + 1):
         try:
-            client = _get_client()
-            response = client.messages.create(
+            client = _get_async_client()
+            response = await client.messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=settings.max_pdf_narrative_tokens,
                 temperature=0,
@@ -381,8 +386,8 @@ async def generate_comparative_narrative(property_summaries: list) -> str:
 
     for attempt in range(settings.narrative_max_retries + 1):
         try:
-            client = _get_client()
-            response = client.messages.create(
+            client = _get_async_client()
+            response = await client.messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=settings.max_narrative_tokens,
                 temperature=0,
@@ -435,8 +440,8 @@ async def ask_report_followup(
     messages.append({"role": "user", "content": question})
 
     try:
-        client = _get_client()
-        response = client.messages.create(
+        client = _get_async_client()
+        response = await client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=settings.max_qa_tokens,
             temperature=0,

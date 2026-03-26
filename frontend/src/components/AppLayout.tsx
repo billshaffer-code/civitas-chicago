@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getNeighborhoodList, getNeighborhoodGeoJSON } from '../api/civitas'
+import RecentActivityDropdown from './RecentActivityDropdown'
 
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard' },
@@ -71,8 +72,9 @@ export default function AppLayout() {
             </nav>
           </div>
 
-          {/* Right: avatar + sign out */}
+          {/* Right: recent activity + avatar + sign out */}
           <div className="flex items-center gap-3">
+            <RecentActivityDropdown />
             <div className="w-7 h-7 rounded-full bg-surface-sunken flex items-center justify-center flex-shrink-0">
               <span className="text-[11px] font-bold text-ink-secondary select-none">{initial}</span>
             </div>

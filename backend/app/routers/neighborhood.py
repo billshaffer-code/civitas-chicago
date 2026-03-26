@@ -9,6 +9,8 @@ GET /api/v1/neighborhood/{id}/properties — Paginated property list with scores
 
 from __future__ import annotations
 
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.dependencies import get_current_user
@@ -54,6 +56,7 @@ async def neighborhood_properties(
     sort_by: str = Query(default="violations"),
     sort_dir: str = Query(default="desc"),
     address: str = Query(default=None),
+    activity_level: Optional[List[str]] = Query(default=None),
     user: dict = Depends(get_current_user),
 ):
     """Return paginated property list for a community area."""
@@ -64,4 +67,5 @@ async def neighborhood_properties(
         sort_by=sort_by,
         sort_dir=sort_dir,
         address=address,
+        activity_level=activity_level,
     )

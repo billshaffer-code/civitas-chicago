@@ -68,11 +68,14 @@ async def get_neighborhood_properties(
     sort_by: str = "violations",
     sort_dir: str = "desc",
     address: Optional[str] = None,
+    activity_level: Optional[list] = None,
 ) -> dict:
     """Return paginated property list for a community area.
 
     Uses only the materialized view_property_summary (indexed) to avoid the
     expensive view_property_score view which computes flags on-the-fly.
+    When activity_level filter is provided, joins view_property_score to filter
+    and includes score/level in the response.
     """
     offset = (page - 1) * page_size
 
@@ -81,18 +84,36 @@ async def get_neighborhood_properties(
         "violations": "vps.total_violations",
         "311": "vps.sr_count_12mo",
         "liens": "vps.total_lien_events",
+        "score": "sc.raw_score",
     }
     order_col = allowed_sorts.get(sort_by, "vps.total_violations")
     order_dir = "ASC" if sort_dir.lower() == "asc" else "DESC"
 
-    # Build optional address filter
-    address_clause = ""
+    # If sorting by score but no level filter, fall back to violations
+    if sort_by == "score" and not activity_level:
+        order_col = "vps.total_violations"
+
+    # Build dynamic clauses
     params: list = [community_area_id]
+    extra_clauses = ""
+    score_join = ""
+    score_select = ""
+
     if address and address.strip():
-        address_clause = (
-            " AND vps.full_address_standardized ILIKE '%' || $2 || '%'"
-        )
         params.append(address.strip())
+        extra_clauses += (
+            f" AND vps.full_address_standardized ILIKE '%' || ${len(params)} || '%'"
+        )
+
+    # Validated activity levels
+    valid_levels = {"QUIET", "TYPICAL", "ACTIVE", "COMPLEX"}
+    if activity_level:
+        filtered = [lv.upper() for lv in activity_level if lv.upper() in valid_levels]
+        if filtered:
+            params.append(filtered)
+            score_join = " JOIN view_property_score sc ON sc.location_sk = vps.location_sk"
+            extra_clauses += f" AND sc.activity_level = ANY(${len(params)})"
+            score_select = ", sc.raw_score, sc.activity_level"
 
     param_offset = len(params)
 
@@ -102,7 +123,8 @@ async def get_neighborhood_properties(
             SELECT COUNT(*)
             FROM dim_location dl
             JOIN view_property_summary vps ON vps.location_sk = dl.location_sk
-            WHERE dl.community_area_id = $1{address_clause}
+            {score_join}
+            WHERE dl.community_area_id = $1{extra_clauses}
             """,
             *params,
         )
@@ -116,9 +138,11 @@ async def get_neighborhood_properties(
                    vps.total_lien_events AS lien_count,
                    vps.failed_inspection_count_24mo,
                    vps.vacant_violation_count
+                   {score_select}
             FROM dim_location dl
             JOIN view_property_summary vps ON vps.location_sk = dl.location_sk
-            WHERE dl.community_area_id = $1{address_clause}
+            {score_join}
+            WHERE dl.community_area_id = $1{extra_clauses}
             ORDER BY {order_col} {order_dir}
             LIMIT ${param_offset + 1} OFFSET ${param_offset + 2}
             """,

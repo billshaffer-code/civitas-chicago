@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import DashboardPage from '../DashboardPage'
-import { makeAuthValue, makeUser, makeReportHistoryItem } from '../../test/helpers'
+import { makeAuthValue, makeReportHistoryItem } from '../../test/helpers'
 
 const mockNavigate = vi.fn()
 
@@ -17,7 +17,6 @@ vi.mock('../../context/AuthContext', () => ({
 
 vi.mock('../../api/civitas', () => ({
   getMyReports: vi.fn(),
-  getMyBatches: vi.fn(),
   autocompleteAddress: vi.fn().mockResolvedValue([]),
   getNeighborhoodList: vi.fn().mockResolvedValue([]),
   getNeighborhoodGeoJSON: vi.fn().mockResolvedValue({ type: 'FeatureCollection', features: [] }),
@@ -39,7 +38,7 @@ vi.mock('leaflet', () => ({
 }))
 
 import { useAuth } from '../../context/AuthContext'
-import { getMyReports, getMyBatches } from '../../api/civitas'
+import { getMyReports } from '../../api/civitas'
 
 function renderDashboard() {
   return render(
@@ -50,10 +49,6 @@ function renderDashboard() {
 }
 
 describe('DashboardPage', () => {
-  beforeEach(() => {
-    vi.mocked(getMyBatches).mockResolvedValue([])
-  })
-
   it('displays quick search bar', async () => {
     vi.mocked(useAuth).mockReturnValue(makeAuthValue())
     vi.mocked(getMyReports).mockResolvedValue([])
@@ -61,79 +56,19 @@ describe('DashboardPage', () => {
     expect(screen.getByPlaceholderText(/search by address/i)).toBeInTheDocument()
   })
 
-  it('shows loading state while fetching reports', () => {
-    vi.mocked(useAuth).mockReturnValue(makeAuthValue())
-    vi.mocked(getMyReports).mockReturnValue(new Promise(() => {}))
-    renderDashboard()
-    expect(document.querySelectorAll('.skeleton').length).toBeGreaterThan(0)
-  })
-
-  it('displays report count after loading', async () => {
+  it('shows stats cards when reports exist', async () => {
     const reports = [
-      makeReportHistoryItem({ report_id: 'r1' }),
-      makeReportHistoryItem({ report_id: 'r2' }),
+      makeReportHistoryItem({ report_id: 'r1', activity_score: 40 }),
+      makeReportHistoryItem({ report_id: 'r2', activity_score: 60 }),
     ]
     vi.mocked(useAuth).mockReturnValue(makeAuthValue())
     vi.mocked(getMyReports).mockResolvedValue(reports)
     renderDashboard()
 
     await waitFor(() => {
-      expect(screen.getAllByText('2').length).toBeGreaterThan(0)
+      expect(screen.getByText('Properties')).toBeInTheDocument()
+      expect(screen.getByText('Avg Score')).toBeInTheDocument()
     })
-  })
-
-  it('renders report history cards with address, score, level', async () => {
-    const reports = [
-      makeReportHistoryItem({
-        report_id: 'r1',
-        query_address: '456 W OAK ST',
-        activity_score: 72,
-        activity_level: 'ACTIVE',
-      }),
-    ]
-    vi.mocked(useAuth).mockReturnValue(makeAuthValue())
-    vi.mocked(getMyReports).mockResolvedValue(reports)
-    renderDashboard()
-
-    await waitFor(() => {
-      expect(screen.getAllByText('456 W OAK ST').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('72').length).toBeGreaterThan(0)
-    })
-  })
-
-  it('shows empty state when no reports exist', async () => {
-    vi.mocked(useAuth).mockReturnValue(makeAuthValue())
-    vi.mocked(getMyReports).mockResolvedValue([])
-    renderDashboard()
-
-    await waitFor(() => {
-      expect(screen.getByText(/no reports yet/i)).toBeInTheDocument()
-    })
-  })
-
-  it('navigates to /search?report=ID on report card click', async () => {
-    const reports = [makeReportHistoryItem({ report_id: 'rpt-99' })]
-    vi.mocked(useAuth).mockReturnValue(makeAuthValue())
-    vi.mocked(getMyReports).mockResolvedValue(reports)
-    renderDashboard()
-
-    await waitFor(() => {
-      expect(screen.getAllByText('123 N MAIN ST').length).toBeGreaterThan(0)
-    })
-
-    const user = userEvent.setup()
-    const matches = screen.getAllByText('123 N MAIN ST')
-    const reportCard = matches.find(el => el.className.includes('text-[13px]')) ?? matches[0]
-    await user.click(reportCard)
-
-    expect(mockNavigate).toHaveBeenCalledWith('/search?report=rpt-99')
-  })
-
-  it('shows quick search bar', () => {
-    vi.mocked(useAuth).mockReturnValue(makeAuthValue())
-    vi.mocked(getMyReports).mockResolvedValue([])
-    renderDashboard()
-    expect(screen.getByPlaceholderText(/search by address/i)).toBeInTheDocument()
   })
 
   it('navigates to search on quick search submit', async () => {

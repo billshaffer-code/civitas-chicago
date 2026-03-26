@@ -532,6 +532,8 @@ export interface NeighborhoodPropertyItem {
   total_lien_events: number
   failed_inspection_count_24mo: number
   vacant_violation_count: number
+  raw_score?: number
+  activity_level?: string
 }
 
 export interface NeighborhoodPropertiesResponse {
@@ -566,7 +568,7 @@ export async function getNeighborhoodDetail(id: number): Promise<CommunityAreaDe
 
 export async function getNeighborhoodProperties(
   id: number,
-  params?: { page?: number; page_size?: number; sort_by?: string; sort_dir?: string; address?: string },
+  params?: { page?: number; page_size?: number; sort_by?: string; sort_dir?: string; address?: string; activity_level?: string[] },
 ): Promise<NeighborhoodPropertiesResponse> {
   const { data } = await api.get<NeighborhoodPropertiesResponse>(
     `/api/v1/neighborhood/${id}/properties`,

@@ -39,20 +39,25 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
   const [activeSearch, setActiveSearch] = useState('')
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Chart level filter
+  const [selectedLevels, setSelectedLevels] = useState<Set<string>>(new Set())
+
   // Multi-select
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [generating, setGenerating] = useState(false)
   const [genProgress, setGenProgress] = useState({ done: 0, total: 0 })
 
   const fetchProperties = useCallback(
-    (pg: number, address?: string, append = false) => {
+    (pg: number, address?: string, append = false, levels?: Set<string>) => {
       if (!append) setPropsLoading(true)
+      const levelArr = levels && levels.size > 0 ? Array.from(levels) : undefined
       getNeighborhoodProperties(communityAreaId, {
         page: pg,
         page_size: 25,
-        sort_by: 'violations',
+        sort_by: levelArr ? 'score' : 'violations',
         sort_dir: 'desc',
         address: address || undefined,
+        activity_level: levelArr,
       })
         .then(p => {
           if (append) {
@@ -77,6 +82,7 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
     setSearchQuery('')
     setActiveSearch('')
     setSelected(new Set())
+    setSelectedLevels(new Set())
 
     getNeighborhoodDetail(communityAreaId)
       .then(d => { if (!cancelled) setDetail(d) })
@@ -95,14 +101,38 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
       setActiveSearch(value)
       setPage(1)
       setSelected(new Set())
-      fetchProperties(1, value)
+      fetchProperties(1, value, false, selectedLevels)
     }, 300)
   }
+
+  // Name → key mapping for chart clicks
+  const NAME_TO_LEVEL: Record<string, string> = { Quiet: 'QUIET', Typical: 'TYPICAL', Active: 'ACTIVE', Complex: 'COMPLEX' }
+
+  function handleBarClick(data: { name?: string }) {
+    const level = data.name ? NAME_TO_LEVEL[data.name] : undefined
+    if (!level) return
+    setSelectedLevels(prev => {
+      const next = new Set(prev)
+      if (next.has(level)) next.delete(level)
+      else next.add(level)
+      // If all 4 selected, treat as no filter
+      if (next.size === 4) next.clear()
+      return next
+    })
+  }
+
+  // Re-fetch properties when level filter changes
+  useEffect(() => {
+    setPage(1)
+    setSelected(new Set())
+    fetchProperties(1, activeSearch, false, selectedLevels)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLevels])
 
   function loadMore() {
     const nextPage = page + 1
     setPage(nextPage)
-    fetchProperties(nextPage, activeSearch, true)
+    fetchProperties(nextPage, activeSearch, true, selectedLevels)
   }
 
   function toggleSelect(locationSk: number) {
@@ -166,11 +196,12 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
   const level = activityLevel(detail.avg_activity_score)
   const cfg = LEVEL_CONFIG[level]
 
+  const hasLevelFilter = selectedLevels.size > 0
   const distData = [
-    { name: 'Quiet', count: detail.quiet_count, color: LEVEL_COLORS.QUIET },
-    { name: 'Typical', count: detail.typical_count, color: LEVEL_COLORS.TYPICAL },
-    { name: 'Active', count: detail.active_count, color: LEVEL_COLORS.ACTIVE },
-    { name: 'Complex', count: detail.complex_count, color: LEVEL_COLORS.COMPLEX },
+    { name: 'Quiet', key: 'QUIET', count: detail.quiet_count, color: LEVEL_COLORS.QUIET },
+    { name: 'Typical', key: 'TYPICAL', count: detail.typical_count, color: LEVEL_COLORS.TYPICAL },
+    { name: 'Active', key: 'ACTIVE', count: detail.active_count, color: LEVEL_COLORS.ACTIVE },
+    { name: 'Complex', key: 'COMPLEX', count: detail.complex_count, color: LEVEL_COLORS.COMPLEX },
   ]
 
   const stats = [
@@ -242,24 +273,67 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
       <div className={embedded ? 'flex-1 overflow-y-auto min-h-0' : ''}>
         {/* Distribution chart */}
         <div className={`border-b border-separator ${embedded ? 'px-4 py-3' : 'px-6 py-5'}`}>
-          <h3 className="text-[11px] font-semibold text-ink-quaternary uppercase tracking-wider mb-2">
-            Activity Level Distribution
-          </h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-[11px] font-semibold text-ink-quaternary uppercase tracking-wider">
+              Activity Level Distribution
+            </h3>
+            {hasLevelFilter && (
+              <button
+                onClick={() => setSelectedLevels(new Set())}
+                className="text-[10px] font-medium text-accent hover:text-accent/80 transition-colors"
+              >
+                Clear filter
+              </button>
+            )}
+          </div>
           <ResponsiveContainer width="100%" height={embedded ? 120 : 160}>
-            <BarChart data={distData} barSize={embedded ? 28 : 40}>
+            <BarChart data={distData} barSize={embedded ? 28 : 40} style={{ cursor: 'pointer' }}>
               <XAxis dataKey="name" tick={{ fontSize: embedded ? 10 : 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
               <Tooltip
                 formatter={(value) => [Number(value).toLocaleString(), 'Properties']}
                 contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
               />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="count" radius={[4, 4, 0, 0]} onClick={handleBarClick}>
                 {distData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
+                  <Cell
+                    key={i}
+                    fill={entry.color}
+                    fillOpacity={hasLevelFilter && !selectedLevels.has(entry.key) ? 0.25 : 1}
+                    stroke={hasLevelFilter && selectedLevels.has(entry.key) ? entry.color : 'none'}
+                    strokeWidth={hasLevelFilter && selectedLevels.has(entry.key) ? 2 : 0}
+                    style={{ cursor: 'pointer' }}
+                  />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          {/* Active filter chips */}
+          {hasLevelFilter && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {Array.from(selectedLevels).map(lv => {
+                const d = distData.find(d => d.key === lv)
+                return (
+                  <button
+                    key={lv}
+                    onClick={() => {
+                      setSelectedLevels(prev => {
+                        const next = new Set(prev)
+                        next.delete(lv)
+                        return next
+                      })
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium
+                               bg-surface-sunken text-ink-secondary hover:bg-surface-raised transition-colors"
+                  >
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d?.color }} />
+                    {d?.name}
+                    <span className="text-ink-quaternary ml-0.5">&times;</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Property list */}
@@ -383,8 +457,17 @@ export default function NeighborhoodDetail({ communityAreaId, onClose, embedded 
                           {p.total_violations} violations &middot; {p.sr_count_12mo} 311 &middot; {p.total_lien_events} liens
                         </div>
                       </div>
-                      <div className="flex-shrink-0 ml-2 text-[11px] font-semibold text-ink-secondary tabular-nums">
-                        {p.total_violations}
+                      <div className="flex-shrink-0 ml-2 flex items-center gap-1.5">
+                        {p.activity_level && (
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: LEVEL_COLORS[p.activity_level] }}
+                            title={p.activity_level}
+                          />
+                        )}
+                        <span className="text-[11px] font-semibold text-ink-secondary tabular-nums">
+                          {p.raw_score != null ? p.raw_score : p.total_violations}
+                        </span>
                       </div>
                     </div>
                   )
